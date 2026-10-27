@@ -1,13 +1,23 @@
 import express from 'express';
 import { createServer } from 'node:http';
+import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import { initSocket } from './socket/index.js';
+import { authRouter } from './routes/auth.js';
 
 dotenv.config();
 
 const app = express();
 const server = createServer(app);
+
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+
+app.use(express.json()); // برای خوندن بدنه‌ی JSON 
+app.use('/auth', authRouter)
 
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 

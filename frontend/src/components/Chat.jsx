@@ -10,18 +10,21 @@ export default function Chat({ chat }) {
   const { isConnected } = useSocket();
   const {
     messages, onlineUsers, typingUsers, rooms, currentRoom,
-    user, sendMessage, setTyping, createRoom, switchRoom,
+    user, sendMessage, setTyping, createRoom, switchRoom, leaveRoom, deleteRoom,
   } = chat;
 
   return (
-    <div className="h-screen flex bg-slate-100">
+    <div className="h-screen flex bg-surface-50 dark:bg-surface-950">
       <RoomList
         rooms={rooms}
         currentRoom={currentRoom}
         onSwitch={switchRoom}
         onCreate={createRoom}
+        onDelete={deleteRoom}
+        onLeave={leaveRoom} 
+        currentUser={user?.username}
       />
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto bg-white shadow-xl">
+      <div className="flex-1 flex flex-col max-w-4xl mx-auto bg-white dark:bg-surface-950 shadow-2xl border-x border-surface-200 dark:border-surface-800">
         <ChatHeader
           isConnected={isConnected}
           user={user}

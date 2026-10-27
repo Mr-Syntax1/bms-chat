@@ -6,7 +6,7 @@ export default function App() {
   const chat = useChat();
 
   if (!chat.user) {
-    return <Login onJoin={chat.join} error={chat.error} />;
+    return <Login onAuth={chat.login} error={chat.error} />;
   }
   return <Chat chat={chat} />;
 }

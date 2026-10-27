@@ -63,3 +63,28 @@ export function handleJoin(socket, io, users) {
     io.emit('online users', users.getAll());
   };
 }
+
+export function handleDeleteRoom(socket, io) {
+  return async function onDeleteRoom({ roomName }, callback) {
+    const room = await Room.findOne({ name: roomName });
+    if (!room) return callback({ error: 'اتاق پیدا نشد.' });
+    if (room.createdBy.toString() !== socket.userId) {
+      return callback({ error: 'فقط سازنده می‌تونه اتاق رو حذف کنه.' });
+    }
+    // همه کاربران رو از اتاق خارج کن
+    const roomSockets = io.sockets.adapter.rooms.get(roomName);
+    if (roomSockets) {
+      for (const sid of roomSockets) {
+        const s = io.sockets.sockets.get(sid);
+        if (s) {
+          s.leave(roomName);
+          s.currentRoom = null;
+          s.emit('room deleted', { roomName });
+        }
+      }
+    }
+    await Room.deleteOne({ name: roomName });
+    io.emit('room removed', { roomName });
+    callback({ success: true });
+  };
+}

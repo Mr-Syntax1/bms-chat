@@ -44,26 +44,34 @@ export function useChat() {
       socket.off('typing', onTyping);
       socket.off('room created', onRoomCreated);
     };
-  }, [currentRoom]); // ← به currentRoom وابسته شد
+  }, [currentRoom]);
 
-  const join = (username) => {
-    return new Promise((resolve) => {
-      socket.connect();
-      socket.emit('join', { username }, (res) => {
-        if (res.error) {
-          setError(res.error);
-          socket.disconnect();
-          resolve({ ok: false });
-        } else {
-          setUser(res.user);
-          setMessages(res.history);
-          setRooms(res.rooms);
-          setCurrentRoom(res.currentRoom);
-          setError(null);
-          resolve({ ok: true });
-        }
-      });
+  // تابع ورود (بعد از گرفتن توکن از API)
+  const login = (userData) => {
+    setUser(userData);
+    
+    // توکن رو به سوکت پاس میدیم (توی socket.js هم ست شده، ولی برای اطمینان)
+    socket.auth = { token: localStorage.getItem('token') };
+    socket.connect();
+
+    // از سرور می‌خوایم کاربر رو وارد اتاق general کنه
+    socket.emit('join', {}, (res) => {
+      if (res.error) {
+        setError(res.error);
+        socket.disconnect();
+      } else {
+        setMessages(res.history);
+        setRooms(res.rooms || []);
+        setCurrentRoom(res.currentRoom || 'general');
+        setError(null);
+      }
     });
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    socket.disconnect();
+    setUser(null);
   };
 
   const sendMessage = (text) => socket.emit('chat message', { text });
@@ -89,8 +97,33 @@ export function useChat() {
     });
   };
 
+    const deleteRoom = (roomName) => {
+    return new Promise((resolve) => {
+      socket.emit('delete room', { roomName }, (res) => {
+        if (res.success) {
+          // اگر اتاقی که حذف شد، اتاق فعلی بود، برگرد به general
+          if (currentRoom === roomName) {
+            switchRoom('general');
+          }
+          // اتاق رو از لیست حذف کن
+          setRooms((prev) => prev.filter(r => r.name !== roomName));
+        }
+        resolve(res);
+      });
+    });
+  };
+
+    const leaveRoom = () => {
+    if (!currentRoom) return;
+    socket.emit('leave room', { roomName: currentRoom }, (res) => {
+      if (res.success) {
+        switchRoom('general'); // برگرد به اتاق پیش‌فرض
+      }
+    });
+  };
+
   return {
     messages, onlineUsers, typingUsers, rooms, currentRoom,
-    user, error, join, sendMessage, setTyping, createRoom, switchRoom,
+    user, error, login, logout, sendMessage, setTyping, createRoom, switchRoom,leaveRoom,deleteRoom,
   };
 }

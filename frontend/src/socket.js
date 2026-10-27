@@ -1,10 +1,11 @@
 // import { io } from 'socket.io-client';
-
-// export const socket = io('http://localhost:3000', {
-//   autoConnect: false, // به React اجازه می‌دیم کنترل کنه
-//   transports: ['websocket'], // فقط از websocket استفاده کن (اختیاری)
-// });
-
+// export const socket = io('http://localhost:3000', { autoConnect: false });
 
 import { io } from 'socket.io-client';
-export const socket = io('http://localhost:3000', { autoConnect: false });
+
+const token = localStorage.getItem('token');
+
+export const socket = io('http://localhost:3000', {
+  autoConnect: false,
+  auth: { token }, // ← توکن رو با handshake بفرست
+});

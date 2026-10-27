@@ -83,6 +83,24 @@ export function handleJoinRoom(socket, io, users) {
   };
 }
 
+
+export function handleLeaveRoom(socket, io) {
+  return async function onLeaveRoom({ roomName }, callback) {
+    if (!socket.currentRoom) return callback?.({ error: 'در هیچ اتاقی نیستی.' });
+    if (socket.currentRoom !== roomName) {
+      return callback?.({ error: 'در این اتاق نیستی.' });
+    }
+    socket.leave(roomName);
+    socket.currentRoom = null;
+    socket.to(roomName).emit('system message', {
+      text: `${socket.username} اتاق را ترک کرد.`,
+      room: roomName,
+    });
+    callback?.({ success: true });
+    io.to(roomName).emit('room users', getRoomUsers(io, roomName, users));
+  };
+}
+
 // لیست کاربران آنلاین در یک اتاق
 export function getRoomUsers(io, roomName, users) {
   const room = io.sockets.adapter.rooms.get(roomName);
