@@ -25,11 +25,26 @@ app.get('/', (req, res) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('socket is started');
+  console.log('socket connected:', socket.id);
 
-  socket.on('disconnect',()=>{
-    console.log('disconnect');
-  })
+  socket.on('chat message', (data) => {
+    // data = { text, sender }
+    const message = {
+      id: crypto.randomUUID(), // شناسه یکتا
+      text: data.text,
+      sender: data.sender,
+      time: new Date().toLocaleTimeString('fa-IR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
+
+    io.emit('chat message', message); // به همه بفرست
+  });
+
+  socket.on('disconnect', () => {
+    console.log('socket disconnected:', socket.id);
+  });
 });
 
 server.listen(3000, () => {
