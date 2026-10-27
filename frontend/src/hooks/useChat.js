@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { socket } from '../socket';
 
 export function useChat() {
@@ -7,8 +7,20 @@ export function useChat() {
   const [typingUsers, setTypingUsers] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [currentRoom, setCurrentRoom] = useState('general');
-  const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
+  const [connected, setConnected] = useState(false);
+  const connectListenerRef = useRef(null);
+
+  useEffect(() => {
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+    };
+  }, []);
 
   useEffect(() => {
     const onChatMessage = (msg) => {
@@ -30,12 +42,21 @@ export function useChat() {
       });
     };
     const onRoomCreated = (room) => setRooms((prev) => [...prev, room]);
+    const onRoomRemoved = ({ roomName }) => setRooms((prev) => prev.filter((r) => r.name !== roomName));
+    const onRoomDeleted = ({ roomName }) => {
+      if (currentRoom === roomName) {
+        setCurrentRoom('general');
+      }
+      setRooms((prev) => prev.filter((r) => r.name !== roomName));
+    };
 
     socket.on('chat message', onChatMessage);
     socket.on('system message', onSystemMessage);
     socket.on('online users', onOnlineUsers);
     socket.on('typing', onTyping);
     socket.on('room created', onRoomCreated);
+    socket.on('room removed', onRoomRemoved);
+    socket.on('room deleted', onRoomDeleted);
 
     return () => {
       socket.off('chat message', onChatMessage);
@@ -43,45 +64,70 @@ export function useChat() {
       socket.off('online users', onOnlineUsers);
       socket.off('typing', onTyping);
       socket.off('room created', onRoomCreated);
+      socket.off('room removed', onRoomRemoved);
+      socket.off('room deleted', onRoomDeleted);
     };
   }, [currentRoom]);
 
-  // تابع ورود (بعد از گرفتن توکن از API)
-  const login = (userData) => {
-    setUser(userData);
-    
-    // توکن رو به سوکت پاس میدیم (توی socket.js هم ست شده، ولی برای اطمینان)
-    socket.auth = { token: localStorage.getItem('token') };
-    socket.connect();
-
-    // از سرور می‌خوایم کاربر رو وارد اتاق general کنه
-    socket.emit('join', {}, (res) => {
-      if (res.error) {
-        setError(res.error);
-        socket.disconnect();
-      } else {
-        setMessages(res.history);
-        setRooms(res.rooms || []);
-        setCurrentRoom(res.currentRoom || 'general');
-        setError(null);
+  const connectSocket = useCallback(() => {
+    return new Promise((resolve) => {
+      if (socket.connected) {
+        // اگه قبلاً وصله، مستقیم join کن
+        socket.emit('join', {}, (res) => {
+          if (res.error) {
+            setError(res.error);
+            socket.disconnect();
+          } else {
+            setMessages(res.history);
+            setRooms(res.rooms || []);
+            setCurrentRoom(res.currentRoom || 'general');
+            setError(null);
+          }
+          resolve();
+        });
+        return;
       }
-    });
-  };
 
-  const logout = () => {
-    localStorage.removeItem('token');
+      const onConnect = () => {
+        socket.off('connect', onConnect);
+        socket.emit('join', {}, (res) => {
+          if (res.error) {
+            setError(res.error);
+            socket.disconnect();
+          } else {
+            setMessages(res.history);
+            setRooms(res.rooms || []);
+            setCurrentRoom(res.currentRoom || 'general');
+            setError(null);
+          }
+          resolve();
+        });
+      };
+      connectListenerRef.current = onConnect;
+      socket.on('connect', onConnect);
+      socket.connect();
+    });
+  }, []);
+
+  const disconnectSocket = useCallback(() => {
+    if (connectListenerRef.current) {
+      socket.off('connect', connectListenerRef.current);
+      connectListenerRef.current = null;
+    }
     socket.disconnect();
-    setUser(null);
-  };
+    setMessages([]);
+    setRooms([]);
+    setCurrentRoom('general');
+    setOnlineUsers([]);
+    setConnected(false);
+  }, []);
 
   const sendMessage = (text) => socket.emit('chat message', { text });
   const setTyping = (isTyping) => socket.emit('typing', isTyping);
 
   const createRoom = (name) => {
     return new Promise((resolve) => {
-      socket.emit('create room', { name }, (res) => {
-        resolve(res);
-      });
+      socket.emit('create room', { name }, (res) => resolve(res));
     });
   };
 
@@ -97,33 +143,37 @@ export function useChat() {
     });
   };
 
-    const deleteRoom = (roomName) => {
+  const deleteRoom = (roomName) => {
     return new Promise((resolve) => {
-      socket.emit('delete room', { roomName }, (res) => {
-        if (res.success) {
-          // اگر اتاقی که حذف شد، اتاق فعلی بود، برگرد به general
-          if (currentRoom === roomName) {
-            switchRoom('general');
-          }
-          // اتاق رو از لیست حذف کن
-          setRooms((prev) => prev.filter(r => r.name !== roomName));
-        }
-        resolve(res);
-      });
+      socket.emit('delete room', { roomName }, (res) => resolve(res));
     });
   };
 
-    const leaveRoom = () => {
+  const leaveRoom = () => {
     if (!currentRoom) return;
     socket.emit('leave room', { roomName: currentRoom }, (res) => {
       if (res.success) {
-        switchRoom('general'); // برگرد به اتاق پیش‌فرض
+        switchRoom('general');
       }
     });
   };
 
   return {
-    messages, onlineUsers, typingUsers, rooms, currentRoom,
-    user, error, login, logout, sendMessage, setTyping, createRoom, switchRoom,leaveRoom,deleteRoom,
+    messages,
+    onlineUsers,
+    typingUsers,
+    rooms,
+    currentRoom,
+    error,
+    connected,
+    connectSocket,
+    disconnectSocket,
+    sendMessage,
+    setTyping,
+    createRoom,
+    switchRoom,
+    leaveRoom,
+    deleteRoom,
+    logout: disconnectSocket,
   };
 }

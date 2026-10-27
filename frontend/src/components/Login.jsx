@@ -16,12 +16,12 @@ export default function Login({ onAuth }) {
       const res = await fetch(`http://localhost:3000/auth${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      localStorage.setItem('token', data.token);
-      onAuth(data.user);
+      onAuth(data.user, data.token);
     } catch (err) {
       setError(err.message);
     } finally {

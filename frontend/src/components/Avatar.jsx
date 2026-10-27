@@ -15,27 +15,27 @@ export default function Avatar({ username, color, size = 'md', status, className
     xl: 'w-4 h-4',
   };
 
-  const getGradient = (color) => {
-    if (!color) return 'from-primary-500 to-primary-600';
-    const hues = {
-      indigo: 'from-indigo-500 to-indigo-600',
-      violet: 'from-violet-500 to-violet-600',
-      purple: 'from-purple-500 to-purple-600',
-      pink: 'from-pink-500 to-pink-600',
-      red: 'from-red-500 to-red-600',
-      orange: 'from-orange-500 to-orange-600',
-      amber: 'from-amber-500 to-amber-600',
-      yellow: 'from-yellow-500 to-yellow-600',
-      lime: 'from-lime-500 to-lime-600',
-      green: 'from-green-500 to-green-600',
-      emerald: 'from-emerald-500 to-emerald-600',
-      teal: 'from-teal-500 to-teal-600',
-      cyan: 'from-cyan-500 to-cyan-600',
-      sky: 'from-sky-500 to-sky-600',
-      blue: 'from-blue-500 to-blue-600',
-    };
-    return hues[color] || `from-[${color}] to-[${color}]`;
-  };
+  // const getGradient = (color) => {
+  //   if (!color) return 'from-primary-500 to-primary-600';
+  //   const hues = {
+  //     indigo: 'from-indigo-500 to-indigo-600',
+  //     violet: 'from-violet-500 to-violet-600',
+  //     purple: 'from-purple-500 to-purple-600',
+  //     pink: 'from-pink-500 to-pink-600',
+  //     red: 'from-red-500 to-red-600',
+  //     orange: 'from-orange-500 to-orange-600',
+  //     amber: 'from-amber-500 to-amber-600',
+  //     yellow: 'from-yellow-500 to-yellow-600',
+  //     lime: 'from-lime-500 to-lime-600',
+  //     green: 'from-green-500 to-green-600',
+  //     emerald: 'from-emerald-500 to-emerald-600',
+  //     teal: 'from-teal-500 to-teal-600',
+  //     cyan: 'from-cyan-500 to-cyan-600',
+  //     sky: 'from-sky-500 to-sky-600',
+  //     blue: 'from-blue-500 to-blue-600',
+  //   };
+  //   return hues[color] || `from-[${color}] to-[${color}]`;
+  // };
 
   return (
     <div className={`relative inline-flex ${className}`}>
@@ -48,7 +48,7 @@ export default function Avatar({ username, color, size = 'md', status, className
       {status && (
         <span
           className={`
-            absolute bottom-0 right-0 rounded-full border-2 border-white dark:border-surface-900
+            absolute bottom-0 left-0 rounded-full border-2 border-white dark:border-surface-900
             ${statusSizes[size]}
             ${status === 'online' ? 'bg-green-500 shadow-glow-success' : ''}
             ${status === 'away' ? 'bg-yellow-500' : ''}

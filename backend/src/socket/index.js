@@ -12,23 +12,46 @@ import {
 } from './handlers/rooms.js';
 import { verifyToken } from '../utils/jwt.js';
 
+function getSocketToken(socket) {
+  if (socket.handshake.auth?.token) return socket.handshake.auth.token;
+  const cookieHeader = socket.handshake.headers.cookie;
+  if (!cookieHeader) {
+    console.log('[Socket Auth] No cookie header');
+    return null;
+  }
+  const cookies = Object.fromEntries(
+    cookieHeader.split(';').map((c) => {
+      const idx = c.indexOf('=');
+      if (idx === -1) return [c.trim(), ''];
+      const k = c.slice(0, idx).trim();
+      const v = decodeURIComponent(c.slice(idx + 1).trim());
+      return [k, v];
+    })
+  );
+  const token = cookies.token || null;
+  console.log('[Socket Auth] Token from cookie:', token ? 'FOUND' : 'NOT FOUND');
+  return token;
+}
+
 export function initSocket(server) {
   const io = new Server(server, {
-    cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'] },
+    cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'], credentials: true },
   });
 
   io.use((socket, next) => {
-    const token = socket.handshake.auth?.token;
+    const token = getSocketToken(socket);
     if (!token) {
+      console.log('[Socket Auth] REJECT: No token');
       return next(new Error('Authentication error: No token provided'));
     }
 
     const decoded = verifyToken(token);
     if (!decoded) {
+      console.log('[Socket Auth] REJECT: Invalid token');
       return next(new Error('Authentication error: Invalid token'));
     }
 
-    // اطلاعات کاربر رو به سوکت بچسبون
+    console.log('[Socket Auth] ACCEPT:', decoded.username);
     socket.userId = decoded.id;
     socket.username = decoded.username;
     next();

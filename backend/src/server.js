@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer } from 'node:http';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import { initSocket } from './socket/index.js';
@@ -16,7 +17,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json()); // برای خوندن بدنه‌ی JSON 
+app.use(express.json());
+app.use(cookieParser());
 app.use('/auth', authRouter)
 
 app.get('/', (req, res) => res.json({ status: 'ok' }));

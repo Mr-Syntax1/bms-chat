@@ -29,7 +29,7 @@ export default function OnlineUsersList({ users, currentUser }) {
                 <span className="text-sm font-medium text-surface-900 dark:text-surface-50 truncate">
                   {u.username}
                   {u.username === currentUser && (
-                    <span className="badge badge-primary ml-2 text-[10px] py-0">شما</span>
+                    <span className="badge badge-primary ml-2 text-[10px] mr-2">شما</span>
                   )}
                 </span>
               </div>

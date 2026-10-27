@@ -1,7 +1,7 @@
 import Avatar from './Avatar';
 import ThemeToggle from './ThemeToggle';
 
-export default function ChatHeader({ isConnected, user, onlineCount, roomName }) {
+export default function ChatHeader({ isConnected, user, onlineCount, roomName, onLogout }) {
   return (
     <header className="glass-strong border-b border-surface-200 dark:border-surface-800 px-5 py-4 flex items-center justify-between gap-4 animate-slide-down">
       <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -30,6 +30,16 @@ export default function ChatHeader({ isConnected, user, onlineCount, roomName })
           <Avatar username={user?.username} color={user?.avatarColor} size="sm" status="online" />
           <span className="text-sm font-medium text-surface-900 dark:text-surface-50">{user?.username}</span>
         </div>
+        <button
+          onClick={onLogout}
+          className="btn-ghost p-2 rounded-lg text-surface-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          title="خروج"
+          aria-label="Logout"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
       </div>
     </header>
   );
