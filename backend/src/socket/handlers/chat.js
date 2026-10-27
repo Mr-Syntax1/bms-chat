@@ -6,6 +6,9 @@ export function handleChat(socket, io, users) {
     const user = users.get(socket.id);
     if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
 
+    const room = socket.currentRoom;
+    if (!room) return callback?.({ error: 'ابتدا وارد یک اتاق شوید.' });
+
     const text = typeof payload === 'string' ? payload : payload?.text;
     if (!text || !text.trim()) return callback?.({ error: 'پیام خالی است.' });
     if (text.length > 500) return callback?.({ error: 'پیام طولانی است.' });
@@ -16,6 +19,7 @@ export function handleChat(socket, io, users) {
       senderId: user.id,
       avatarColor: user.avatarColor,
       type: 'message',
+      room,
     });
 
     const message = {
@@ -25,10 +29,12 @@ export function handleChat(socket, io, users) {
       senderId: saved.senderId,
       avatarColor: saved.avatarColor,
       type: saved.type,
+      room,
       time: getPersianTime(),
     };
 
-    io.emit('chat message', message);// به همه کلاینت‌ها میفرسته پیام را
+    // فقط به اعضای این اتاق بفرست
+    io.to(room).emit('chat message', message);
     callback?.({ success: true, message });
   };
 }

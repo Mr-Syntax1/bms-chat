@@ -1,5 +1,6 @@
 import { getPersianTime } from '../../utils/messages.js';
 import { Message } from '../../models/Message.js';
+import { Room } from '../../models/Room.js';
 
 export function handleJoin(socket, io, users) {
   return async function onJoin(payload, callback) {
@@ -23,32 +24,42 @@ export function handleJoin(socket, io, users) {
     socket.username = trimmed;
     socket.user = user;
 
-    // ذخیره پیام سیستمی در دیتابیس
-    const systemMessage = await Message.create({
-      text: `${trimmed} به گروه پیوست.`,
-      sender: 'system',
-      type: 'system',
-    });
+    // اطمینان از وجود اتاق general
+    let general = await Room.findOne({ name: 'general' });
+    if (!general) {
+      general = await Room.create({ name: 'general', createdBy: 'system' });
+    }
 
-    // دریافت ۱۰۰ پیام آخر از دیتابیس
-    const history = await Message.find().sort({ createdAt: -1 }).limit(100).lean();
-    history.reverse(); // قدیمی‌ترین اول
+    socket.join('general');
+    socket.currentRoom = 'general';
 
-    callback({ success: true, user, history });
+    // تاریخچه‌ی ۱۰۰ پیام آخر در general
+    const history = await Message.find({ room: 'general' })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+    history.reverse();
 
-    const sysMsgForBroadcast = {
-      id: systemMessage._id.toString(),
-      text: systemMessage.text,
-      sender: systemMessage.sender,
-      type: systemMessage.type,
+    const formattedHistory = history.map((m) => ({
+      id: m._id.toString(),
+      text: m.text,
+      sender: m.sender,
+      senderId: m.senderId,
+      avatarColor: m.avatarColor,
+      type: m.type,
       time: getPersianTime(),
-    };
+    }));
 
-    io.emit('user joined', {
+    const rooms = await Room.find().sort({ createdAt: 1 }).lean();
+
+    callback({
+      success: true,
       user,
-      message: sysMsgForBroadcast,
-      onlineUsers: users.getAll(),
+      history: formattedHistory,
+      rooms: rooms.map((r) => ({ id: r._id.toString(), name: r.name })),
+      currentRoom: 'general',
     });
+
     io.emit('online users', users.getAll());
   };
 }

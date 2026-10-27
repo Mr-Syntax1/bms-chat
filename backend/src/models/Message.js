@@ -6,25 +6,33 @@ const messageSchema = new mongoose.Schema({
         required: true,
         maxlength: 500
     },
+    
     sender: {
         type: String,
         required: true
     },
+
     senderId: {
         type: String
     },
+
     avatarColor: {
         type: String
     },
+
     type: {
         type: String,
         enum: ['message', 'system'],
         default: 'message'
     },
+
     room: {
         type: String,
-        default: 'general'
-    }, // برای فاز ۳ (Rooms) آماده می‌کنیم
+        required: true,
+        index: true 
+        // default: 'general'
+    },
+
     createdAt: {
         type: Date,
         default: Date.now
