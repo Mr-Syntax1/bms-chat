@@ -1,8 +1,8 @@
 import { getPersianTime } from '../../utils/messages.js';
+import { Message } from '../../models/Message.js';
 
-export function handleJoin(socket, io, users, messageStore) {
-  return function onJoin(payload, callback) {
-    // مقاوم‌سازی: هم string هم object
+export function handleJoin(socket, io, users) {
+  return async function onJoin(payload, callback) {
     let username = payload;
     if (payload && typeof payload === 'object') username = payload.username;
 
@@ -23,19 +23,30 @@ export function handleJoin(socket, io, users, messageStore) {
     socket.username = trimmed;
     socket.user = user;
 
-    const systemMessage = messageStore.add({
-      id: `sys-${Date.now()}`,
+    // ذخیره پیام سیستمی در دیتابیس
+    const systemMessage = await Message.create({
       text: `${trimmed} به گروه پیوست.`,
       sender: 'system',
       type: 'system',
-      time: getPersianTime(),
     });
 
-    callback({ success: true, user, history: messageStore.getAll() });
+    // دریافت ۱۰۰ پیام آخر از دیتابیس
+    const history = await Message.find().sort({ createdAt: -1 }).limit(100).lean();
+    history.reverse(); // قدیمی‌ترین اول
+
+    callback({ success: true, user, history });
+
+    const sysMsgForBroadcast = {
+      id: systemMessage._id.toString(),
+      text: systemMessage.text,
+      sender: systemMessage.sender,
+      type: systemMessage.type,
+      time: getPersianTime(),
+    };
 
     io.emit('user joined', {
       user,
-      message: systemMessage,
+      message: sysMsgForBroadcast,
       onlineUsers: users.getAll(),
     });
     io.emit('online users', users.getAll());

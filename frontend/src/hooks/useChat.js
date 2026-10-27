@@ -10,15 +10,19 @@ export function useChat() {
 
   useEffect(() => {
     const onChatMessage = (msg) => setMessages((prev) => [...prev, msg]);
+    
     const onUserJoined = ({ message, onlineUsers }) => {
       if (message) setMessages((prev) => [...prev, message]);
       setOnlineUsers(onlineUsers);
     };
+
     const onUserLeft = ({ message, onlineUsers }) => {
       if (message) setMessages((prev) => [...prev, message]);
       setOnlineUsers(onlineUsers);
     };
+
     const onOnlineUsers = (users) => setOnlineUsers(users);
+
     const onTyping = ({ username, isTyping }) => {
       setTypingUsers((prev) => {
         if (isTyping) return prev.includes(username) ? prev : [...prev, username];
