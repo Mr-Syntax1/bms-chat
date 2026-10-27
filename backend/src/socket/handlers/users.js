@@ -4,24 +4,17 @@ import { Room } from '../../models/Room.js';
 
 export function handleJoin(socket, io, users) {
   return async function onJoin(payload, callback) {
-    let username = payload;
-    if (payload && typeof payload === 'object') username = payload.username;
+    const username = socket.username;
 
-    if (!username || !username.trim()) {
-      return callback({ error: 'نام کاربری الزامی است.' });
+    if (!username) {
+      return callback({ error: 'احراز هویت نامعتبر است.' });
     }
 
-    const trimmed = username.trim();
-    if (trimmed.length > 30) {
-      return callback({ error: 'نام کاربری نمی‌تواند بیش از ۳۰ کاراکتر باشد.' });
-    }
-
-    if (users.findByUsername(trimmed)) {
+    if (users.findByUsername(username)) {
       return callback({ error: 'این نام کاربری قبلاً استفاده شده است.' });
     }
 
-    const user = users.add(socket.id, trimmed);
-    socket.username = trimmed;
+    const user = users.add(socket.id, username);
     socket.user = user;
 
     // اطمینان از وجود اتاق general

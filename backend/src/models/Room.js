@@ -9,8 +9,7 @@ const roomSchema = new mongoose.Schema({
         maxlength: 30
     },
     createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        type: String,
         required: true
     },
     createdAt: {

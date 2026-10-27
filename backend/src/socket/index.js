@@ -1,12 +1,13 @@
 import { Server } from 'socket.io';
 import { users } from '../utils/users.js';
-import { handleJoin } from './handlers/users.js';
+import { handleJoin, handleDeleteRoom } from './handlers/users.js';
 import { handleChat } from './handlers/chat.js';
 import { handleTyping } from './handlers/typing.js';
 import {
   handleListRooms,
   handleCreateRoom,
   handleJoinRoom,
+  handleLeaveRoom,
   getRoomUsers,
 } from './handlers/rooms.js';
 import { verifyToken } from '../utils/jwt.js';
@@ -44,6 +45,8 @@ export function initSocket(server) {
     socket.on('list rooms', handleListRooms(socket, io));
     socket.on('create room', handleCreateRoom(socket, io, users));
     socket.on('join room', handleJoinRoom(socket, io, users));
+    socket.on('leave room', handleLeaveRoom(socket, io));
+    socket.on('delete room', handleDeleteRoom(socket, io));
 
     socket.on('disconnect', async () => {
       const user = users.remove(socket.id);
