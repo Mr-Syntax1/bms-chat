@@ -8,7 +8,8 @@ export const authRouter = express.Router();
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: false,
-  sameSite: 'none', // برای cross-origin localhost
+  sameSite: 'none',
+  path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -17,7 +18,7 @@ function setTokenCookie(res, token) {
 }
 
 function clearTokenCookie(res) {
-  res.clearCookie('token', { httpOnly: true, secure: false, sameSite: 'none' });
+  res.clearCookie('token', { httpOnly: true, secure: false, sameSite: 'none', path: '/' });
 }
 
 // ثبت‌نام
@@ -71,7 +72,7 @@ authRouter.get('/me', async (req, res) => {
     const user = await User.findById(decoded.id).select('username');
     if (!user) return res.status(401).json({ error: 'کاربر یافت نشد' });
     
-    res.json({ user: { id: user._id, username: user.username } });
+    res.json({ token, user: { id: user._id, username: user.username } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطای سرور' });

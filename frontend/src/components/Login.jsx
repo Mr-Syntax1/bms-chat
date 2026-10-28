@@ -1,19 +1,19 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Login({ onAuth }) {
-  const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const endpoint = isRegister ? '/register' : '/login';
-      const res = await fetch(`http://localhost:3000/auth${endpoint}`, {
+      const res = await fetch('http://localhost:3000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -22,6 +22,7 @@ export default function Login({ onAuth }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       onAuth(data.user, data.token);
+      navigate('/chat');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -32,24 +33,26 @@ export default function Login({ onAuth }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6 text-center text-slate-800">
-          {isRegister ? 'ثبت‌نام' : 'ورود'}
-        </h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-slate-800">ورود</h1>
         <input
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="نام کاربری"
-          className="w-full px-4 py-3 border rounded-xl mb-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="w-full px-4 py-3 border rounded-xl mb-3 focus:ring-2 text-black focus:ring-indigo-500 focus:outline-none"
           disabled={loading}
+          autoComplete="username"
+          required
         />
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="رمز عبور"
-          className="w-full px-4 py-3 border rounded-xl mb-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="w-full px-4 py-3 border rounded-xl mb-3 focus:ring-2 text-black focus:ring-indigo-500 focus:outline-none"
           disabled={loading}
+          autoComplete="current-password"
+          required
         />
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
         <button
@@ -57,15 +60,14 @@ export default function Login({ onAuth }) {
           disabled={loading}
           className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50"
         >
-          {loading ? 'لطفاً صبر کنید...' : (isRegister ? 'ثبت‌نام' : 'ورود')}
+          {loading ? 'لطفاً صبر کنید...' : 'ورود'}
         </button>
-        <button
-          type="button"
-          onClick={() => setIsRegister(!isRegister)}
-          className="w-full mt-3 text-sm text-indigo-600 hover:underline"
-        >
-          {isRegister ? 'قبلاً ثبت‌نام کردی؟ ورود' : 'حساب نداری؟ ثبت‌نام'}
-        </button>
+        <p className="mt-4 text-center text-sm text-slate-600">
+          حساب نداری؟{' '}
+          <Link to="/register" className="text-indigo-600 hover:underline font-medium">
+            ثبت‌نام
+          </Link>
+        </p>
       </form>
     </div>
   );

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { setSocketToken } from './socket';
 import Login from './components/Login';
+import Register from './components/Register';
 import Chat from './components/Chat';
 import { useChat } from './hooks/useChat';
 
@@ -17,7 +18,7 @@ function App() {
       .then((data) => {
         if (data?.user) {
           setAuthUser(data.user);
-          // توکن رو از کوکی نمی‌خونیم (httpOnly) - برای سوکت باید از /auth/me یا login بگیریم
+          if (data.token) setSocketToken(data.token);
         }
         setAuthLoading(false);
       })
@@ -52,11 +53,13 @@ function App() {
         <Route
           path="/login"
           element={
-            authUser ? (
-              <Navigate to="/chat" replace />
-            ) : (
-              <Login onAuth={handleAuth} />
-            )
+            authUser ? <Navigate to="/chat" replace /> : <Login onAuth={handleAuth} />
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            authUser ? <Navigate to="/chat" replace /> : <Register onAuth={handleAuth} />
           }
         />
         <Route
