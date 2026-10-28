@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/vite";
-@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+/* @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css'); */
+/* @source "../node_modules/@ferrucc-io/emoji-picker"; */
 
 @theme {
   --font-vazirmatn: 'Vazirmatn', 'system-ui', sans-serif;
