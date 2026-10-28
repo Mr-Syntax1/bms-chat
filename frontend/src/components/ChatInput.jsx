@@ -7,7 +7,7 @@ export default function ChatInput({ onSend, onTyping }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   
-  //  استیت و رفرنس‌های جدید برای فایل
+  // استیت و رفرنس‌های جدید برای فایل
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
   
@@ -73,7 +73,7 @@ export default function ChatInput({ onSend, onTyping }) {
     }
   };
 
-  //  تابع آپلود فایل به Upstash
+  // تابع آپلود فایل به Upstash
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -119,13 +119,13 @@ export default function ChatInput({ onSend, onTyping }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative p-4 bg-white/50 dark:bg-surface-950/50 backdrop-blur-xl border-t border-surface-200 dark:border-surface-800">
+    <form onSubmit={handleSubmit} className="relative p-4 bg-surface-950/50 backdrop-blur-xl border-t border-surface-700">
 
       {/* پنل ایموجی */}
       {showEmojiPicker && (
         <div
           ref={emojiPickerRef}
-          className="absolute bottom-full mb-4 left-4 z-50 shadow-2xl rounded-2xl overflow-hidden border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900">
+          className="absolute bottom-full mb-4 left-4 z-50 shadow-2xl rounded-2xl overflow-hidden border border-surface-700 bg-surface-900">
           <EmojiPicker
             onEmojiSelect={handleEmojiSelect}
             emojisPerRow={8}
@@ -150,7 +150,7 @@ export default function ChatInput({ onSend, onTyping }) {
           type="button"
           disabled={isUploading}
           onClick={() => fileInputRef.current?.click()}
-          className="p-3 rounded-2xl shrink-0 text-surface-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-surface-800 transition-colors disabled:opacity-50 cursor-pointer"
+          className="p-3 rounded-2xl shrink-0 text-surface-500 hover:text-primary-500 hover:bg-surface-800 transition-colors disabled:opacity-50 cursor-pointer"
           aria-label="ارسال فایل"
         >
           {isUploading ? (
@@ -175,7 +175,7 @@ export default function ChatInput({ onSend, onTyping }) {
         <button
           type="button"
           onClick={() => setShowEmojiPicker((prev) => !prev)}
-          className="p-3 rounded-2xl shrink-0 text-surface-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
+          className="p-3 rounded-2xl shrink-0 text-surface-500 hover:text-primary-500 hover:bg-surface-800 transition-colors cursor-pointer"
           aria-label="انتخاب ایموجی"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -201,7 +201,7 @@ export default function ChatInput({ onSend, onTyping }) {
               input w-full pr-24
               transition-all duration-300
               ${isFocused ? 'ring-2 ring-primary-500/30 shadow-lg' : ''}
-              ${value ? 'bg-white dark:bg-surface-900' : ''}
+              ${value ? 'bg-surface-900' : ''}
             `}
             autoComplete="off"
             spellCheck={false}
@@ -210,7 +210,7 @@ export default function ChatInput({ onSend, onTyping }) {
             <button
               type="button"
               onClick={() => { setValue(''); onTyping(false); clearTimeout(typingTimer.current); inputRef.current?.focus(); }}
-              className="absolute inset-y-0 right-3 flex items-center text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 transition-colors"
+              className="absolute inset-y-0 right-3 flex items-center text-surface-400 hover:text-surface-300 transition-colors"
               aria-label="Clear message"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

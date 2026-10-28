@@ -48,7 +48,7 @@ export default function Avatar({ username, color, size = 'md', status, className
       {status && (
         <span
           className={`
-            absolute bottom-0 left-0 rounded-full border-2 border-white dark:border-surface-900
+            absolute bottom-0 left-0 rounded-full border-2 border-surface-900
             ${statusSizes[size]}
             ${status === 'online' ? 'bg-green-500 shadow-glow-success' : ''}
             ${status === 'away' ? 'bg-yellow-500' : ''}
