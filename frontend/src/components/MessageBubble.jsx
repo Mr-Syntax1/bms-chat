@@ -16,12 +16,8 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
   const time = msg.time || new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    // 👈 تعیین جهت اصلی:
-    // اگر پیام خودم بود (isMine) میره سمت راست (justify-end)
-    // اگر پیام بقیه بود (!isMine) میره سمت چپ (justify-start)
     <div className={`flex gap-2 animate-fade-in ${isMine ? 'justify-end' : 'justify-start'}`} dir='ltr'>
       
-      {/* 👈 آواتار فقط برای پیام‌های بقیه. چون اول رندر میشه، در RTL میاد سمت چپ */}
       {!isMine && (
         <div className="w-10 flex-shrink-0 flex justify-start items-end pb-1">
           {showHeader && <Avatar username={msg.sender} color={msg.avatarColor} size="sm" />}

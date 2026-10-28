@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import { initSocket } from './socket/index.js';
 import { authRouter } from './routes/auth.js';
+import { uploadRouter } from './routes/upload.js';
+
 
 dotenv.config();
 
@@ -20,6 +22,8 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use('/auth', authRouter)
+app.use('/upload', uploadRouter);
+
 
 app.get('/', (req, res) => res.json({ status: 'ok' }));
 

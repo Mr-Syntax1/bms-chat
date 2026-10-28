@@ -4,31 +4,31 @@ import { EmojiPicker } from '@ferrucc-io/emoji-picker';
 export default function ChatInput({ onSend, onTyping }) {
   const [value, setValue] = useState('');
   const [isComposing, setIsComposing] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false); //  استیت جدید برای پنل
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  
+  // 👈 استیت و رفرنس‌های جدید برای فایل
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
+  
   const typingTimer = useRef(null);
   const inputRef = useRef(null);
-  const [isFocused, setIsFocused] = useState(false);
   const emojiPickerRef = useRef(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // پ منطق بستن پنل ایموجی با کلیک بیرون
+  // منطق بستن پنل ایموجی با کلیک بیرون
   useEffect(() => {
     function handleClickOutside(event) {
-      // اگر پنل باز است و کلیک خارج از محدوده‌ی پنل بوده
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
         setShowEmojiPicker(false);
       }
     }
-
-    // فقط وقتی پنل باز است به رویداد کلیک گوش می‌دهیم
     if (showEmojiPicker) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-
-    // پاکسازی رویداد هنگام بسته شدن پنل یا unmount
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -37,7 +37,6 @@ export default function ChatInput({ onSend, onTyping }) {
   // تابع اضافه کردن ایموجی به متن
   const handleEmojiSelect = (emoji) => {
     setValue((prev) => prev + emoji);
-    // فوکوس را برمی‌گردانیم تا کاربر بتواند ادامه تایپ کند
     inputRef.current?.focus();
   };
 
@@ -63,7 +62,7 @@ export default function ChatInput({ onSend, onTyping }) {
     onSend(value.trim());
     setValue('');
     onTyping(false);
-    setShowEmojiPicker(false); // بستن پنل بعد از ارسال
+    setShowEmojiPicker(false);
     clearTimeout(typingTimer.current);
   };
 
@@ -74,10 +73,55 @@ export default function ChatInput({ onSend, onTyping }) {
     }
   };
 
+  // 👈 تابع آپلود فایل به Upstash
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+
+    try {
+      // ۱. گرفتن لینک آپلود از بک‌اند
+      const presignRes = await fetch('http://localhost:3000/upload/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, fileType: file.type }),
+      });
+      
+      const { uploadUrl, headers, publicUrl } = await presignRes.json();
+      if (!uploadUrl) throw new Error('خطا در دریافت لینک آپلود');
+
+      // ۲. آپلود مستقیم فایل به Upstash
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: headers, 
+      });
+
+      if (!uploadRes.ok) throw new Error('آپلود به Upstash ناموفق بود');
+
+      // ۳. ارسال پیام با لینک عمومی فایل
+      onSend({
+        type: 'file',
+        fileUrl: publicUrl, 
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        text: file.name,
+      });
+      
+    } catch (err) {
+      alert('خطا در آپلود فایل: ' + err.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = ''; // ریست کردن input
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="relative p-4 bg-white/50 dark:bg-surface-950/50 backdrop-blur-xl border-t border-surface-200 dark:border-surface-800">
 
-      {/*  پنل ایموجی (فقط زمانی که true باشد رندر می‌شود) */}
+      {/* پنل ایموجی */}
       {showEmojiPicker && (
         <div
           ref={emojiPickerRef}
@@ -101,7 +145,33 @@ export default function ChatInput({ onSend, onTyping }) {
 
       <div className={`relative flex items-end gap-3 transition-all duration-300 ${isFocused ? 'scale-[1.01]' : ''}`}>
 
-        {/*  دکمه ایموجی (سمت چپ) */}
+        {/* دکمه انتخاب فایل (گیره کاغذ) */}
+        <button
+          type="button"
+          disabled={isUploading}
+          onClick={() => fileInputRef.current?.click()}
+          className="p-3 rounded-2xl shrink-0 text-surface-500 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-surface-800 transition-colors disabled:opacity-50 cursor-pointer"
+          aria-label="ارسال فایل"
+        >
+          {isUploading ? (
+            <span className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin block"></span>
+          ) : (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </svg>
+          )}
+        </button>
+
+        {/* 👈 input مخفی برای انتخاب فایل */}
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileUpload} 
+          className="hidden" 
+          accept="image/*,application/pdf,.doc,.docx,.txt" 
+        />
+
+        {/* دکمه ایموجی */}
         <button
           type="button"
           onClick={() => setShowEmojiPicker((prev) => !prev)}

@@ -22,15 +22,28 @@ const messageSchema = new mongoose.Schema({
 
     type: {
         type: String,
-        enum: ['message', 'system'],
+        // 'file' اضافه شد
+        enum: ['message', 'system', 'file'], 
         default: 'message'
+    },
+
+    fileUrl: {
+        type: String
+    },
+    fileName: {
+        type: String
+    },
+    fileType: {
+        type: String
+    },
+    fileSize: {
+        type: Number
     },
 
     room: {
         type: String,
         required: true,
         index: true 
-        // default: 'general'
     },
 
     createdAt: {

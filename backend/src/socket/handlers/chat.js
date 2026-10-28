@@ -9,19 +9,36 @@ export function handleChat(socket, io, users) {
     const room = socket.currentRoom;
     if (!room) return callback?.({ error: 'ابتدا وارد یک اتاق شوید.' });
 
-    const text = typeof payload === 'string' ? payload : payload?.text;
-    if (!text || !text.trim()) return callback?.({ error: 'پیام خالی است.' });
-    if (text.length > 500) return callback?.({ error: 'پیام طولانی است.' });
+    // ۱. تشخیص اینکه payload رشته است یا آبجکت
+    const data = typeof payload === 'string' ? { text: payload } : payload || {};
+    const { text, type, fileUrl, fileName, fileType, fileSize } = data;
 
+    // ۲. ایمن‌سازی متن (اگر undefined بود، رشته خالی در نظر بگیر)
+    const safeText = typeof text === 'string' ? text.trim() : '';
+
+    // ۳. اعتبارسنجی: یا باید متن داشته باشیم یا فایل
+    if (!safeText && !fileUrl) {
+      return callback?.({ error: 'پیام خالی است.' });
+    }
+    if (safeText.length > 500) {
+      return callback?.({ error: 'پیام طولانی است.' });
+    }
+
+    // ۴. ذخیره در دیتابیس با تمام فیلدهای جدید
     const saved = await Message.create({
-      text: text.trim(),
+      text: safeText,
       sender: user.username,
       senderId: user.id,
       avatarColor: user.avatarColor,
-      type: 'message',
+      type: type === 'file' ? 'file' : 'message', // تشخیص نوع پیام
+      fileUrl: fileUrl || null,
+      fileName: fileName || null,
+      fileType: fileType || null,
+      fileSize: fileSize || null,
       room,
     });
 
+    // ۵. ساخت آبجکت پیام برای ارسال به کلاینت
     const message = {
       id: saved._id.toString(),
       text: saved.text,
@@ -29,11 +46,14 @@ export function handleChat(socket, io, users) {
       senderId: saved.senderId,
       avatarColor: saved.avatarColor,
       type: saved.type,
+      fileUrl: saved.fileUrl,
+      fileName: saved.fileName,
+      fileType: saved.fileType,
       room,
       time: getPersianTime(),
     };
 
-    // فقط به اعضای این اتاق بفرست
+    // ارسال به اعضای اتاق
     io.to(room).emit('chat message', message);
     callback?.({ success: true, message });
   };
