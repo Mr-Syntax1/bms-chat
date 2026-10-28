@@ -55,7 +55,7 @@ export default function MessageList({ messages, currentUsername }) {
       {showScrollButton && (
         <button
           onClick={() => scrollToBottom()}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 btn-primary rounded-full p-3 shadow-xl animate-bounce-soft"
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 z-10 btn-primary rounded-full p-3 shadow-xl animate-bounce-soft"
           aria-label="Scroll to bottom"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
