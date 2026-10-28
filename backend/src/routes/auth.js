@@ -7,18 +7,21 @@ export const authRouter = express.Router();
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: false,
+  secure: true,
   sameSite: 'none',
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 function setTokenCookie(res, token) {
+  console.log('[Auth] Setting cookie, token length:', token?.length);
   res.cookie('token', token, COOKIE_OPTS);
+  console.log('[Auth] Cookie set');
 }
 
 function clearTokenCookie(res) {
-  res.clearCookie('token', { httpOnly: true, secure: false, sameSite: 'none', path: '/' });
+  console.log('[Auth] Clearing cookie');
+  res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'none', path: '/' });
 }
 
 // ثبت‌نام
@@ -35,6 +38,7 @@ authRouter.post('/register', async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ username: username.trim(), password: hashed });
     const token = signToken(user);
+    console.log('[Auth/register] Token generated:', token?.substring(0, 20) + '...');
     setTokenCookie(res, token);
     res.json({ token, user: { id: user._id, username: user.username } });
   } catch (err) {
@@ -52,6 +56,7 @@ authRouter.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'نام کاربری یا رمز اشتباه است.' });
     const token = signToken(user);
+    console.log('[Auth/login] Token generated:', token?.substring(0, 20) + '...');
     setTokenCookie(res, token);
     res.json({ token, user: { id: user._id, username: user.username } });
   } catch (err) {
@@ -63,18 +68,31 @@ authRouter.post('/login', async (req, res) => {
 // بررسی احراز هویت (برای persistence login)
 authRouter.get('/me', async (req, res) => {
   try {
+    console.log('[Auth/me] cookies:', req.cookies);
+    console.log('[Auth/me] headers.cookie:', req.headers.cookie);
+    console.log('[Auth/me] origin:', req.headers.origin);
     const token = req.cookies?.token;
-    if (!token) return res.status(401).json({ error: 'توکن وجود ندارد' });
+    if (!token) {
+      console.log('[Auth/me] No token in cookies');
+      return res.status(401).json({ error: 'توکن وجود ندارد' });
+    }
     
     const decoded = verifyToken(token);
-    if (!decoded) return res.status(401).json({ error: 'توکن نامعتبر است' });
+    if (!decoded) {
+      console.log('[Auth/me] Token verification failed');
+      return res.status(401).json({ error: 'توکن نامعتبر است' });
+    }
     
     const user = await User.findById(decoded.id).select('username');
-    if (!user) return res.status(401).json({ error: 'کاربر یافت نشد' });
+    if (!user) {
+      console.log('[Auth/me] User not found:', decoded.id);
+      return res.status(401).json({ error: 'کاربر یافت نشد' });
+    }
     
+    console.log('[Auth/me] Success:', user.username);
     res.json({ token, user: { id: user._id, username: user.username } });
   } catch (err) {
-    console.error(err);
+    console.error('[Auth/me] error:', err);
     res.status(500).json({ error: 'خطای سرور' });
   }
 });

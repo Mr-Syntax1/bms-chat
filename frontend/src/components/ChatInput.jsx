@@ -7,7 +7,7 @@ export default function ChatInput({ onSend, onTyping }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   
-  // 👈 استیت و رفرنس‌های جدید برای فایل
+  //  استیت و رفرنس‌های جدید برای فایل
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
   
@@ -73,7 +73,7 @@ export default function ChatInput({ onSend, onTyping }) {
     }
   };
 
-  // 👈 تابع آپلود فایل به Upstash
+  //  تابع آپلود فایل به Upstash
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -82,7 +82,7 @@ export default function ChatInput({ onSend, onTyping }) {
 
     try {
       // ۱. گرفتن لینک آپلود از بک‌اند
-      const presignRes = await fetch('http://localhost:3000/upload/presign', {
+      const presignRes = await fetch('/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, fileType: file.type }),

@@ -17,7 +17,7 @@ export default function Register({ onAuth }) {
     }
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/auth/register', {
+      const res = await fetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

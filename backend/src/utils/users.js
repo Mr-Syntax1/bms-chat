@@ -3,6 +3,15 @@ const AVATAR_COLORS = [
   '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b',
 ];
 
+function getConsistentColor(username) {
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[index];
+}
+
 class UsersStore {
   constructor() {
     this.users = new Map(); // socketId -> { id, username, avatarColor }
@@ -12,7 +21,7 @@ class UsersStore {
     const user = {
       id: socketId,
       username,
-      avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+      avatarColor: getConsistentColor(username),
     };
     this.users.set(socketId, user);
     return user;

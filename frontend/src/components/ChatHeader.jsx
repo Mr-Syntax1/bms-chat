@@ -1,7 +1,11 @@
 import Avatar from './Avatar';
 import ThemeToggle from './ThemeToggle';
+import { getConsistentColor } from '../../../backend/src/utils/getAvatarColor';
 
 export default function ChatHeader({ isConnected, user, onlineCount, roomName, onLogout }) {
+  const userColor = getConsistentColor(user?.username);
+
+
   return (
     <header className="glass-strong border-b border-surface-200 dark:border-surface-800 px-5 py-4 flex items-center justify-between gap-4 animate-slide-down">
       <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -27,7 +31,7 @@ export default function ChatHeader({ isConnected, user, onlineCount, roomName, o
       <div className="flex items-center gap-3 shrink-0">
         <ThemeToggle />
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-100 dark:bg-surface-800/50">
-          <Avatar username={user?.username} color={user?.avatarColor} size="sm" status="online" />
+            <Avatar username={user?.username} color={userColor} size="sm" status="online" />
           <span className="text-sm font-medium text-surface-900 dark:text-surface-50">{user?.username}</span>
         </div>
         <button

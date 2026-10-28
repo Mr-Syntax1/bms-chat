@@ -3,6 +3,8 @@ import { createServer } from 'node:http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { connectDB } from './config/db.js';
 import { initSocket } from './socket/index.js';
 import { authRouter } from './routes/auth.js';
@@ -14,6 +16,11 @@ dotenv.config();
 const app = express();
 const server = createServer(app);
 
+// __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, '../../frontend/dist');
+
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true
@@ -24,8 +31,17 @@ app.use(cookieParser());
 app.use('/auth', authRouter)
 app.use('/upload', uploadRouter);
 
+// Serve static files from frontend/dist
+app.use(express.static(distPath));
 
-app.get('/', (req, res) => res.json({ status: 'ok' }));
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/auth') || req.path.startsWith('/upload')) {
+    return next();
+  }
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
 
 async function start() {
   await connectDB(); // اول دیتابیس

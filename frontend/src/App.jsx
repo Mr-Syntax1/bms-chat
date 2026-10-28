@@ -13,7 +13,7 @@ function App() {
 
   // بررسی احراز هویت هنگام بارگذاری صفحه
   useEffect(() => {
-    fetch('http://localhost:3000/auth/me', { credentials: 'include' })
+    fetch('/auth/me', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user) {
@@ -31,7 +31,7 @@ function App() {
   };
 
   const handleLogout = async () => {
-    await fetch('http://localhost:3000/auth/logout', {
+    await fetch('/auth/logout', {
       method: 'POST',
       credentials: 'include',
     });
