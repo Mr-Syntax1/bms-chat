@@ -13,32 +13,49 @@ export function handleChat(socket, io, users) {
     const data = typeof payload === 'string' ? { text: payload } : payload || {};
     const { text, type, fileUrl, fileName, fileType, fileSize } = data;
 
-    // ۲. ایمن‌سازی متن (اگر undefined بود، رشته خالی در نظر بگیر)
+    // دیباگ: لاگ داده‌های دریافتی
+    console.log('[Chat] received:', { 
+      text: typeof text, 
+      type, 
+      fileUrl: typeof fileUrl, 
+      fileName, 
+      fileType, 
+      fileSize 
+    });
+
+    // ۲. ایمن‌سازی متن
     const safeText = typeof text === 'string' ? text.trim() : '';
 
-    // ۳. اعتبارسنجی: یا باید متن داشته باشیم یا فایل
-    if (!safeText && !fileUrl) {
+    // ۳. اعتبارسنجی fileUrl - باید string باشه
+    const safeFileUrl = typeof fileUrl === 'string' && fileUrl.trim() ? fileUrl.trim() : null;
+    const safeFileName = typeof fileName === 'string' ? fileName.trim() : null;
+    const safeFileType = typeof fileType === 'string' ? fileType.trim() : null;
+    const safeFileSize = typeof fileSize === 'number' && fileSize > 0 ? fileSize : null;
+
+    // ۴. اعتبارسنجی: یا باید متن داشته باشیم یا فایل معتبر
+    const isFileMessage = type === 'file' && safeFileUrl;
+    if (!safeText && !isFileMessage) {
       return callback?.({ error: 'پیام خالی است.' });
     }
     if (safeText.length > 500) {
       return callback?.({ error: 'پیام طولانی است.' });
     }
 
-    // ۴. ذخیره در دیتابیس با تمام فیلدهای جدید
+    // ۵. ذخیره در دیتابیس
     const saved = await Message.create({
       text: safeText,
       sender: user.username,
       senderId: user.id,
       avatarColor: user.avatarColor,
-      type: type === 'file' ? 'file' : 'message', // تشخیص نوع پیام
-      fileUrl: fileUrl || null,
-      fileName: fileName || null,
-      fileType: fileType || null,
-      fileSize: fileSize || null,
+      type: isFileMessage ? 'file' : 'message',
+      fileUrl: safeFileUrl,
+      fileName: safeFileName,
+      fileType: safeFileType,
+      fileSize: safeFileSize,
       room,
     });
 
-    // ۵. ساخت آبجکت پیام برای ارسال به کلاینت
+    // ۶. ساخت آبجکت پیام برای ارسال به کلاینت
     const message = {
       id: saved._id.toString(),
       text: saved.text,
@@ -49,6 +66,7 @@ export function handleChat(socket, io, users) {
       fileUrl: saved.fileUrl,
       fileName: saved.fileName,
       fileType: saved.fileType,
+      fileSize: saved.fileSize,
       room,
       time: getPersianTime(),
     };

@@ -1,7 +1,80 @@
 import Avatar from './Avatar';
 
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getFileIcon(fileType, fileName) {
+  const ext = fileName?.split('.').pop()?.toLowerCase();
+  if (fileType?.startsWith('image/')) return 'image';
+  if (fileType === 'application/pdf' || ext === 'pdf') return 'pdf';
+  if (fileType?.includes('word') || ['doc', 'docx'].includes(ext)) return 'doc';
+  if (fileType?.includes('sheet') || ['xls', 'xlsx'].includes(ext)) return 'xls';
+  if (fileType?.includes('text') || ext === 'txt') return 'txt';
+  return 'file';
+}
+
+function FilePreview({ msg, isMine }) {
+  const isImage = msg.fileType?.startsWith('image/');
+  const icon = getFileIcon(msg.fileType, msg.fileName);
+  const size = msg.fileSize ? formatBytes(msg.fileSize) : '';
+  
+  if (isImage) {
+    return (
+      <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
+        <img 
+          src={msg.fileUrl} 
+          alt={msg.fileName || 'Image'} 
+          className="max-w-xs max-h-64 rounded-xl object-cover cursor-zoom-in shadow-md"
+          loading="lazy"
+        />
+        <div className="flex items-center gap-2 mt-2 px-1 text-xs opacity-70">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+          <span>{msg.fileName}</span>
+          {size && <span>•</span>}
+          {size && <span>{size}</span>}
+        </div>
+      </a>
+    );
+  }
+
+  const icons = {
+    pdf: <svg className="w-10 h-10 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-2-6V4h-2v6H8v2h6z"/></svg>,
+    doc: <svg className="w-10 h-10 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-2-6V4h-2v6H8v2h6z"/></svg>,
+    xls: <svg className="w-10 h-10 text-green-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-2-6V4h-2v6H8v2h6z"/></svg>,
+    txt: <svg className="w-10 h-10 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-2-6V4h-2v6H8v2h6z"/></svg>,
+    image: <svg className="w-10 h-10 text-purple-500" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 4.5V5h-13v8.5z"/></svg>,
+    file: <svg className="w-10 h-10 text-gray-500" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-2-6V4h-2v6H8v2h6z"/></svg>,
+  };
+
+  return (
+    <a 
+      href={msg.fileUrl} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className={`flex items-center gap-3 p-3 rounded-xl border ${
+        isMine 
+          ? 'border-primary-200 bg-primary-50 dark:bg-primary-900/30 text-white' 
+          : 'border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-500'
+      } hover:bg-opacity-80 transition-colors min-w-[200px] max-w-xs`}
+    >
+      <div className="flex-shrink-0">{icons[icon]}</div>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium truncate">{msg.fileName}</p>
+        <p className="text-xs opacity-60">{size}</p>
+      </div>
+      <svg className="w-5 h-5 opacity-50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+    </a>
+  );
+}
+
 export default function MessageBubble({ msg, isMine, showHeader }) {
   const isSystem = msg.type === 'system';
+  const isFile = msg.type === 'file';
 
   if (isSystem) {
     return (
@@ -36,11 +109,15 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
         <div className={`
           relative px-4 py-2.5 text-sm rounded-2xl
           ${isMine
-            ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg rounded-tr-sm' // گوشه تیز سمت راست برای خودت
-            : 'bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-50 shadow-md border border-surface-200 dark:border-surface-700 rounded-tl-sm' // گوشه تیز سمت چپ برای بقیه
+            ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg rounded-tr-sm'
+            : 'bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-50 shadow-md border border-surface-200 dark:border-surface-700 rounded-tl-sm'
           }
         `}>
-          <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+          {isFile ? (
+            <FilePreview msg={msg} isMine={isMine} />
+          ) : (
+            <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+          )}
           
           <div className="flex items-center justify-end gap-2 mt-1.5">
             <time className={`text-[11px] font-medium ${isMine ? 'text-primary-100' : 'text-surface-400 dark:text-surface-500'}`}>

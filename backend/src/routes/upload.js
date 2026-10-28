@@ -22,16 +22,17 @@ uploadRouter.post('/presign', async (req, res) => {
     });
 
     // لینک عمومی فایل (برای نمایش بعد از آپلود)
-    const publicUrl = bucket.publicUrl(key);
+    const publicUrl = await bucket.publicUrl(key);
+    console.log('[Upload] presign:', { key, publicUrl, uploadUrl: upload.url });
 
     res.json({ 
       uploadUrl: upload.url, 
       headers: upload.headers, // هدرهایی که فرانت‌اند باید هنگام آپلود بفرستد
-      publicUrl, 
+      publicUrl: String(publicUrl), // اطمینان از string بودن
       key 
     });
   } catch (err) {
-    console.error(err);
+    console.error('[Upload] presign error:', err);
     res.status(500).json({ error: 'خطا در ساخت لینک آپلود' });
   }
 });

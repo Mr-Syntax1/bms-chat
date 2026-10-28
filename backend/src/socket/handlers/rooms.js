@@ -67,6 +67,10 @@ export function handleJoinRoom(socket, io, users) {
       senderId: m.senderId,
       avatarColor: m.avatarColor,
       type: m.type,
+      fileUrl: m.fileUrl,
+      fileName: m.fileName,
+      fileType: m.fileType,
+      fileSize: m.fileSize,
       time: getPersianTime(),
     }));
 

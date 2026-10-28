@@ -24,7 +24,17 @@ export function useChat() {
 
   useEffect(() => {
     const onChatMessage = (msg) => {
-      if (msg.room === currentRoom) setMessages((prev) => [...prev, msg]);
+      // لاگ برای دیباگ
+      console.log('📥 Received:', msg.type, '| Room:', msg.room, '| Current:', currentRoom);
+
+      // بررسی اینکه آیا پیام مربوط به اتاق فعلی است یا نه
+      if (!msg.room || msg.room === currentRoom) {
+        setMessages((prev) => {
+          // جلوگیری از تکراری شدن پیام‌ها (اگر از سرور echo شده باشد)
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          return [...prev, msg];
+        });
+      }
     };
     const onSystemMessage = ({ text, room }) => {
       if (room === currentRoom) {
@@ -122,7 +132,7 @@ export function useChat() {
     setConnected(false);
   }, []);
 
-  const sendMessage = (text) => socket.emit('chat message', { text });
+  const sendMessage = (payload) => socket.emit('chat message', typeof payload === 'string' ? { text: payload } : payload);
   const setTyping = (isTyping) => socket.emit('typing', isTyping);
 
   const createRoom = (name) => {
