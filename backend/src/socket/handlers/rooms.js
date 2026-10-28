@@ -88,20 +88,31 @@ export function handleJoinRoom(socket, io, users) {
 }
 
 
-export function handleLeaveRoom(socket, io) {
+export function handleLeaveRoom(socket, io, users) { // 👈 اضافه کردن users
   return async function onLeaveRoom({ roomName }, callback) {
     if (!socket.currentRoom) return callback?.({ error: 'در هیچ اتاقی نیستی.' });
     if (socket.currentRoom !== roomName) {
       return callback?.({ error: 'در این اتاق نیستی.' });
     }
-    socket.leave(roomName);
+
+    const leavingRoom = socket.currentRoom;
+    socket.leave(leavingRoom);
     socket.currentRoom = null;
-    socket.to(roomName).emit('system message', {
+
+    // پیام سیستم به بقیه اعضای اتاق
+    socket.to(leavingRoom).emit('system message', {
       text: `${socket.username} اتاق را ترک کرد.`,
-      room: roomName,
+      room: leavingRoom,
     });
+
     callback?.({ success: true });
-    io.to(roomName).emit('room users', getRoomUsers(io, roomName, users));
+
+    // 👈 حالا users تعریف شده و خطا نمیده
+    const roomSockets = io.sockets.adapter.rooms.get(leavingRoom);
+    if (roomSockets) {
+        // آپدیت لیست کاربران آنلاین در آن اتاق
+        io.to(leavingRoom).emit('room users', getRoomUsers(io, leavingRoom, users));
+    }
   };
 }
 

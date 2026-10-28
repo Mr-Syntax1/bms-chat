@@ -2,7 +2,7 @@ import Avatar from './Avatar';
 
 export default function ChatHeader({ isConnected, user, onlineCount, roomName, onLogout }) {
   return (
-    <header className="glass-strong border-b border-surface-700 px-5 py-4 flex items-center justify-between gap-4 animate-slide-down">
+    <header className="glass-morphism-strong border-b border-white/10 px-5 py-4 flex items-center justify-between gap-4 animate-slide-down">
       <div className="flex items-center gap-4 min-w-0 flex-1">
         <div className="relative p-3 rounded-2xl bg-gradient-to-br from-primary-500/10 to-accent-500/10">
           <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -30,7 +30,7 @@ export default function ChatHeader({ isConnected, user, onlineCount, roomName, o
         </div>
         <button
           onClick={onLogout}
-          className="btn-ghost p-2 rounded-lg text-surface-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+          className="btn-ghost p-2 rounded-xl text-surface-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
           title="خروج"
           aria-label="Logout"
         >
