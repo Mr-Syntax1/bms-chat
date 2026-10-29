@@ -44,3 +44,4 @@ notificationSchema.statics.markAllAsRead = async function(userId, roomName) {
 };
 
 export const Notification = mongoose.model('Notification', notificationSchema);
+export default Notification;

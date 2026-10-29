@@ -1,9 +1,13 @@
 import { Room } from '../../models/Room.js';
 import { Message } from '../../models/Message.js';
+import { User } from '../../models/User.js';
 import { getRoomsForUser } from './users.js';
 import { users } from '../../utils/users.js'; 
-import { Notification } from '../../models/Notification.js';
 import { markAllAsRead } from './notification.js';
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 export function getRoomUsers(io, roomName, users) {
   const room = io.sockets.adapter.rooms.get(roomName);
@@ -21,26 +25,43 @@ export function handleListRooms(socket, io) {
 }
 
 export function handleSearchRooms(socket, io) {
-  return async function onSearchRooms({ query }, callback) {
-    const user = users.get(socket.id);
-    if (!user) return callback({ error: 'ابتدا وارد شوید.' });
+  return async function onSearchRooms(payload, callback) {
+    try {
+      const user = users.get(socket.id);
+      if (!user) return callback({ error: 'ابتدا وارد شوید.' });
 
-    const trimmed = query?.trim();
-    if (!trimmed || trimmed.length < 1) return callback({ rooms: [] });
+      // The client may send either a raw string or { query: '...' }
+      const raw = typeof payload === 'string' ? payload : payload?.query;
+      const trimmed = typeof raw === 'string' ? raw.trim() : '';
+      if (!trimmed) return callback({ rooms: [], users: [] });
 
-    const rooms = await Room.find({
-      isPrivate: false,
-      $text: { $search: trimmed }
-    }).sort({ score: { $meta: 'textScore' } }).limit(20).lean();
+      const regex = new RegExp(escapeRegex(trimmed), 'i');
 
-    callback({
-      rooms: rooms.map((r) => ({
-        id: r._id.toString(),
-        name: r.name,
-        createdBy: r.createdBy.toString(),
-        isMember: r.members?.some(m => m.toString() === socket.userId)
-      }))
-    });
+      const [rooms, foundUsers] = await Promise.all([
+        Room.find({ isPrivate: false, name: regex }).limit(20).lean(),
+        User.find({ _id: { $ne: socket.userId }, username: regex })
+          .select('username')
+          .limit(20)
+          .lean(),
+      ]);
+
+      callback({
+        rooms: rooms.map((r) => ({
+          id: r._id.toString(),
+          name: r.name,
+          createdBy: r.createdBy.toString(),
+          isMember: r.members?.some((m) => m.toString() === socket.userId),
+          isPrivate: r.isPrivate,
+        })),
+        users: foundUsers.map((u) => ({
+          id: u._id.toString(),
+          username: u.username,
+        })),
+      });
+    } catch (err) {
+      console.error('[Search Rooms] error:', err);
+      callback({ rooms: [], users: [], error: 'خطا در جستجو.' });
+    }
   };
 }
 

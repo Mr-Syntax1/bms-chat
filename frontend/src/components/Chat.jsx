@@ -12,11 +12,12 @@ export default function Chat({ chat, user, onLogout }) {
   const {
     messages, onlineUsers, typingUsers, rooms, currentRoom,
     sendMessage, setTyping, createRoom, switchRoom, leaveRoom, deleteRoom,
+    searchRooms,
     openDM, deleteMessage, editMessage,
     connectSocket, disconnectSocket, connected,
     notifications, unreadCount, showNotifications,
-    fetchNotifications, markNotificationsAsRead, openNotifications,
-    setNotifications, setUnreadCount, setShowNotifications,
+    fetchNotifications, markNotificationsAsRead,
+    setUnreadCount, setShowNotifications,
   } = chat;
 
   const navigate = useNavigate();
@@ -39,7 +40,10 @@ export default function Chat({ chat, user, onLogout }) {
   // بستن نوتیفیکیشن با کلیک بیرون
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (!e.target.closest('.notification-dropdown')) {
+      if (
+        !e.target.closest('.notification-dropdown') &&
+        !e.target.closest('[data-notification-toggle]')
+      ) {
         setShowNotifications(false);
       }
     };
@@ -70,11 +74,14 @@ export default function Chat({ chat, user, onLogout }) {
     [navigate]
   );
 
-  // باز کردن نوتیفیکیشن‌ها + گرفتن لیست جدید
+  // باز/بسته کردن نوتیفیکیشن‌ها + گرفتن لیست جدید
   const handleOpenNotifications = useCallback(() => {
-    if (fetchNotifications) fetchNotifications();
-    if (openNotifications) openNotifications();
-  }, [fetchNotifications, openNotifications]);
+    setShowNotifications((prev) => {
+      const next = !prev;
+      if (next) fetchNotifications?.();
+      return next;
+    });
+  }, [fetchNotifications, setShowNotifications]);
 
   return (
     <div className="h-screen flex flex-col bg-aurora overflow-hidden">
@@ -110,7 +117,9 @@ export default function Chat({ chat, user, onLogout }) {
               onDelete={deleteRoom}
               onLeave={leaveRoom}
               onOpenDM={handleOpenDM}
-              currentUser={user?.username}
+              onSearchRooms={searchRooms}
+              onOpenProfile={handleOpenProfile}
+              currentUser={user?.id}
             />
           </aside>
 
@@ -167,7 +176,9 @@ export default function Chat({ chat, user, onLogout }) {
                   onDelete={deleteRoom}
                   onLeave={leaveRoom}
                   onOpenDM={handleOpenDM}
-                  currentUser={user?.username}
+                  onSearchRooms={searchRooms}
+                  onOpenProfile={handleOpenProfile}
+                  currentUser={user?.id}
                   onClose={closeSidebar}
                 />
               ) : (
@@ -196,7 +207,6 @@ export default function Chat({ chat, user, onLogout }) {
             switchRoom(name);
             closeSidebar();
           }}
-          isCurrentRoom={currentRoom}
           clearBadge={() => {
             markNotificationsAsRead();
             setUnreadCount(0);

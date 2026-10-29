@@ -87,18 +87,24 @@ export function useChat() {
     socket.on('room deleted', onRoomDeleted);
     socket.on('message deleted', onMessageDeleted);
     socket.on('message edited', onMessageEdited);
-    socket.on('new notification', (notif) => {
-      setNotifications((prev) => [notif, ...prev]);
+    const onNewNotification = (notif) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n.id === notif.id)) return prev;
+        return [notif, ...prev];
+      });
       setUnreadCount((prev) => prev + 1);
-      if (notif.roomName !== currentRoom) {
-        sileo.info({
-          title: notif.senderName,
-          message: `${notif.messagePreview} (${notif.roomName})`,
-          position: 'top',
-          timeout: 5000,
-        });
-      }
-    });
+
+      const isDm = notif.roomName?.startsWith('dm_');
+      sileo.info({
+        title: `پیام جدید از ${notif.senderName}`,
+        description: isDm
+          ? `پیام خصوصی: ${notif.messagePreview}`
+          : `در اتاق ${notif.roomName}: ${notif.messagePreview}`,
+        position: 'top-center',
+        duration: 5000,
+      });
+    };
+    socket.on('new notification', onNewNotification);
 
     return () => {
       socket.off('chat message', onChatMessage);
@@ -110,12 +116,38 @@ export function useChat() {
       socket.off('room deleted', onRoomDeleted);
       socket.off('message deleted', onMessageDeleted);
       socket.off('message edited', onMessageEdited);
-      socket.off('new notification');
+      socket.off('new notification', onNewNotification);
     };
   }, [currentRoom]);
 
+  const fetchNotifications = useCallback(() => {
+    return new Promise((resolve) => {
+      socket.emit('get notifications', {}, (res) => {
+        if (res.success) {
+          setNotifications(res.notifications);
+          setUnreadCount(res.count);
+          resolve(res);
+        } else {
+          resolve(res);
+        }
+      });
+    });
+  }, []);
+
+  const handleLoginNotifications = useCallback(async () => {
+    const res = await fetchNotifications();
+    if (res.success && res.count > 0) {
+      sileo.info({
+        title: 'پیام‌های جدید',
+        description: `شما ${res.count} پیام خوانده‌نشده دارید.`,
+        position: 'top-center',
+        duration: 4000,
+      });
+    }
+  }, [fetchNotifications]);
+
   const connectSocket = useCallback(() => {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       if (socket.connected) {
         socket.emit('join', {}, (res) => {
           if (res.error) {
@@ -153,7 +185,7 @@ export function useChat() {
       socket.on('connect', onConnect);
       socket.connect();
     });
-  }, []);
+  }, [handleLoginNotifications]);
 
   const disconnectSocket = useCallback(() => {
     if (connectListenerRef.current) {
@@ -178,8 +210,15 @@ export function useChat() {
   };
 
   const searchRooms = (query) => {
+    const q = typeof query === 'string' ? query : query?.query ?? '';
     return new Promise((resolve) => {
-      socket.emit('search rooms', { query }, (res) => resolve(res));
+      socket.emit('search rooms', { query: q }, (res) => resolve(res));
+    });
+  };
+
+  const refreshRooms = () => {
+    socket.emit('list rooms', (res) => {
+      if (res?.rooms) setRooms(res.rooms);
     });
   };
 
@@ -190,25 +229,16 @@ export function useChat() {
         setMessages(res.history);
         setCurrentRoom(res.room);
         setTypingUsers([]);
-        // Mark notifications for this room as read
-        socket.emit('mark notifications as read', {});
-        setUnreadCount(0);
-        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        refreshRooms();
+        socket.emit('mark notifications as read', { roomName: res.room }, (markRes) => {
+          if (markRes?.success) {
+            setUnreadCount(markRes.count);
+            setNotifications((prev) =>
+              prev.map((n) => (n.roomName === res.room ? { ...n, isRead: true } : n))
+            );
+          }
+        });
         resolve(res);
-      });
-    });
-  };
-
-  const fetchNotifications = () => {
-    return new Promise((resolve) => {
-      socket.emit('get notifications', {}, (res) => {
-        if (res.success) {
-          setNotifications(res.notifications);
-          setUnreadCount(res.count);
-          resolve(res);
-        } else {
-          resolve(res);
-        }
       });
     });
   };
@@ -225,34 +255,12 @@ export function useChat() {
     });
   };
 
-  const openNotifications = async () => {
+  const openNotifications = () => {
     setShowNotifications(true);
-    if (unreadCount > 0) {
-      await markNotificationsAsRead();
-      if (unreadCount > 0) {
-        sileo.info({
-          title: 'پیام‌ها',
-          message: `شما ${unreadCount} پیام خوانده‌نشده داشتید. همه به عنوان خوانده شده علامت شدند.`,
-          position: 'top',
-          timeout: 4000,
-        });
-      }
-    }
+    fetchNotifications();
   };
 
-  const handleLoginNotifications = async () => {
-    const res = await fetchNotifications();
-    if (res.success && res.count > 0) {
-      sileo.info({
-        title: 'پیام‌های جدید',
-        message: `شما ${res.count} پیام خوانده‌نشده دارید.`,
-        position: 'top',
-        timeout: 4000,
-      });
-    }
-  };
-
-const openDM = (targetUserId, targetUsername) => {
+const openDM = (targetUserId) => {
   return new Promise((resolve) => {
     // 👈 Event name 'open dm' matches backend
     socket.emit('open dm', { targetUserId }, (res) => {
@@ -263,7 +271,16 @@ const openDM = (targetUserId, targetUsername) => {
       setMessages(res.history);
       setCurrentRoom(res.room); // 👈 matches backend 'room'
       setTypingUsers([]);
-      resolve({ success: true, targetUsername: res.targetUser.username });
+      refreshRooms();
+      socket.emit('mark notifications as read', { roomName: res.room }, (markRes) => {
+        if (markRes?.success) {
+          setUnreadCount(markRes.count);
+          setNotifications((prev) =>
+            prev.map((n) => (n.roomName === res.room ? { ...n, isRead: true } : n))
+          );
+        }
+      });
+      resolve({ success: true, targetUsername: res.targetUser?.username });
     });
   });
 };
@@ -317,5 +334,14 @@ const openDM = (targetUserId, targetUsername) => {
     deleteMessage,
     editMessage,
     logout: disconnectSocket,
+    setNotifications,
+    setUnreadCount,
+    setShowNotifications,
+    notifications,
+    unreadCount,
+    showNotifications,
+    fetchNotifications,
+    markNotificationsAsRead,
+    openNotifications,
   };
 }

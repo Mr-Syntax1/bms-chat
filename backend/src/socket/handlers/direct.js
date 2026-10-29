@@ -7,12 +7,13 @@ export function handleOpenDM(socket, io, users) {
     const user = users.get(socket.id);
     if (!user) return callback({ error: 'ابتدا وارد شوید.' });
 
-    // targetUserId here is the socket.id of the online user
-    if (targetUserId === socket.id) {
+    if (!targetUserId) return callback({ error: 'کاربر پیدا نشد.' });
+    if (targetUserId === socket.id || targetUserId === socket.userId) {
       return callback({ error: 'نمی‌توانید با خودتان چت کنید.' });
     }
 
-    const targetUser = users.get(targetUserId);
+    // Accept either the socket id or the database user id
+    const targetUser = users.get(targetUserId) || users.findByUserId(String(targetUserId));
     if (!targetUser) return callback({ error: 'کاربر آنلاین نیست.' });
 
     // 👈 USE userId FOR DATABASE QUERIES

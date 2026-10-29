@@ -9,6 +9,8 @@ export default function RoomList({
   onDelete,
   onLeave,
   onOpenDM,
+  onSearchRooms,
+  onOpenProfile,
   currentUser,
 }) {
   const [newRoom, setNewRoom] = useState('');
@@ -17,10 +19,11 @@ export default function RoomList({
   const [showCreate, setShowCreate] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [userResults, setUserResults] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
+  const searchTimeoutRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Context menu state
   const [contextMenu, setContextMenu] = useState({ x: null, y: null, room: null });
 
   useEffect(() => {
@@ -49,32 +52,47 @@ export default function RoomList({
     }
   };
 
-  const handleSearch = useCallback(async (query) => {
+  const handleSearch = useCallback((query) => {
     setSearchQuery(query);
-    if (!query.trim() || query.length < 1) {
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    const trimmed = query.trim();
+    if (!trimmed) {
       setShowSearch(false);
       setSearchResults([]);
+      setUserResults([]);
       return;
     }
+
     setShowSearch(true);
-    try {
-      const res = await fetch(`/api/rooms/search?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      if (data.rooms) {
-        setSearchResults(data.rooms);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const res = await onSearchRooms(trimmed);
+        setSearchResults(res?.rooms ?? []);
+        setUserResults(res?.users ?? []);
+      } catch (err) {
+        console.error('Search error:', err);
+        setSearchResults([]);
+        setUserResults([]);
       }
-    } catch (err) {
-      console.error('Search error:', err);
-    }
+    }, 250);
+  }, [onSearchRooms]);
+
+  useEffect(() => () => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
   }, []);
 
-  const handleJoinFromSearch = async (roomName) => {
+  const handleRoomClick = useCallback(async (roomName) => {
     const res = await onSwitch(roomName);
-    if (res.success) {
+    if (res?.success && showSearch) {
       setSearchQuery('');
       setShowSearch(false);
+      setSearchResults([]);
+      setUserResults([]);
     }
-  };
+    return res;
+  }, [onSwitch, showSearch]);
 
   const handleContextMenu = useCallback((e, room) => {
     e.preventDefault();
@@ -100,22 +118,19 @@ export default function RoomList({
       ];
     } else if (!isMember) {
       return [
-        { label: 'پیوستن به اتاق', icon: <JoinIcon />, onClick: () => onSwitch(room.name) },
+        { label: 'پیوستن به اتاق', icon: <JoinIcon />, onClick: () => handleRoomClick(room.name) },
       ];
     }
     return [];
   };
 
-  // Display rooms: user's rooms + search results
   const displayRooms = showSearch ? searchResults : rooms;
 
-  // Separate private and public rooms
   const privateRooms = displayRooms.filter(r => r.isPrivate);
   const publicRooms = displayRooms.filter(r => !r.isPrivate);
 
   return (
     <div className="flex flex-col h-full bg-surface-950/40 backdrop-blur-sm relative">
-      {/* Header */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
@@ -138,12 +153,11 @@ export default function RoomList({
         </div>
       </div>
 
-      {/* Search Box */}
       <div className="px-3 pt-3 pb-1">
         <div className="relative">
           <input
             type="text"
-            placeholder="جستجوی اتاق..."
+            placeholder="جستجوی اتاق یا کاربر..."
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
             className="w-full bg-surface-900/50 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-10"
@@ -154,27 +168,51 @@ export default function RoomList({
         </div>
       </div>
 
-      {/* Search Results Header */}
-      {showSearch && searchResults.length > 0 && (
+      {showSearch && (searchResults.length > 0 || userResults.length > 0) && (
         <div className="px-3 py-2 text-xs text-surface-500 uppercase tracking-wider border-b border-white/10 bg-surface-900/30">
           نتایج جستجو
         </div>
       )}
 
-      {/* Room List */}
       <ul className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin" role="list" aria-label="Chat rooms">
+        {showSearch && userResults.length > 0 && (
+          <>
+            <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">کاربران</li>
+            {userResults.map((u) => (
+              <li key={`user-${u.id}`}>
+                <button
+                  onClick={() => onOpenProfile?.(u.username)}
+                  className="w-full text-right px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between text-surface-300 hover:bg-white/5 hover:text-white card-hover"
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm shrink-0 bg-gradient-to-br from-purple-500 to-indigo-500">
+                      {u.username?.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="truncate">{u.username}</span>
+                  </span>
+                  <span className="text-[11px] text-purple-400 shrink-0">پروفایل</span>
+                </button>
+              </li>
+            ))}
+          </>
+        )}
+
+        {showSearch && searchResults.length > 0 && userResults.length > 0 && (
+          <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">اتاق‌ها</li>
+        )}
+
         {(displayRooms.length === 0 && !showSearch) && (
           <p className="text-center text-surface-500 text-xs mt-4">اتاقی یافت نشد.</p>
         )}
 
-        {(displayRooms.length === 0 && showSearch) && (
-          <p className="text-center text-surface-500 text-xs mt-4">اتاقی با این نام یافت نشد.</p>
+        {(displayRooms.length === 0 && showSearch && userResults.length === 0) && (
+          <p className="text-center text-surface-500 text-xs mt-4">اتاق یا کاربری با این نام یافت نشد.</p>
         )}
 
         {privateRooms.length > 0 && (
           <>
             {privateRooms.length > 0 && !showSearch && (
-              <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">чат‌های خصوصی</li>
+              <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">چت‌های خصوصی</li>
             )}
             {privateRooms.map((r) => (
               <RoomItem
@@ -182,7 +220,7 @@ export default function RoomList({
                 room={r}
                 currentRoom={currentRoom}
                 currentUser={currentUser}
-                onSwitch={onSwitch}
+                onSwitch={handleRoomClick}
                 onOpenDM={onOpenDM}
                 onContextMenu={handleContextMenu}
               />
@@ -201,7 +239,7 @@ export default function RoomList({
                 room={r}
                 currentRoom={currentRoom}
                 currentUser={currentUser}
-                onSwitch={onSwitch}
+                onSwitch={handleRoomClick}
                 onContextMenu={handleContextMenu}
               />
             ))}
@@ -209,7 +247,6 @@ export default function RoomList({
         )}
       </ul>
 
-      {/* Leave Room Button - only for public rooms user is in */}
       {currentRoom && currentRoom !== 'general' && !rooms.find(r => r.name === currentRoom && r.isPrivate) && (
         <div className="p-3 border-t border-white/10">
           <button
@@ -224,7 +261,6 @@ export default function RoomList({
         </div>
       )}
 
-      {/* Create Room Form */}
       {showCreate && (
         <form onSubmit={handleCreate} className="p-3 border-t border-white/10 animate-slide-down">
           <div className="relative">
@@ -258,7 +294,6 @@ export default function RoomList({
         </div>
       )}
 
-      {/* Context Menu */}
       <ContextMenu
         x={contextMenu.x}
         y={contextMenu.y}
@@ -269,7 +304,6 @@ export default function RoomList({
   );
 }
 
-// Room Item Component
 function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
   const isCurrentRoom = room.name === currentRoom;
   const isPrivate = room.isPrivate;
@@ -277,11 +311,11 @@ function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
   return (
     <li className="relative group" onContextMenu={(e) => onContextMenu(e, room)}>
       <button
-        onClick={() => { 
-          if (isPrivate && onOpenDM) {
+        onClick={() => {
+          if (isPrivate && room.dmPartnerId && onOpenDM) {
             onOpenDM(room.dmPartnerId, room.dmPartnerUsername);
           } else {
-            onSwitch(room.name); 
+            onSwitch(room.name);
           }
         }}
         className={`
@@ -323,7 +357,6 @@ function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
   );
 }
 
-// Icon Components
 function DeleteIcon() {
   return (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

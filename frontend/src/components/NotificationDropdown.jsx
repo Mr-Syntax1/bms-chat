@@ -5,7 +5,6 @@ export default function NotificationDropdown({
   onClose,
   onOpenDM,
   onSwitchRoom,
-  isCurrentRoom,
   clearBadge,
 }) {
   if (!showNotifications) return null;
@@ -34,14 +33,7 @@ export default function NotificationDropdown({
   const handleNotifClick = (notif) => {
     if (notif.isRead) return;
     if (notif.roomName.startsWith('dm_')) {
-      const [dm1, dm2] = notif.roomName.split('_');
-      const ids = [notif.senderId, dm1 + dm2].sort();
-      const targetUserId = ids[0] === ids[1]
-        ? ids[0]
-        : notif.senderId === ids[0]
-        ? ids[1]
-        : ids[0];
-      onOpenDM?.(targetUserId, notif.senderName);
+      onOpenDM?.(notif.senderId, notif.senderName);
     } else {
       onSwitchRoom?.(notif.roomName);
     }
@@ -50,7 +42,7 @@ export default function NotificationDropdown({
   };
 
   return (
-    <div className="absolute right-3 top-full mt-2 w-96 bg-surface-900 border border-white/10 rounded-2xl shadow-2xl z-50 animate-scale-in overflow-hidden">
+    <div className="fixed right-4 top-20 w-[min(24rem,calc(100vw-2rem))] bg-surface-900 border border-white/10 rounded-2xl shadow-2xl z-50 animate-scale-in overflow-hidden">
       <div className="p-3.5 border-b border-white/10 flex items-center justify-between bg-surface-800/50 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">

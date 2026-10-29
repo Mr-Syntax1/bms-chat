@@ -113,6 +113,8 @@ export default function ChatHeader({
 
         {/* Notification bell */}
         <button
+          type="button"
+          data-notification-toggle
           onClick={onOpenNotifications}
           className="relative btn-ghost p-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
           title="اعلان‌ها"

@@ -1,10 +1,10 @@
 import { Message } from '../../models/Message.js';
 import { Room } from '../../models/Room.js';
-import { createNotification, notifyUser as notifyUserHelper } from './notification.js';
+import { User } from '../../models/User.js';
+import { users } from '../../utils/users.js';
 
 export function handleJoin(socket, io, users) {
   return async function onJoin(payload, callback) {
-    // Assuming JWT middleware already set socket.userId and socket.username
     const username = socket.username;
     if (!username) return callback({ error: 'احراز هویت نشده.' });
 
@@ -12,7 +12,6 @@ export function handleJoin(socket, io, users) {
       return callback({ error: 'این نام کاربری قبلاً وارد شده است.' });
     }
 
-    // 👈 PASS socket.userId AS THIRD ARGUMENT
     const user = users.add(socket.id, username, socket.userId);
     socket.currentRoom = 'general';
 
@@ -28,7 +27,6 @@ export function handleJoin(socket, io, users) {
     const history = await Message.find({ room: 'general' }).sort({ createdAt: -1 }).limit(100).lean();
     history.reverse();
 
-    // Return user's rooms (public rooms they're member of + their DMs)
     const rooms = await getRoomsForUser(socket, io, users);
 
     callback({
@@ -57,7 +55,7 @@ export async function getRoomsForUser(socket, io, users) {
     $or: [{ members: socket.userId }, { isPrivate: true, members: socket.userId }]
   }).lean();
 
-  const roomList = rooms.map(async (r) => {
+  const roomList = await Promise.all(rooms.map(async (r) => {
     const isMember = r.members?.some((m) => m.toString() === socket.userId);
     const result = {
       id: r._id.toString(),
@@ -69,18 +67,29 @@ export async function getRoomsForUser(socket, io, users) {
 
     if (r.isPrivate) {
       const otherMemberId = r.members?.find((m) => m.toString() !== socket.userId);
-      const otherUser = otherMemberId ? users.findByUserId(otherMemberId.toString()) : null;
-      result.dmPartnerUsername = otherUser?.username || 'کاربر حذف شده';
-      result.dmPartnerAvatar = otherUser?.avatarColor;
-      result.dmPartnerId = otherUser?.id; // socket.id of the other user
+      let dmPartnerUsername = 'کاربر حذف شده';
+      let dmPartnerAvatar = null;
+      let dmPartnerId = null;
+
+      if (otherMemberId) {
+        const otherUser = await User.findById(otherMemberId).select('username').lean();
+        if (otherUser) {
+          dmPartnerUsername = otherUser.username;
+        }
+        const onlinePartner = users.findByUserId(otherMemberId.toString());
+        if (onlinePartner) {
+          dmPartnerAvatar = onlinePartner.avatarColor;
+          dmPartnerId = onlinePartner.id;
+        }
+      }
+
+      result.dmPartnerUsername = dmPartnerUsername;
+      result.dmPartnerAvatar = dmPartnerAvatar;
+      result.dmPartnerId = dmPartnerId;
     }
 
     return result;
-  });
+  }));
 
-  return await Promise.all(roomList);
-}
-
-export async function notifyUser(socket, io, users, notification) {
-  await notifyUserHelper(socket, io, users, notification);
+  return roomList;
 }

@@ -1,8 +1,8 @@
 import { getPersianTime } from '../../utils/messages.js';
 import { Message } from '../../models/Message.js';
+import { Room } from '../../models/Room.js';
 import { notifyUser, getUnreadNotifications, markAllAsRead } from './notification.js';
 import { users } from '../../utils/users.js';
-import { Room } from '../../models/Room.js'; 
 
 export function handleChat(socket, io, users) {
   return async function onChatMessage(payload, callback) {
@@ -12,11 +12,9 @@ export function handleChat(socket, io, users) {
     const room = socket.currentRoom;
     if (!room) return callback?.({ error: 'ابتدا وارد یک اتاق شوید.' });
 
-    // ۱. تشخیص اینکه payload رشته است یا آبجکت
     const data = typeof payload === 'string' ? { text: payload } : payload || {};
     const { text, type, fileUrl, fileName, fileType, fileSize } = data;
 
-    // دیباگ: لاگ داده‌های دریافتی
     console.log('[Chat] received:', {
       text: typeof text,
       type,
@@ -26,10 +24,7 @@ export function handleChat(socket, io, users) {
       fileSize
     });
 
-    // ۲. ایمن‌سازی متن
     const safeText = typeof text === 'string' ? text.trim() : '';
-
-    // ۳. اعتبارسنجی fileUrl - باید string باشه
     const safeFileUrl = typeof fileUrl === 'string' && fileUrl.trim() ? fileUrl.trim() : null;
     const safeFileName = typeof fileName === 'string' ? fileName.trim() : null;
     const safeFileType = typeof fileType === 'string' ? fileType.trim() : null;
@@ -42,7 +37,6 @@ export function handleChat(socket, io, users) {
       return callback?.({ error: 'پیام طولانی است.' });
     }
 
-    // ۵. ذخیره در دیتابیس
     const saved = await Message.create({
       text: safeText,
       sender: user.username,
@@ -56,7 +50,6 @@ export function handleChat(socket, io, users) {
       room,
     });
 
-    // ۶. ساخت آبجکت پیام برای ارسال به کلاینت
     const message = {
       id: saved._id.toString(),
       text: saved.text,
@@ -73,10 +66,8 @@ export function handleChat(socket, io, users) {
       time: new Date(saved.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
     };
 
-    // ارسال به اعضای اتاق
     io.to(room).emit('chat message', message);
-    
-    // ایجاد نوتیفیکیشن برای اعضایی که در اتاق نیستند (پیام خوانده‌نشده)
+
     if (room !== 'general') {
       const roomDoc = await Room.findOne({ name: room });
       const roomSockets = io.sockets.adapter.rooms.get(room);
@@ -84,7 +75,6 @@ export function handleChat(socket, io, users) {
         for (const memberId of roomDoc.members) {
           if (memberId.toString() !== socket.userId) {
             const memberUser = users.findByUserId(memberId.toString());
-            // Check if member is online but NOT in this room
             if (memberUser && !roomSockets?.has(memberUser.id)) {
               await notifyUser(socket, io, users, {
                 userId: memberId,
@@ -110,7 +100,6 @@ export function handleDeleteMessage(socket, io, users) {
     const message = await Message.findById(messageId);
     if (!message) return callback?.({ error: 'پیام پیدا نشد.' });
 
-    // 👈 اینجا علامت سوال اضافه شد تا اگر senderId نبود (پیام سیستمی)، کرش نکنه
     if (message.senderId?.toString() !== socket.userId) {
       return callback?.({ error: 'شما فقط می‌توانید پیام‌های خود را حذف کنید.' });
     }
@@ -136,7 +125,7 @@ export function handleGetMessages(socket, io, users) {
     const user = users.get(socket.id);
     if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
 
-    const query = { 
+    const query = {
       room,
       $or: [
         { deletedFor: { $ne: user.id } },
@@ -234,15 +223,13 @@ export function handleGetNotifications(socket, io, users) {
 }
 
 export function handleMarkNotificationsAsRead(socket, io, users) {
-  return async function onMarkNotificationsAsRead(_, callback) {
+  return async function onMarkNotificationsAsRead({ roomName } = {}, callback) {
     const user = users.get(socket.id);
     if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
 
-    await markAllAsRead(socket.userId);
+    await markAllAsRead(socket.userId, roomName);
     const result = await getUnreadNotifications(socket.userId);
     socket.emit('notifications updated', { count: result.length });
     callback?.({ success: true, count: result.length });
   };
 }
-
-export { notifyUser, getUnreadNotifications, markAllAsRead };
