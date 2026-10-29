@@ -16,6 +16,8 @@ export default function RoomList({
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearch, setShowSearch] = useState(false);
   const inputRef = useRef(null);
 
   // Context menu state
@@ -47,6 +49,33 @@ export default function RoomList({
     }
   };
 
+  const handleSearch = useCallback(async (query) => {
+    setSearchQuery(query);
+    if (!query.trim() || query.length < 1) {
+      setShowSearch(false);
+      setSearchResults([]);
+      return;
+    }
+    setShowSearch(true);
+    try {
+      const res = await fetch(`/api/rooms/search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      if (data.rooms) {
+        setSearchResults(data.rooms);
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+    }
+  }, []);
+
+  const handleJoinFromSearch = async (roomName) => {
+    const res = await onSwitch(roomName);
+    if (res.success) {
+      setSearchQuery('');
+      setShowSearch(false);
+    }
+  };
+
   const handleContextMenu = useCallback((e, room) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, room });
@@ -58,7 +87,7 @@ export default function RoomList({
 
   const getContextMenuItems = (room) => {
     const isCreator = room.createdBy === currentUser;
-    const isMember = room.isMember !== false; // Default to true for backward compatibility
+    const isMember = room.isMember !== false;
     const isCurrentRoom = room.name === currentRoom;
 
     if (isCreator && room.name !== 'general') {
@@ -77,14 +106,12 @@ export default function RoomList({
     return [];
   };
 
-  // Filter rooms based on search
-  const filteredRooms = rooms.filter((room) =>
-    room.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Display rooms: user's rooms + search results
+  const displayRooms = showSearch ? searchResults : rooms;
 
   // Separate private and public rooms
-  const privateRooms = filteredRooms.filter(r => r.isPrivate);
-  const publicRooms = filteredRooms.filter(r => !r.isPrivate);
+  const privateRooms = displayRooms.filter(r => r.isPrivate);
+  const publicRooms = displayRooms.filter(r => !r.isPrivate);
 
   return (
     <div className="flex flex-col h-full bg-surface-950/40 backdrop-blur-sm relative">
@@ -118,7 +145,7 @@ export default function RoomList({
             type="text"
             placeholder="جستجوی اتاق..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             className="w-full bg-surface-900/50 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-10"
           />
           <svg className="w-4 h-4 text-surface-500 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,15 +154,28 @@ export default function RoomList({
         </div>
       </div>
 
+      {/* Search Results Header */}
+      {showSearch && searchResults.length > 0 && (
+        <div className="px-3 py-2 text-xs text-surface-500 uppercase tracking-wider border-b border-white/10 bg-surface-900/30">
+          نتایج جستجو
+        </div>
+      )}
+
       {/* Room List */}
       <ul className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin" role="list" aria-label="Chat rooms">
-        {filteredRooms.length === 0 && (
+        {(displayRooms.length === 0 && !showSearch) && (
           <p className="text-center text-surface-500 text-xs mt-4">اتاقی یافت نشد.</p>
+        )}
+
+        {(displayRooms.length === 0 && showSearch) && (
+          <p className="text-center text-surface-500 text-xs mt-4">اتاقی با این نام یافت نشد.</p>
         )}
 
         {privateRooms.length > 0 && (
           <>
-            <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">чат‌های خصوصی</li>
+            {privateRooms.length > 0 && !showSearch && (
+              <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">чат‌های خصوصی</li>
+            )}
             {privateRooms.map((r) => (
               <RoomItem
                 key={r.id}
@@ -152,7 +192,7 @@ export default function RoomList({
 
         {publicRooms.length > 0 && (
           <>
-            {privateRooms.length > 0 && (
+            {publicRooms.length > 0 && !showSearch && privateRooms.length > 0 && (
               <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">کانال‌های عمومی</li>
             )}
             {publicRooms.map((r) => (
@@ -169,7 +209,7 @@ export default function RoomList({
         )}
       </ul>
 
-      {/* Leave Room Button */}
+      {/* Leave Room Button - only for public rooms user is in */}
       {currentRoom && currentRoom !== 'general' && !rooms.find(r => r.name === currentRoom && r.isPrivate) && (
         <div className="p-3 border-t border-white/10">
           <button
@@ -212,7 +252,7 @@ export default function RoomList({
         </form>
       )}
 
-      {!showCreate && (
+      {!showCreate && !showSearch && (
         <div className="p-4 border-t border-white/10">
           <p className="text-xs text-center text-surface-500">برای ایجاد اتاق روی + کلیک کنید</p>
         </div>
@@ -239,7 +279,7 @@ function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
       <button
         onClick={() => { 
           if (isPrivate && onOpenDM) {
-            onOpenDM(room);
+            onOpenDM(room.dmPartnerId, room.dmPartnerUsername);
           } else {
             onSwitch(room.name); 
           }
@@ -256,9 +296,13 @@ function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
         <span className="flex items-center gap-2">
           <div className="relative">
             {isPrivate ? (
-              <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm shrink-0"
+                style={{
+                  backgroundImage: `linear-gradient(to bottom right, ${room.dmPartnerAvatar || '#6366f1'}, ${room.dmPartnerAvatar || '#6366f1'})`,
+                }}
+              >
+                {room.dmPartnerUsername?.charAt(0).toUpperCase()}
+              </div>
             ) : (
               <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -268,7 +312,7 @@ function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-primary-600 animate-pulse-soft" />
             )}
           </div>
-          <span className="truncate">{isPrivate ? '@' : '#'} {room.name}</span>
+          <span className="truncate">{isPrivate ? room.dmPartnerUsername || '@' : '#'} {isPrivate ? '' : room.name}</span>
         </span>
         
         {isCurrentRoom && (

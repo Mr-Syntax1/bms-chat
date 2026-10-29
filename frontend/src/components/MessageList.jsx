@@ -52,7 +52,7 @@ function DateSeparator({ label }) {
   );
 }
 
-export default function MessageList({ messages, currentUsername, onDeleteMessage }) {
+export default function MessageList({ messages, currentUsername, onDeleteMessage, onEditMessage }) {
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -152,6 +152,7 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
               isMine={item.sender === currentUsername}
               showHeader={item.showHeader}
               onDeleteMessage={onDeleteMessage}
+              onEditMessage={onEditMessage}
             />
           );
         })}

@@ -1,5 +1,6 @@
 import { Message } from '../../models/Message.js';
 import { Room } from '../../models/Room.js';
+import { createNotification, notifyUser as notifyUserHelper } from './notification.js';
 
 export function handleJoin(socket, io, users) {
   return async function onJoin(payload, callback) {
@@ -27,13 +28,14 @@ export function handleJoin(socket, io, users) {
     const history = await Message.find({ room: 'general' }).sort({ createdAt: -1 }).limit(100).lean();
     history.reverse();
 
-    const rooms = await Room.find({ isPrivate: false }).lean();
+    // Return user's rooms (public rooms they're member of + their DMs)
+    const rooms = await getRoomsForUser(socket, io, users);
 
     callback({
       success: true,
       user,
       history: history.map(formatMsg),
-      rooms: rooms.map(r => ({ id: r._id.toString(), name: r.name, createdBy: r.createdBy.toString() })),
+      rooms,
       currentRoom: 'general',
     });
 
@@ -48,4 +50,37 @@ function formatMsg(m) {
     fileType: m.fileType, createdAt: m.createdAt,
     time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
   };
+}
+
+export async function getRoomsForUser(socket, io, users) {
+  const rooms = await Room.find({
+    $or: [{ members: socket.userId }, { isPrivate: true, members: socket.userId }]
+  }).lean();
+
+  const roomList = rooms.map(async (r) => {
+    const isMember = r.members?.some((m) => m.toString() === socket.userId);
+    const result = {
+      id: r._id.toString(),
+      name: r.name,
+      createdBy: r.createdBy.toString(),
+      isMember: isMember,
+      isPrivate: r.isPrivate,
+    };
+
+    if (r.isPrivate) {
+      const otherMemberId = r.members?.find((m) => m.toString() !== socket.userId);
+      const otherUser = otherMemberId ? users.findByUserId(otherMemberId.toString()) : null;
+      result.dmPartnerUsername = otherUser?.username || 'کاربر حذف شده';
+      result.dmPartnerAvatar = otherUser?.avatarColor;
+      result.dmPartnerId = otherUser?.id; // socket.id of the other user
+    }
+
+    return result;
+  });
+
+  return await Promise.all(roomList);
+}
+
+export async function notifyUser(socket, io, users, notification) {
+  await notifyUserHelper(socket, io, users, notification);
 }

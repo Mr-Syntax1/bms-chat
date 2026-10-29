@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { sileo } from 'sileo';
 import { socket } from '../socket';
 
 export function useChat() {
@@ -9,6 +10,9 @@ export function useChat() {
   const [currentRoom, setCurrentRoom] = useState('general');
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
   const connectListenerRef = useRef(null);
 
   useEffect(() => {
@@ -68,6 +72,11 @@ export function useChat() {
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
       }
     };
+    const onMessageEdited = (editedMsg) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === editedMsg.id ? { ...m, ...editedMsg } : m))
+      );
+    };
 
     socket.on('chat message', onChatMessage);
     socket.on('system message', onSystemMessage);
@@ -77,6 +86,19 @@ export function useChat() {
     socket.on('room removed', onRoomRemoved);
     socket.on('room deleted', onRoomDeleted);
     socket.on('message deleted', onMessageDeleted);
+    socket.on('message edited', onMessageEdited);
+    socket.on('new notification', (notif) => {
+      setNotifications((prev) => [notif, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+      if (notif.roomName !== currentRoom) {
+        sileo.info({
+          title: notif.senderName,
+          message: `${notif.messagePreview} (${notif.roomName})`,
+          position: 'top',
+          timeout: 5000,
+        });
+      }
+    });
 
     return () => {
       socket.off('chat message', onChatMessage);
@@ -87,11 +109,13 @@ export function useChat() {
       socket.off('room removed', onRoomRemoved);
       socket.off('room deleted', onRoomDeleted);
       socket.off('message deleted', onMessageDeleted);
+      socket.off('message edited', onMessageEdited);
+      socket.off('new notification');
     };
   }, [currentRoom]);
 
   const connectSocket = useCallback(() => {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
       if (socket.connected) {
         socket.emit('join', {}, (res) => {
           if (res.error) {
@@ -102,6 +126,7 @@ export function useChat() {
             setRooms(res.rooms || []);
             setCurrentRoom(res.currentRoom || 'general');
             setError(null);
+            handleLoginNotifications();
           }
           resolve();
         });
@@ -119,6 +144,7 @@ export function useChat() {
             setRooms(res.rooms || []);
             setCurrentRoom(res.currentRoom || 'general');
             setError(null);
+            handleLoginNotifications();
           }
           resolve();
         });
@@ -164,9 +190,66 @@ export function useChat() {
         setMessages(res.history);
         setCurrentRoom(res.room);
         setTypingUsers([]);
+        // Mark notifications for this room as read
+        socket.emit('mark notifications as read', {});
+        setUnreadCount(0);
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
         resolve(res);
       });
     });
+  };
+
+  const fetchNotifications = () => {
+    return new Promise((resolve) => {
+      socket.emit('get notifications', {}, (res) => {
+        if (res.success) {
+          setNotifications(res.notifications);
+          setUnreadCount(res.count);
+          resolve(res);
+        } else {
+          resolve(res);
+        }
+      });
+    });
+  };
+
+  const markNotificationsAsRead = () => {
+    return new Promise((resolve) => {
+      socket.emit('mark notifications as read', {}, (res) => {
+        if (res.success) {
+          setUnreadCount(0);
+          setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        }
+        resolve(res);
+      });
+    });
+  };
+
+  const openNotifications = async () => {
+    setShowNotifications(true);
+    if (unreadCount > 0) {
+      await markNotificationsAsRead();
+      if (unreadCount > 0) {
+        sileo.info({
+          title: 'پیام‌ها',
+          message: `شما ${unreadCount} پیام خوانده‌نشده داشتید. همه به عنوان خوانده شده علامت شدند.`,
+          position: 'top',
+          timeout: 4000,
+        });
+      }
+    }
+  };
+
+  const handleLoginNotifications = async () => {
+    const res = await fetchNotifications();
+    if (res.success && res.count > 0) {
+      sileo.info({
+        title: 'پیام‌های جدید',
+        message: `شما ${res.count} پیام خوانده‌نشده دارید.`,
+        position: 'top',
+        timeout: 4000,
+      });
+    }
   };
 
 const openDM = (targetUserId, targetUsername) => {
@@ -207,6 +290,12 @@ const openDM = (targetUserId, targetUsername) => {
     });
   };
 
+  const editMessage = (messageId, newText) => {
+    return new Promise((resolve) => {
+      socket.emit('edit message', { messageId, newText }, (res) => resolve(res));
+    });
+  };
+
   return {
     messages,
     onlineUsers,
@@ -226,6 +315,7 @@ const openDM = (targetUserId, targetUsername) => {
     leaveRoom,
     deleteRoom,
     deleteMessage,
+    editMessage,
     logout: disconnectSocket,
   };
 }

@@ -9,6 +9,7 @@ import { connectDB } from './config/db.js';
 import { initSocket } from './socket/index.js';
 import { authRouter } from './routes/auth.js';
 import { uploadRouter } from './routes/upload.js';
+import roomsRouter  from './routes/rooms.js';
 
 
 dotenv.config();
@@ -30,13 +31,14 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/auth', authRouter)
 app.use('/upload', uploadRouter);
+app.use('/api/rooms', roomsRouter);
 
 // Serve static files from frontend/dist
 app.use(express.static(distPath));
 
 // SPA fallback - serve index.html for all non-API routes
 app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/auth') || req.path.startsWith('/upload')) {
+  if (req.path.startsWith('/auth') || req.path.startsWith('/upload') || req.path.startsWith('/api')) {
     return next();
   }
   res.sendFile(path.join(distPath, 'index.html'));

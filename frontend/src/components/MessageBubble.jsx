@@ -113,13 +113,24 @@ function DeleteForEveryoneIcon() {
   );
 }
 
-export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage }) {
+function EditIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  );
+}
+
+export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage, onEditMessage }) {
   const isSystem = msg.type === 'system';
   const isFile = msg.type === 'file';
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(msg.text || '');
   const bubbleRef = useRef(null);
+  const editInputRef = useRef(null);
 
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
@@ -131,6 +142,24 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
   const closeContextMenu = useCallback(() => {
     setContextMenu({ x: null, y: null });
   }, []);
+
+  const handleEdit = useCallback(() => {
+    setEditing(true);
+    setEditText(msg.text || '');
+    closeContextMenu();
+    setTimeout(() => editInputRef.current?.focus(), 0);
+  }, [msg.text, closeContextMenu]);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editText.trim()) return;
+    await onEditMessage?.(msg.id, editText.trim());
+    setEditing(false);
+  }, [msg.id, editText, onEditMessage]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditText(msg.text || '');
+    setEditing(false);
+  }, [msg.text]);
 
   const getContextMenuItems = () => {
     if (isSystem) return [];
@@ -144,9 +173,14 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
       },
     ];
 
-    // Only show "Delete for Everyone" if it's my message
+    // Only show "Delete for Everyone" and "Edit" if it's my message
     if (isMine) {
       items.push(
+        { 
+          label: 'ویرایش', 
+          icon: <EditIcon />, 
+          onClick: handleEdit
+        },
         { 
           label: 'حذف برای همه', 
           icon: <DeleteForEveryoneIcon />, 
@@ -201,7 +235,24 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
             }
           `}
         >
-          {isFile ? (
+          {editing ? (
+            <div className="flex gap-2">
+              <input
+                ref={editInputRef}
+                type="text"
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit();
+                  if (e.key === 'Escape') handleCancelEdit();
+                }}
+                className="flex-1 bg-surface-700 text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                autoFocus
+              />
+              <button onClick={handleSaveEdit} className="px-3 py-2 text-sm text-primary-400 hover:text-primary-300">ذخیره</button>
+              <button onClick={handleCancelEdit} className="px-3 py-2 text-sm text-surface-400 hover:text-surface-300">انصراف</button>
+            </div>
+          ) : isFile ? (
             <FilePreview msg={msg} isMine={isMine} />
           ) : (
             <p className="whitespace-pre-wrap break-words">{msg.text}</p>

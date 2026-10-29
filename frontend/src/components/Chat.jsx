@@ -6,22 +6,28 @@ import ChatInput from './ChatInput';
 import OnlineUsersList from './OnlineUsersList';
 import TypingIndicator from './TypingIndicator';
 import RoomList from './RoomList';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Chat({ chat, user, onLogout }) {
   const {
     messages, onlineUsers, typingUsers, rooms, currentRoom,
     sendMessage, setTyping, createRoom, switchRoom, leaveRoom, deleteRoom,
-    openDM, deleteMessage,
+    openDM, deleteMessage, editMessage,
     connectSocket, disconnectSocket, connected,
+    notifications, unreadCount, showNotifications,
+    fetchNotifications, markNotificationsAsRead, openNotifications,
+    setNotifications, setUnreadCount, setShowNotifications,
   } = chat;
 
   const navigate = useNavigate();
 
+  // اتصال سوکت
   useEffect(() => {
     connectSocket();
     return () => disconnectSocket();
   }, [connectSocket, disconnectSocket]);
 
+  // مدیریت سایدبار (روی موبایل)
   const [sidebar, setSidebar] = useState(null);
 
   const toggleSidebar = useCallback((panel = 'rooms') => {
@@ -30,22 +36,46 @@ export default function Chat({ chat, user, onLogout }) {
 
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
-  const handleOpenDM = useCallback(async (targetUserId, targetUsername) => {
-    const res = await openDM(targetUserId, targetUsername);
-    if (res?.success) {
-      closeSidebar();
-    }
-  }, [openDM, closeSidebar]);
+  // بستن نوتیفیکیشن با کلیک بیرون
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.notification-dropdown')) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [setShowNotifications]);
 
-  // 👈 تابع پروفایل برای استفاده در هر دو حالت
-  const handleOpenProfile = useCallback((username) => {
-    if (username) {
-      navigate(`/profile/${username}`);
-    } else {
-      navigate('/profile');
-    }
-  }, [navigate]);
-  
+  // باز کردن DM
+  const handleOpenDM = useCallback(
+    async (targetUserId, targetUsername) => {
+      const res = await openDM(targetUserId, targetUsername);
+      if (res?.success) {
+        closeSidebar();
+      }
+    },
+    [openDM, closeSidebar]
+  );
+
+  // باز کردن پروفایل (هم برای خود و هم دیگران)
+  const handleOpenProfile = useCallback(
+    (username) => {
+      if (username) {
+        navigate(`/profile/${username}`);
+      } else {
+        navigate('/profile');
+      }
+    },
+    [navigate]
+  );
+
+  // باز کردن نوتیفیکیشن‌ها + گرفتن لیست جدید
+  const handleOpenNotifications = useCallback(() => {
+    if (fetchNotifications) fetchNotifications();
+    if (openNotifications) openNotifications();
+  }, [fetchNotifications, openNotifications]);
+
   return (
     <div className="h-screen flex flex-col bg-aurora overflow-hidden">
       {/* Animated background orbs (decorative) */}
@@ -65,6 +95,8 @@ export default function Chat({ chat, user, onLogout }) {
           onToggleSidebar={() => toggleSidebar('rooms')}
           onOpenUsers={() => toggleSidebar('users')}
           onOpenProfile={handleOpenProfile}
+          unreadNotifications={unreadCount}
+          onOpenNotifications={handleOpenNotifications}
         />
 
         <div className="flex-1 flex overflow-hidden">
@@ -88,9 +120,12 @@ export default function Chat({ chat, user, onLogout }) {
                 messages={messages}
                 currentUsername={user?.username}
                 onDeleteMessage={deleteMessage}
+                onEditMessage={editMessage}
                 currentUserId={user?.id}
               />
-              <TypingIndicator users={typingUsers.filter((u) => u !== user?.username)} />
+              <TypingIndicator
+                users={typingUsers.filter((u) => u !== user?.username)}
+              />
               <ChatInput onSend={sendMessage} onTyping={setTyping} />
             </div>
           </main>
@@ -101,7 +136,7 @@ export default function Chat({ chat, user, onLogout }) {
               currentUser={user?.username}
               onClose={closeSidebar}
               onOpenDM={handleOpenDM}
-              onOpenProfile={handleOpenProfile} // 👈 اصلاح شد
+              onOpenProfile={handleOpenProfile}
             />
           </aside>
         </div>
@@ -124,7 +159,10 @@ export default function Chat({ chat, user, onLogout }) {
                 <RoomList
                   rooms={rooms}
                   currentRoom={currentRoom}
-                  onSwitch={(name) => { switchRoom(name); closeSidebar(); }}
+                  onSwitch={(name) => {
+                    switchRoom(name);
+                    closeSidebar();
+                  }}
                   onCreate={createRoom}
                   onDelete={deleteRoom}
                   onLeave={leaveRoom}
@@ -138,12 +176,32 @@ export default function Chat({ chat, user, onLogout }) {
                   currentUser={user?.username}
                   onOpenDM={handleOpenDM}
                   onClose={closeSidebar}
-                  onOpenProfile={handleOpenProfile} // 👈 اصلاح شد
+                  onOpenProfile={handleOpenProfile}
                 />
               )}
             </div>
           </>
         )}
+      </div>
+
+      {/* Notification dropdown */}
+      <div className="notification-dropdown">
+        <NotificationDropdown
+          notifications={notifications}
+          unreadCount={unreadCount}
+          showNotifications={showNotifications}
+          onClose={() => setShowNotifications(false)}
+          onOpenDM={handleOpenDM}
+          onSwitchRoom={(name) => {
+            switchRoom(name);
+            closeSidebar();
+          }}
+          isCurrentRoom={currentRoom}
+          clearBadge={() => {
+            markNotificationsAsRead();
+            setUnreadCount(0);
+          }}
+        />
       </div>
     </div>
   );

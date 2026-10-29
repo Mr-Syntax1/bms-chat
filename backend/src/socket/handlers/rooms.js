@@ -1,6 +1,9 @@
 import { Room } from '../../models/Room.js';
 import { Message } from '../../models/Message.js';
-import { users } from '../../utils/users.js';
+import { getRoomsForUser } from './users.js';
+import { users } from '../../utils/users.js'; 
+import { Notification } from '../../models/Notification.js';
+import { markAllAsRead } from './notification.js';
 
 export function getRoomUsers(io, roomName, users) {
   const room = io.sockets.adapter.rooms.get(roomName);
@@ -12,8 +15,8 @@ export function getRoomUsers(io, roomName, users) {
 
 export function handleListRooms(socket, io) {
   return async function onListRooms(callback) {
-    const rooms = await Room.find({ isPrivate: false }).sort({ createdAt: 1 }).lean();
-    callback({ rooms: rooms.map((r) => ({ id: r._id.toString(), name: r.name, createdBy: r.createdBy.toString() })) });
+    const rooms = await getRoomsForUser(socket, io, users);
+    callback({ rooms });
   };
 }
 
@@ -88,6 +91,9 @@ export function handleJoinRoom(socket, io, users) {
 
     socket.join(roomName);
     socket.currentRoom = roomName;
+
+    // Mark notifications for this room as read
+    await markAllAsRead(socket.userId, roomName);
 
     // 👈 اصلاح نهایی: استفاده از socket.userId در کوئری دیتابیس
     const history = await Message.find({

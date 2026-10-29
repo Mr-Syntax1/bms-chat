@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import { users } from '../utils/users.js';
 import { handleJoin } from './handlers/users.js';
-import { handleChat, handleDeleteMessage, handleGetMessages } from './handlers/chat.js';
+import { handleChat, handleDeleteMessage, handleGetMessages, handleEditMessage, handleGetNotifications, handleMarkNotificationsAsRead } from './handlers/chat.js';
 import { handleTyping } from './handlers/typing.js';
 import {
   handleListRooms,
@@ -77,7 +77,11 @@ export function initSocket(server) {
     socket.on('leave room', handleLeaveRoom(socket, io, users));
     socket.on('delete room', handleDeleteRoom(socket, io, users));
     socket.on('get room info', handleGetRoomInfo(socket, io, users));
-    socket.on('open dm', handleOpenDM(socket, io, users)); // 👈 Event name MUST be 'open dm'
+    socket.on('open dm', handleOpenDM(socket, io, users));
+    socket.on('edit message', handleEditMessage(socket, io, users));
+    socket.on('get notifications', handleGetNotifications(socket, io, users));
+    socket.on('mark notifications as read', handleMarkNotificationsAsRead(socket, io, users));
+    socket.join(socket.id);
 
     socket.on('disconnect', async () => {
       const user = users.remove(socket.id);

@@ -1,5 +1,8 @@
 import { getPersianTime } from '../../utils/messages.js';
 import { Message } from '../../models/Message.js';
+import { notifyUser, getUnreadNotifications, markAllAsRead } from './notification.js';
+import { users } from '../../utils/users.js';
+import { Room } from '../../models/Room.js'; 
 
 export function handleChat(socket, io, users) {
   return async function onChatMessage(payload, callback) {
@@ -31,8 +34,6 @@ export function handleChat(socket, io, users) {
     const safeFileName = typeof fileName === 'string' ? fileName.trim() : null;
     const safeFileType = typeof fileType === 'string' ? fileType.trim() : null;
     const safeFileSize = typeof fileSize === 'number' && fileSize > 0 ? fileSize : null;
-
-    // ۴. اعتبارسنجی: یا باید متن داشته باشیم یا فایل معتبر
     const isFileMessage = type === 'file' && safeFileUrl;
     if (!safeText && !isFileMessage) {
       return callback?.({ error: 'پیام خالی است.' });
@@ -74,6 +75,29 @@ export function handleChat(socket, io, users) {
 
     // ارسال به اعضای اتاق
     io.to(room).emit('chat message', message);
+    
+    // ایجاد نوتیفیکیشن برای اعضایی که در اتاق نیستند (پیام خوانده‌نشده)
+    if (room !== 'general') {
+      const roomDoc = await Room.findOne({ name: room });
+      const roomSockets = io.sockets.adapter.rooms.get(room);
+      if (roomDoc) {
+        for (const memberId of roomDoc.members) {
+          if (memberId.toString() !== socket.userId) {
+            const memberUser = users.findByUserId(memberId.toString());
+            // Check if member is online but NOT in this room
+            if (memberUser && !roomSockets?.has(memberUser.id)) {
+              await notifyUser(socket, io, users, {
+                userId: memberId,
+                senderId: socket.userId,
+                senderName: user.username,
+                roomName: room,
+                messagePreview: safeText.slice(0, 120),
+              });
+            }
+          }
+        }
+      }
+    }
     callback?.({ success: true, message });
   };
 }
@@ -149,3 +173,76 @@ export function handleGetMessages(socket, io, users) {
     callback?.({ success: true, messages: formattedMessages });
   };
 }
+
+export function handleEditMessage(socket, io, users) {
+  return async function onEditMessage({ messageId, newText }, callback) {
+    const user = users.get(socket.id);
+    if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
+
+    const message = await Message.findById(messageId);
+    if (!message) return callback?.({ error: 'پیام پیدا نشد.' });
+
+    if (message.senderId?.toString() !== socket.userId) {
+      return callback?.({ error: 'شما فقط می‌توانید پیام‌های خود را ویرایش کنید.' });
+    }
+
+    const safeText = typeof newText === 'string' ? newText.trim() : '';
+    if (!safeText) return callback?.({ error: 'متن پیام خالی است.' });
+    if (safeText.length > 500) return callback?.({ error: 'متن پیام بیش از حد طولانی است.' });
+
+    message.text = safeText;
+    await message.save();
+
+    const editedMessage = {
+      id: message._id.toString(),
+      text: message.text,
+      sender: message.sender,
+      senderId: message.senderId.toString(),
+      avatarColor: message.avatarColor,
+      type: message.type,
+      fileUrl: message.fileUrl,
+      fileName: message.fileName,
+      fileType: message.fileType,
+      fileSize: message.fileSize,
+      room: message.room,
+      createdAt: message.createdAt.toISOString(),
+      time: new Date(message.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    io.to(message.room).emit('message edited', editedMessage);
+    callback?.({ success: true, message: editedMessage });
+  };
+}
+
+export function handleGetNotifications(socket, io, users) {
+  return async function onGetNotifications(_, callback) {
+    const user = users.get(socket.id);
+    if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
+
+    const notifications = await getUnreadNotifications(socket.userId);
+    const formatted = notifications.map((n) => ({
+      id: n._id.toString(),
+      senderId: n.senderId?.toString(),
+      senderName: n.senderName,
+      roomName: n.roomName,
+      messagePreview: n.messagePreview,
+      isRead: n.isRead,
+      createdAt: n.createdAt,
+    }));
+    callback?.({ success: true, notifications: formatted, count: formatted.length });
+  };
+}
+
+export function handleMarkNotificationsAsRead(socket, io, users) {
+  return async function onMarkNotificationsAsRead(_, callback) {
+    const user = users.get(socket.id);
+    if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
+
+    await markAllAsRead(socket.userId);
+    const result = await getUnreadNotifications(socket.userId);
+    socket.emit('notifications updated', { count: result.length });
+    callback?.({ success: true, count: result.length });
+  };
+}
+
+export { notifyUser, getUnreadNotifications, markAllAsRead };
