@@ -1,60 +1,39 @@
-import { getPersianTime } from '../../utils/messages.js';
 import { Message } from '../../models/Message.js';
 import { Room } from '../../models/Room.js';
 
 export function handleJoin(socket, io, users) {
   return async function onJoin(payload, callback) {
+    // Assuming JWT middleware already set socket.userId and socket.username
     const username = socket.username;
-
-    if (!username) {
-      return callback({ error: 'احراز هویت نامعتبر است.' });
-    }
+    if (!username) return callback({ error: 'احراز هویت نشده.' });
 
     if (users.findByUsername(username)) {
-      return callback({ error: 'این نام کاربری قبلاً استفاده شده است.' });
+      return callback({ error: 'این نام کاربری قبلاً وارد شده است.' });
     }
 
+    // 👈 PASS socket.userId AS THIRD ARGUMENT
     const user = users.add(socket.id, username, socket.userId);
-    socket.user = user;
-
-    // اطمینان از وجود اتاق general
-    let general = await Room.findOne({ name: 'general' });
-    if (!general) {
-      general = await Room.create({ name: 'general', createdBy: socket.userId });
-    }
-
-    socket.join('general');
     socket.currentRoom = 'general';
 
-    // تاریخچه‌ی ۱۰۰ پیام آخر در general
-    const history = await Message.find({ room: 'general' })
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .lean();
+    let general = await Room.findOne({ name: 'general' });
+    if (!general) {
+      general = await Room.create({ name: 'general', createdBy: socket.userId, members: [socket.userId] });
+    } else if (!general.members.includes(socket.userId)) {
+      general.members.push(socket.userId);
+      await general.save();
+    }
+    socket.join('general');
+
+    const history = await Message.find({ room: 'general' }).sort({ createdAt: -1 }).limit(100).lean();
     history.reverse();
 
-    const formattedHistory = history.map((m) => ({
-      id: m._id.toString(),
-      text: m.text,
-      sender: m.sender,
-      senderId: m.senderId?.toString(),
-      avatarColor: m.avatarColor,
-      type: m.type,
-      fileUrl: m.fileUrl,
-      fileName: m.fileName,
-      fileType: m.fileType,
-      fileSize: m.fileSize,
-      createdAt: m.createdAt,
-      time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
-    }));
-
-    const rooms = await Room.find({ isPrivate: false }).sort({ createdAt: 1 }).lean();
+    const rooms = await Room.find({ isPrivate: false }).lean();
 
     callback({
       success: true,
       user,
-      history: formattedHistory,
-      rooms: rooms.map((r) => ({ id: r._id.toString(), name: r.name, createdBy: r.createdBy.toString() })),
+      history: history.map(formatMsg),
+      rooms: rooms.map(r => ({ id: r._id.toString(), name: r.name, createdBy: r.createdBy.toString() })),
       currentRoom: 'general',
     });
 
@@ -62,27 +41,11 @@ export function handleJoin(socket, io, users) {
   };
 }
 
-export function handleDeleteRoom(socket, io) {
-  return async function onDeleteRoom({ roomName }, callback) {
-    const room = await Room.findOne({ name: roomName });
-    if (!room) return callback({ error: 'اتاق پیدا نشد.' });
-    if (room.createdBy.toString() !== socket.userId) {
-      return callback({ error: 'فقط سازنده می‌تونه اتاق رو حذف کنه.' });
-    }
-    // همه کاربران رو از اتاق خارج کن
-    const roomSockets = io.sockets.adapter.rooms.get(roomName);
-    if (roomSockets) {
-      for (const sid of roomSockets) {
-        const s = io.sockets.sockets.get(sid);
-        if (s) {
-          s.leave(roomName);
-          s.currentRoom = null;
-          s.emit('room deleted', { roomName });
-        }
-      }
-    }
-    await Room.deleteOne({ name: roomName });
-    io.emit('room removed', { roomName });
-    callback({ success: true });
+function formatMsg(m) {
+  return {
+    id: m._id.toString(), text: m.text, sender: m.sender, senderId: m.senderId?.toString(),
+    avatarColor: m.avatarColor, type: m.type, fileUrl: m.fileUrl, fileName: m.fileName,
+    fileType: m.fileType, createdAt: m.createdAt,
+    time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
   };
 }

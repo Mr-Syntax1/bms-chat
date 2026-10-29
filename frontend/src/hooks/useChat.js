@@ -171,12 +171,16 @@ export function useChat() {
 
 const openDM = (targetUserId, targetUsername) => {
   return new Promise((resolve) => {
-    socket.emit('start dm', { targetUserId }, (res) => {
-      if (res.error) return resolve(res);
+    // 👈 Event name 'open dm' matches backend
+    socket.emit('open dm', { targetUserId }, (res) => {
+      if (res.error) {
+        console.error("DM Error:", res.error);
+        return resolve({ success: false, error: res.error });
+      }
       setMessages(res.history);
-      setCurrentRoom(res.roomName);
+      setCurrentRoom(res.room); // 👈 matches backend 'room'
       setTypingUsers([]);
-      resolve({ ...res, targetUsername });
+      resolve({ success: true, targetUsername: res.targetUser.username });
     });
   });
 };

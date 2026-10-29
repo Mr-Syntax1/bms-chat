@@ -14,13 +14,13 @@ function getConsistentColor(username) {
 
 class UsersStore {
   constructor() {
-    this.users = new Map(); // socketId -> { id, userId, username, avatarColor }
+    this.users = new Map();
   }
 
   add(socketId, username, userId) {
     const user = {
       id: socketId,
-      userId: userId,
+      userId: userId, // 👈 Database ID
       username,
       avatarColor: getConsistentColor(username),
     };
@@ -38,16 +38,16 @@ class UsersStore {
     return this.users.get(socketId);
   }
 
-  findByUsername(username) {
+  findByUserId(userId) {
     for (const user of this.users.values()) {
-      if (user.username.toLowerCase() === username.toLowerCase()) return user;
+      if (user.userId === userId) return user;
     }
     return null;
   }
 
-  findByUserId(userId) {
+  findByUsername(username) {
     for (const user of this.users.values()) {
-      if (user.userId === userId) return user;
+      if (user.username.toLowerCase() === username.toLowerCase()) return user;
     }
     return null;
   }
