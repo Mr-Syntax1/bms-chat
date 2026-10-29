@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
@@ -18,30 +18,99 @@ export default function Chat({ chat, user, onLogout }) {
     return () => disconnectSocket();
   }, [connectSocket, disconnectSocket]);
 
+  // sidebar state: 'rooms' | 'users' | null (closed on mobile)
+  const [sidebar, setSidebar] = useState(null);
+  // const [scrolled, setScrolled] = useState(false);
+
+  const toggleSidebar = useCallback((panel = 'rooms') => {
+    setSidebar((prev) => (prev === panel ? null : panel));
+  }, []);
+
+  const closeSidebar = useCallback(() => setSidebar(null), []);
+
   return (
-    <div className="h-screen flex bg-surface-50 dark:bg-surface-950">
-      <RoomList
-        rooms={rooms}
-        currentRoom={currentRoom}
-        onSwitch={switchRoom}
-        onCreate={createRoom}
-        onDelete={deleteRoom}
-        onLeave={leaveRoom}
-        currentUser={user?.username}
-      />
-      <div className="flex-1 flex flex-col max-w-4xl mx-auto bg-white dark:bg-surface-950 shadow-2xl border-x border-surface-200 dark:border-surface-800">
+    <div className="h-screen flex flex-col bg-aurora overflow-hidden">
+      {/* Animated background orbs (decorative) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-gradient-to-br from-primary-500/20 to-accent-500/20 blur-3xl animate-blob" />
+        <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-gradient-to-br from-cyan-500/15 to-primary-500/15 blur-3xl animate-blob animation-delay-2000" />
+        <div className="absolute bottom-0 left-1/3 w-72 h-72 rounded-full bg-gradient-to-br from-accent-500/15 to-pink-500/10 blur-3xl animate-blob animation-delay-4000" />
+      </div>
+
+      <div className="relative z-10 flex flex-col h-full">
         <ChatHeader
           isConnected={connected}
           user={user}
           onlineCount={onlineUsers.length}
           roomName={currentRoom}
           onLogout={onLogout}
+          onToggleSidebar={() => toggleSidebar('rooms')}
+          onOpenUsers={() => toggleSidebar('users')}
         />
-        <MessageList messages={messages} currentUsername={user?.username} />
-        <TypingIndicator users={typingUsers.filter((u) => u !== user?.username)} />
-        <ChatInput onSend={sendMessage} onTyping={setTyping} />
+
+        <div className="flex-1 flex overflow-hidden">
+          {/* Desktop: always visible sidebars */}
+          <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong slide-in-left">
+            <RoomList
+              rooms={rooms}
+              currentRoom={currentRoom}
+              onSwitch={switchRoom}
+              onCreate={createRoom}
+              onDelete={deleteRoom}
+              onLeave={leaveRoom}
+              currentUser={user?.username}
+            />
+          </aside>
+
+          <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 backdrop-blur-sm">
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <MessageList messages={messages} currentUsername={user?.username} />
+              <TypingIndicator users={typingUsers.filter((u) => u !== user?.username)} />
+              <ChatInput onSend={sendMessage} onTyping={setTyping} />
+            </div>
+          </main>
+
+          <aside className="hidden xl:flex w-72 shrink-0 flex-col border-l border-white/10 glass-panel-strong slide-in-right">
+            <OnlineUsersList users={onlineUsers} currentUser={user?.username} />
+          </aside>
+        </div>
+
+        {/* Mobile hamburger overlay panels */}
+        {sidebar && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in"
+              onClick={closeSidebar}
+            />
+            <div
+              className={`
+                fixed top-0 left-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong
+                flex flex-col shadow-2xl slide-in-left
+                 ${sidebar === 'rooms' ? 'right-0 left-auto slide-in-right' : 'left-0 right-auto slide-in-left'}
+              `}
+            >
+              {sidebar === 'rooms' ? (
+                <RoomList
+                  rooms={rooms}
+                  currentRoom={currentRoom}
+                  onSwitch={(name) => { switchRoom(name); closeSidebar(); }}
+                  onCreate={createRoom}
+                  onDelete={deleteRoom}
+                  onLeave={leaveRoom}
+                  currentUser={user?.username}
+                  onClose={closeSidebar}
+                />
+              ) : (
+                <OnlineUsersList
+                  users={onlineUsers}
+                  currentUser={user?.username}
+                  onClose={closeSidebar}
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
-      <OnlineUsersList users={onlineUsers} currentUser={user?.username} />
     </div>
   );
 }

@@ -40,7 +40,7 @@ export default function Avatar({ username, color, size = 'md', status, className
   return (
     <div className={`relative inline-flex ${className}`}>
       <div
-        className={`${sizes[size]} rounded-full flex items-center justify-center text-white font-bold shrink-0 bg-gradient-to-br shadow-lg`}
+        className={`${sizes[size]} rounded-full flex items-center justify-center text-white font-bold shrink-0 bg-gradient-to-br shadow-lg ring-1 ring-white/10 transition-transform duration-300 hover:scale-105`}
         style={{ backgroundImage: `linear-gradient(to bottom right, ${color || '#6366f1'}, ${color ? color.replace('500', '600') : '#4f46e5'})` }}
       >
         {username?.charAt(0).toUpperCase()}
@@ -48,7 +48,7 @@ export default function Avatar({ username, color, size = 'md', status, className
       {status && (
         <span
           className={`
-            absolute bottom-0 left-0 rounded-full border-2 border-surface-900
+            absolute bottom-0 left-0 rounded-full border-2 border-surface-950
             ${statusSizes[size]}
             ${status === 'online' ? 'bg-green-500 shadow-glow-success' : ''}
             ${status === 'away' ? 'bg-yellow-500' : ''}

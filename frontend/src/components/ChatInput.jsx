@@ -119,7 +119,7 @@ export default function ChatInput({ onSend, onTyping }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="relative p-4 bg-surface-950/50 backdrop-blur-xl border-t border-surface-700">
+    <form onSubmit={handleSubmit} className="relative p-4 bg-gradient-to-t from-surface-950/80 to-surface-950/40 backdrop-blur-xl border-t border-white/10">
 
       {/* پنل ایموجی */}
       {showEmojiPicker && (
@@ -150,35 +150,35 @@ export default function ChatInput({ onSend, onTyping }) {
           type="button"
           disabled={isUploading}
           onClick={() => fileInputRef.current?.click()}
-          className="p-3 rounded-2xl shrink-0 text-surface-500 hover:text-primary-500 hover:bg-surface-800 transition-colors disabled:opacity-50 cursor-pointer"
+          className="p-3 rounded-2xl shrink-0 text-surface-400 hover:text-primary-400 hover:bg-primary-500/10 transition-all disabled:opacity-50 cursor-pointer group"
           aria-label="ارسال فایل"
         >
           {isUploading ? (
             <span className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin block"></span>
           ) : (
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
             </svg>
           )}
         </button>
 
         {/* 👈 input مخفی برای انتخاب فایل */}
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleFileUpload} 
-          className="hidden" 
-          accept="image/*,application/pdf,.doc,.docx,.txt" 
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          className="hidden"
+          accept="image/*,application/pdf,.doc,.docx,.txt"
         />
 
         {/* دکمه ایموجی */}
         <button
           type="button"
           onClick={() => setShowEmojiPicker((prev) => !prev)}
-          className="p-3 rounded-2xl shrink-0 text-surface-500 hover:text-primary-500 hover:bg-surface-800 transition-colors cursor-pointer"
+          className={`p-3 rounded-2xl shrink-0 transition-all cursor-pointer group ${showEmojiPicker ? 'bg-primary-500/15 text-primary-400' : 'text-surface-400 hover:text-primary-400 hover:bg-primary-500/10'}`}
           aria-label="انتخاب ایموجی"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <svg className="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
@@ -198,9 +198,9 @@ export default function ChatInput({ onSend, onTyping }) {
             onBlur={() => setIsFocused(false)}
             placeholder="پیام خود را بنویسید... (Enter برای ارسال)"
             className={`
-              input w-full pr-24
+              input w-full pr-24 bg-surface-900/80 border border-white/5
               transition-all duration-300
-              ${isFocused ? 'ring-2 ring-primary-500/30 shadow-lg' : ''}
+              ${isFocused ? 'input-glow ring-2 ring-primary-500/20' : 'hover:border-white/10'}
               ${value ? 'bg-surface-900' : ''}
             `}
             autoComplete="off"
@@ -210,10 +210,10 @@ export default function ChatInput({ onSend, onTyping }) {
             <button
               type="button"
               onClick={() => { setValue(''); onTyping(false); clearTimeout(typingTimer.current); inputRef.current?.focus(); }}
-              className="absolute inset-y-0 right-3 flex items-center text-surface-400 hover:text-surface-300 transition-colors"
+              className="absolute inset-y-0 right-3 flex items-center text-surface-500 hover:text-surface-300 transition-colors group"
               aria-label="Clear message"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className="w-5 h-5 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -224,16 +224,16 @@ export default function ChatInput({ onSend, onTyping }) {
           type="submit"
           disabled={!value.trim()}
           className={`
-            btn-primary p-3 rounded-2xl shrink-0 transition-all duration-200
+            p-3 rounded-2xl shrink-0 transition-all duration-200 group
             ${value.trim()
-              ? 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 shadow-glow-primary active:scale-95'
-              : 'opacity-50 cursor-not-allowed'
+              ? 'bg-gradient-to-r from-primary-600 via-primary-700 to-accent-600 hover:from-primary-500 hover:to-accent-500 shadow-glow-primary hover:shadow-glow-accent active:scale-95'
+              : 'bg-surface-800 opacity-50 cursor-not-allowed'
             }
           `}
           aria-label="Send message"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          <svg className="w-5 h-5 text-white group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
           </svg>
         </button>
       </div>

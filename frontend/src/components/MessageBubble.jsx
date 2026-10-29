@@ -89,7 +89,7 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
   const time = msg.time || new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className={`flex gap-2 animate-fade-in ${isMine ? 'justify-end' : 'justify-start'}`} dir='ltr'>
+    <div className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end' : 'justify-start'}`} dir='ltr'>
 
       {!isMine && (
         <div className="w-10 flex-shrink-0 flex justify-start items-end pb-1">

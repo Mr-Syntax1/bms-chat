@@ -44,10 +44,17 @@ export default function RoomList({
   };
 
   return (
-    <div className="flex flex-col h-full bg-surface-950/50">
+    <div className="flex flex-col h-full bg-surface-950/40 backdrop-blur-sm">
       {/* Header */}
-      <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        <h2 className="font-bold text-sm text-surface-300 uppercase tracking-wider">اتاق‌ها</h2>
+      <div className="p-4 border-b border-white/10 flex items-center justify-between backdrop-blur-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
+            <svg className="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <h2 className="font-bold text-sm text-surface-300 uppercase tracking-wider">اتاق‌ها</h2>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setShowCreate(true); }}
@@ -62,13 +69,13 @@ export default function RoomList({
       </div>
 
       {/* Room List */}
-      <ul className="flex-1 overflow-y-auto p-2 space-y-1" role="list" aria-label="Chat rooms">
+      <ul className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin" role="list" aria-label="Chat rooms">
         {rooms.map((r) => (
           <li key={r.id} className="relative group">
             <button
               onClick={() => { onSwitch(r.name); }}
               className={`
-                w-full text-right px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between
+                w-full text-right px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between card-hover
                 ${r.name === currentRoom
                   ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-glow-primary relative'
                   : 'text-surface-300 hover:bg-white/5 hover:text-white'
