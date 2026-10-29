@@ -4,6 +4,7 @@ import { setSocketToken } from './socket';
 import Login from './components/Login';
 import Register from './components/Register';
 import Chat from './components/Chat';
+import Profile from './pages/Profile';
 import { useChat } from './hooks/useChat';
 
 function App() {
@@ -78,6 +79,16 @@ function App() {
           element={
             authUser ? (
               <Chat chat={chat} user={authUser} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            authUser ? (
+              <Profile user={authUser} />
             ) : (
               <Navigate to="/login" replace />
             )

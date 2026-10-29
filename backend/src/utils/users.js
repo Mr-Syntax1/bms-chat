@@ -14,12 +14,13 @@ function getConsistentColor(username) {
 
 class UsersStore {
   constructor() {
-    this.users = new Map(); // socketId -> { id, username, avatarColor }
+    this.users = new Map(); // socketId -> { id, userId, username, avatarColor }
   }
 
-  add(socketId, username) {
+  add(socketId, username, userId) {
     const user = {
       id: socketId,
+      userId,
       username,
       avatarColor: getConsistentColor(username),
     };
@@ -40,6 +41,13 @@ class UsersStore {
   findByUsername(username) {
     for (const user of this.users.values()) {
       if (user.username.toLowerCase() === username.toLowerCase()) return user;
+    }
+    return null;
+  }
+
+  findByUserId(userId) {
+    for (const user of this.users.values()) {
+      if (user.userId === userId) return user;
     }
     return null;
   }

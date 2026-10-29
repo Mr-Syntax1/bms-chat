@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import ContextMenu from './ContextMenu';
 
 export default function RoomList({ 
   rooms, 
@@ -7,14 +8,18 @@ export default function RoomList({
   onCreate, 
   onDelete,
   onLeave,
+  onOpenDM,
   currentUser,
 }) {
   const [newRoom, setNewRoom] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(''); // 👈 استیت جدید برای جستجو
+  const [searchQuery, setSearchQuery] = useState('');
   const inputRef = useRef(null);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState({ x: null, y: null, room: null });
 
   useEffect(() => {
     if (showCreate) {
@@ -36,20 +41,53 @@ export default function RoomList({
     setCreating(false);
   };
 
-  const handleDelete = async (e, roomName) => {
-    e.stopPropagation();
+  const handleDelete = async (roomName) => {
     if (window.confirm(`آیا از حذف اتاق "${roomName}" مطمئن هستید؟`)) {
       await onDelete(roomName);
     }
   };
 
-  // 👈 فیلتر کردن اتاق‌ها بر اساس سرچ
+  const handleContextMenu = useCallback((e, room) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, room });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu({ x: null, y: null, room: null });
+  }, []);
+
+  const getContextMenuItems = (room) => {
+    const isCreator = room.createdBy === currentUser;
+    const isMember = room.isMember !== false; // Default to true for backward compatibility
+    const isCurrentRoom = room.name === currentRoom;
+
+    if (isCreator && room.name !== 'general') {
+      return [
+        { label: 'حذف اتاق', icon: <DeleteIcon />, danger: true, onClick: () => handleDelete(room.name) },
+      ];
+    } else if (isMember && !isCurrentRoom) {
+      return [
+        { label: 'خروج از اتاق', icon: <LeaveIcon />, danger: true, onClick: () => onLeave(room.name) },
+      ];
+    } else if (!isMember) {
+      return [
+        { label: 'پیوستن به اتاق', icon: <JoinIcon />, onClick: () => onSwitch(room.name) },
+      ];
+    }
+    return [];
+  };
+
+  // Filter rooms based on search
   const filteredRooms = rooms.filter((room) =>
     room.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Separate private and public rooms
+  const privateRooms = filteredRooms.filter(r => r.isPrivate);
+  const publicRooms = filteredRooms.filter(r => !r.isPrivate);
+
   return (
-    <div className="flex flex-col h-full bg-surface-950/40 backdrop-blur-sm">
+    <div className="flex flex-col h-full bg-surface-950/40 backdrop-blur-sm relative">
       {/* Header */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
@@ -73,7 +111,7 @@ export default function RoomList({
         </div>
       </div>
 
-      {/* 👈 Search Box */}
+      {/* Search Box */}
       <div className="px-3 pt-3 pb-1">
         <div className="relative">
           <input
@@ -94,56 +132,45 @@ export default function RoomList({
         {filteredRooms.length === 0 && (
           <p className="text-center text-surface-500 text-xs mt-4">اتاقی یافت نشد.</p>
         )}
-        
-        {filteredRooms.map((r) => (
-          <li key={r.id} className="relative group">
-            <button
-              onClick={() => { onSwitch(r.name); }}
-              className={`
-                w-full text-right px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between card-hover
-                ${r.name === currentRoom
-                  ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-glow-primary relative'
-                  : 'text-surface-300 hover:bg-white/5 hover:text-white'
-                }
-              `}
-              aria-current={r.name === currentRoom ? 'true' : 'false'}
-            >
-              <span className="flex items-center gap-2">
-                <div className="relative">
-                  <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  {r.name === currentRoom && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-primary-600 animate-pulse-soft" />
-                  )}
-                </div>
-                <span className="truncate"># {r.name}</span>
-              </span>
-              
-              {r.name === currentRoom && (
-                <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse-soft" />
-              )}
-            </button>
 
-            {/* 👈 Delete Button - شرط اصلاح شد */}
-            {r.createdBy === currentUser && r.name !== 'general' && (
-              <button
-                onClick={(e) => handleDelete(e, r.name)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-surface-500 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all rounded-xl"
-                title="حذف اتاق"
-                aria-label={`حذف اتاق ${r.name}`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+        {privateRooms.length > 0 && (
+          <>
+            <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">чат‌های خصوصی</li>
+            {privateRooms.map((r) => (
+              <RoomItem
+                key={r.id}
+                room={r}
+                currentRoom={currentRoom}
+                currentUser={currentUser}
+                onSwitch={onSwitch}
+                onOpenDM={onOpenDM}
+                onContextMenu={handleContextMenu}
+              />
+            ))}
+          </>
+        )}
+
+        {publicRooms.length > 0 && (
+          <>
+            {privateRooms.length > 0 && (
+              <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">کانال‌های عمومی</li>
             )}
-          </li>
-        ))}
+            {publicRooms.map((r) => (
+              <RoomItem
+                key={r.id}
+                room={r}
+                currentRoom={currentRoom}
+                currentUser={currentUser}
+                onSwitch={onSwitch}
+                onContextMenu={handleContextMenu}
+              />
+            ))}
+          </>
+        )}
       </ul>
 
       {/* Leave Room Button */}
-      {currentRoom && currentRoom !== 'general' && (
+      {currentRoom && currentRoom !== 'general' && !rooms.find(r => r.name === currentRoom && r.isPrivate) && (
         <div className="p-3 border-t border-white/10">
           <button
             onClick={onLeave}
@@ -190,6 +217,89 @@ export default function RoomList({
           <p className="text-xs text-center text-surface-500">برای ایجاد اتاق روی + کلیک کنید</p>
         </div>
       )}
+
+      {/* Context Menu */}
+      <ContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        items={contextMenu.room ? getContextMenuItems(contextMenu.room) : []}
+        onClose={closeContextMenu}
+      />
     </div>
+  );
+}
+
+// Room Item Component
+function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
+  const isCurrentRoom = room.name === currentRoom;
+  const isPrivate = room.isPrivate;
+
+  return (
+    <li className="relative group" onContextMenu={(e) => onContextMenu(e, room)}>
+      <button
+        onClick={() => { 
+          if (isPrivate && onOpenDM) {
+            onOpenDM(room);
+          } else {
+            onSwitch(room.name); 
+          }
+        }}
+        className={`
+          w-full text-right px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between card-hover
+          ${isCurrentRoom
+            ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-glow-primary relative'
+            : 'text-surface-300 hover:bg-white/5 hover:text-white'
+          }
+        `}
+        aria-current={isCurrentRoom ? 'true' : 'false'}
+      >
+        <span className="flex items-center gap-2">
+          <div className="relative">
+            {isPrivate ? (
+              <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            )}
+            {isCurrentRoom && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-primary-600 animate-pulse-soft" />
+            )}
+          </div>
+          <span className="truncate">{isPrivate ? '@' : '#'} {room.name}</span>
+        </span>
+        
+        {isCurrentRoom && (
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse-soft" />
+        )}
+      </button>
+    </li>
+  );
+}
+
+// Icon Components
+function DeleteIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  );
+}
+
+function LeaveIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  );
+}
+
+function JoinIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+    </svg>
   );
 }

@@ -13,7 +13,8 @@ const messageSchema = new mongoose.Schema({
     },
 
     senderId: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
 
     avatarColor: {
@@ -22,8 +23,7 @@ const messageSchema = new mongoose.Schema({
 
     type: {
         type: String,
-        // 'file' اضافه شد
-        enum: ['message', 'system', 'file'], 
+        enum: ['message', 'system', 'file'],
         default: 'message'
     },
 
@@ -46,6 +46,15 @@ const messageSchema = new mongoose.Schema({
         index: true 
     },
 
+    deletedFor: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    isDeletedForEveryone: {
+        type: Boolean,
+        default: false
+    },
+
     createdAt: {
         type: Date,
         default: Date.now
@@ -54,5 +63,6 @@ const messageSchema = new mongoose.Schema({
 
 // ایندکس برای مرتب‌سازی سریع پیام‌ها
 messageSchema.index({ createdAt: -1 });
+messageSchema.index({ room: 1, createdAt: -1 });
 
 export const Message = mongoose.model('Message', messageSchema);

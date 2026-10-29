@@ -1,4 +1,6 @@
+import { useState, useRef, useCallback } from 'react';
 import Avatar from './Avatar';
+import ContextMenu from './ContextMenu';
 
 function formatBytes(bytes) {
   if (bytes === 0) return '0 Bytes';
@@ -95,9 +97,67 @@ function FilePreview({ msg, isMine }) {
   );
 }
 
-export default function MessageBubble({ msg, isMine, showHeader }) {
+function DeleteIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  );
+}
+
+function DeleteForEveryoneIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+  );
+}
+
+export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage }) {
   const isSystem = msg.type === 'system';
   const isFile = msg.type === 'file';
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState({ x: null, y: null });
+  const bubbleRef = useRef(null);
+
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
+    // Only show context menu for non-system messages
+    if (isSystem) return;
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, [isSystem]);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu({ x: null, y: null });
+  }, []);
+
+  const getContextMenuItems = () => {
+    if (isSystem) return [];
+    
+    const items = [
+      { 
+        label: 'حذف برای من', 
+        icon: <DeleteIcon />, 
+        danger: true, 
+        onClick: () => onDeleteMessage?.(msg.id, false)
+      },
+    ];
+
+    // Only show "Delete for Everyone" if it's my message
+    if (isMine) {
+      items.push(
+        { 
+          label: 'حذف برای همه', 
+          icon: <DeleteForEveryoneIcon />, 
+          danger: true, 
+          onClick: () => onDeleteMessage?.(msg.id, true)
+        }
+      );
+    }
+
+    return items;
+  };
 
   if (isSystem) {
     return (
@@ -112,8 +172,12 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
   const time = msg.createdAt ? formatMessageDate(msg.createdAt) : formatMessageDate(new Date());
 
   return (
-    <div className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end' : 'justify-start'}`} dir='ltr'>
-
+    <div 
+      ref={bubbleRef}
+      onContextMenu={handleContextMenu}
+      className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end' : 'justify-start'}`}
+      dir='ltr'
+    >
       {!isMine && (
         <div className="w-10 flex-shrink-0 flex justify-start items-end pb-1">
           {showHeader && <Avatar username={msg.sender} color={msg.avatarColor} size="sm" />}
@@ -121,7 +185,6 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
       )}
 
       <div className={`max-w-[75%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-
         {/* نام فرستنده بالای پیام (فقط برای بقیه) */}
         {showHeader && !isMine && (
           <span className="text-xs font-semibold text-surface-400 mb-1 px-1">
@@ -129,13 +192,15 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
           </span>
         )}
 
-        <div className={`
-          relative px-4 py-2.5 text-sm rounded-2xl
-          ${isMine
-            ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg rounded-tr-sm'
-            : 'bg-surface-800 text-surface-50 shadow-md border border-surface-700 rounded-tl-sm'
-          }
-        `}>
+        <div 
+          className={`
+            relative px-4 py-2.5 text-sm rounded-2xl
+            ${isMine
+              ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg rounded-tr-sm'
+              : 'bg-surface-800 text-surface-50 shadow-md border border-surface-700 rounded-tl-sm'
+            }
+          `}
+        >
           {isFile ? (
             <FilePreview msg={msg} isMine={isMine} />
           ) : (
@@ -162,6 +227,14 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
           </div>
         </div>
       </div>
+
+      {/* Context Menu */}
+      <ContextMenu
+        x={contextMenu.x}
+        y={contextMenu.y}
+        items={getContextMenuItems()}
+        onClose={closeContextMenu}
+      />
     </div>
   );
 }

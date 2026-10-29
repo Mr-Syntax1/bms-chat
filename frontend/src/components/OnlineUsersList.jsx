@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import Avatar from './Avatar';
 
-export default function OnlineUsersList({ users, currentUser, onClose }) {
+export default function OnlineUsersList({ users, currentUser, onClose, onOpenDM }) {
   useEffect(() => {
-    const handleClickOutside = (e) => {
+    const handleClickOutside = () => {
       if (window.innerWidth < 1024) {
         // handled by overlay
       }
@@ -76,10 +76,22 @@ export default function OnlineUsersList({ users, currentUser, onClose }) {
                 </div>
                 <span className="text-[11px] text-surface-500">آنلاین</span>
               </div>
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {u.username !== currentUser && onOpenDM && (
+                  <button
+                    onClick={() => onOpenDM(u.id, u.username)}
+                    className="btn-ghost p-2 rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors"
+                    aria-label={`پیام خصوصی به ${u.username}`}
+                    title="پیام خصوصی"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </button>
+                )}
                 <button
                   className="btn-ghost p-2 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
-                  aria-label={` profil ${u.username}`}
+                  aria-label={`پروفایل ${u.username}`}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -93,7 +105,7 @@ export default function OnlineUsersList({ users, currentUser, onClose }) {
 
       {/* Footer */}
       <div className="p-3 border-t border-white/10 backdrop-blur-sm">
-        <p className="text-xs text-center text-surface-500">کلیک برای مشاهده پروفایل</p>
+        <p className="text-xs text-center text-surface-500">کلیک روی آیکون پیام برای چت خصوصی</p>
       </div>
     </div>
   );

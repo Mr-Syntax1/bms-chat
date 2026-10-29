@@ -1,15 +1,19 @@
 import { Server } from 'socket.io';
 import { users } from '../utils/users.js';
-import { handleJoin, handleDeleteRoom } from './handlers/users.js';
-import { handleChat } from './handlers/chat.js';
+import { handleJoin } from './handlers/users.js';
+import { handleChat, handleDeleteMessage, handleGetMessages } from './handlers/chat.js';
 import { handleTyping } from './handlers/typing.js';
 import {
   handleListRooms,
+  handleSearchRooms,
   handleCreateRoom,
   handleJoinRoom,
   handleLeaveRoom,
+  handleDeleteRoom,
+  handleGetRoomInfo,
   getRoomUsers,
 } from './handlers/rooms.js';
+import { handleOpenDirectMessage } from './handlers/direct.js';
 import { verifyToken } from '../utils/jwt.js';
 
 function getSocketToken(socket) {
@@ -58,18 +62,22 @@ export function initSocket(server) {
   });
 
 
-
   io.on('connection', (socket) => {
     console.log('🟢 connected:', socket.id);
 
     socket.on('join', handleJoin(socket, io, users));
     socket.on('chat message', handleChat(socket, io, users));
+    socket.on('delete message', handleDeleteMessage(socket, io, users));
+    socket.on('get messages', handleGetMessages(socket, io, users));
     socket.on('typing', handleTyping(socket, io, users));
     socket.on('list rooms', handleListRooms(socket, io));
+    socket.on('search rooms', handleSearchRooms(socket, io));
     socket.on('create room', handleCreateRoom(socket, io, users));
     socket.on('join room', handleJoinRoom(socket, io, users));
-    socket.on('leave room', handleLeaveRoom(socket, io));
-    socket.on('delete room', handleDeleteRoom(socket, io));
+    socket.on('leave room', handleLeaveRoom(socket, io, users));
+    socket.on('delete room', handleDeleteRoom(socket, io, users));
+    socket.on('get room info', handleGetRoomInfo(socket, io, users));
+    socket.on('open dm', handleOpenDirectMessage(socket, io));
 
     socket.on('disconnect', async () => {
       const user = users.remove(socket.id);

@@ -1,6 +1,6 @@
 import Avatar from './Avatar';
 
-export default function ChatHeader({ isConnected, user, onlineCount, roomName, onLogout, onToggleSidebar, onOpenUsers }) {
+export default function ChatHeader({ isConnected, user, onlineCount, roomName, onLogout, onToggleSidebar, onOpenUsers, onOpenProfile }) {
   return (
     <header className="glass-panel-strong border-b border-white/10 px-4 py-3.5 flex items-center justify-between gap-3 animate-slide-down sticky top-0 z-30">
       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -54,10 +54,23 @@ export default function ChatHeader({ isConnected, user, onlineCount, roomName, o
           )}
         </button>
 
-        {/* Desktop user pill */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-800/50">
+        {/* Profile button (desktop) */}
+        <button
+          onClick={onOpenProfile}
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-800/50 hover:bg-surface-800 transition-colors"
+          title="پروفایل"
+          aria-label="پروفایل"
+        >
           <Avatar username={user?.username} size="sm" status="online" />
           <span className="text-sm font-medium text-surface-50">{user?.username}</span>
+          <svg className="w-4 h-4 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </button>
+
+        {/* Desktop user pill (smaller, just avatar) */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-800/50">
+          <Avatar username={user?.username} size="sm" status="online" />
         </div>
 
         <button

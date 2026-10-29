@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
@@ -10,8 +11,11 @@ export default function Chat({ chat, user, onLogout }) {
   const {
     messages, onlineUsers, typingUsers, rooms, currentRoom,
     sendMessage, setTyping, createRoom, switchRoom, leaveRoom, deleteRoom,
+    openDM, deleteMessage,
     connectSocket, disconnectSocket, connected,
   } = chat;
+  
+  const navigate = useNavigate();
 
   useEffect(() => {
     connectSocket();
@@ -20,13 +24,23 @@ export default function Chat({ chat, user, onLogout }) {
 
   // sidebar state: 'rooms' | 'users' | null (closed on mobile)
   const [sidebar, setSidebar] = useState(null);
-  // const [scrolled, setScrolled] = useState(false);
 
   const toggleSidebar = useCallback((panel = 'rooms') => {
     setSidebar((prev) => (prev === panel ? null : panel));
   }, []);
 
   const closeSidebar = useCallback(() => setSidebar(null), []);
+
+  const handleOpenDM = useCallback(async (targetUserId, targetUsername) => {
+    const res = await openDM(targetUserId, targetUsername);
+    if (res.success) {
+      closeSidebar();
+    }
+  }, [openDM, closeSidebar]);
+
+  const handleOpenProfile = useCallback(() => {
+    navigate('/profile');
+  }, [navigate]);
 
   return (
     <div className="h-screen flex flex-col bg-aurora overflow-hidden">
@@ -46,6 +60,7 @@ export default function Chat({ chat, user, onLogout }) {
           onLogout={onLogout}
           onToggleSidebar={() => toggleSidebar('rooms')}
           onOpenUsers={() => toggleSidebar('users')}
+          onOpenProfile={handleOpenProfile}
         />
 
         <div className="flex-1 flex overflow-hidden">
@@ -58,20 +73,30 @@ export default function Chat({ chat, user, onLogout }) {
               onCreate={createRoom}
               onDelete={deleteRoom}
               onLeave={leaveRoom}
+              onOpenDM={handleOpenDM}
               currentUser={user?.username}
             />
           </aside>
 
           <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 backdrop-blur-sm">
             <div className="flex-1 overflow-hidden flex flex-col">
-              <MessageList messages={messages} currentUsername={user?.username} />
+              <MessageList 
+                messages={messages} 
+                currentUsername={user?.username} 
+                onDeleteMessage={deleteMessage}
+                currentUserId={user?.id}
+              />
               <TypingIndicator users={typingUsers.filter((u) => u !== user?.username)} />
               <ChatInput onSend={sendMessage} onTyping={setTyping} />
             </div>
           </main>
 
           <aside className="hidden xl:flex w-72 shrink-0 flex-col border-l border-white/10 glass-panel-strong slide-in-right">
-            <OnlineUsersList users={onlineUsers} currentUser={user?.username} />
+            <OnlineUsersList 
+              users={onlineUsers} 
+              currentUser={user?.username} 
+              onOpenDM={handleOpenDM}
+            />
           </aside>
         </div>
 
@@ -97,6 +122,7 @@ export default function Chat({ chat, user, onLogout }) {
                   onCreate={createRoom}
                   onDelete={deleteRoom}
                   onLeave={leaveRoom}
+                  onOpenDM={handleOpenDM}
                   currentUser={user?.username}
                   onClose={closeSidebar}
                 />
@@ -104,6 +130,7 @@ export default function Chat({ chat, user, onLogout }) {
                 <OnlineUsersList
                   users={onlineUsers}
                   currentUser={user?.username}
+                  onOpenDM={handleOpenDM}
                   onClose={closeSidebar}
                 />
               )}

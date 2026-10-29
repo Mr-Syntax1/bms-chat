@@ -14,13 +14,13 @@ export function handleJoin(socket, io, users) {
       return callback({ error: 'این نام کاربری قبلاً استفاده شده است.' });
     }
 
-    const user = users.add(socket.id, username);
+    const user = users.add(socket.id, username, socket.userId);
     socket.user = user;
 
     // اطمینان از وجود اتاق general
     let general = await Room.findOne({ name: 'general' });
     if (!general) {
-      general = await Room.create({ name: 'general', createdBy: 'system' });
+      general = await Room.create({ name: 'general', createdBy: socket.userId });
     }
 
     socket.join('general');
@@ -37,7 +37,7 @@ export function handleJoin(socket, io, users) {
       id: m._id.toString(),
       text: m.text,
       sender: m.sender,
-      senderId: m.senderId,
+      senderId: m.senderId?.toString(),
       avatarColor: m.avatarColor,
       type: m.type,
       fileUrl: m.fileUrl,
@@ -48,13 +48,13 @@ export function handleJoin(socket, io, users) {
       time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
     }));
 
-    const rooms = await Room.find().sort({ createdAt: 1 }).lean();
+    const rooms = await Room.find({ isPrivate: false }).sort({ createdAt: 1 }).lean();
 
     callback({
       success: true,
       user,
       history: formattedHistory,
-      rooms: rooms.map((r) => ({ id: r._id.toString(), name: r.name })),
+      rooms: rooms.map((r) => ({ id: r._id.toString(), name: r.name, createdBy: r.createdBy.toString() })),
       currentRoom: 'general',
     });
 

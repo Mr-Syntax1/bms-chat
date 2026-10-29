@@ -45,7 +45,7 @@ export function handleChat(socket, io, users) {
     const saved = await Message.create({
       text: safeText,
       sender: user.username,
-      senderId: user.id,
+      senderId: socket.userId,
       avatarColor: user.avatarColor,
       type: isFileMessage ? 'file' : 'message',
       fileUrl: safeFileUrl,
@@ -60,7 +60,7 @@ export function handleChat(socket, io, users) {
       id: saved._id.toString(),
       text: saved.text,
       sender: saved.sender,
-      senderId: saved.senderId,
+      senderId: saved.senderId.toString(),
       avatarColor: saved.avatarColor,
       type: saved.type,
       fileUrl: saved.fileUrl,
@@ -75,5 +75,77 @@ export function handleChat(socket, io, users) {
     // ارسال به اعضای اتاق
     io.to(room).emit('chat message', message);
     callback?.({ success: true, message });
+  };
+}
+
+export function handleDeleteMessage(socket, io, users) {
+  return async function onDeleteMessage({ messageId, deleteForEveryone }, callback) {
+    const user = users.get(socket.id);
+    if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
+
+    const message = await Message.findById(messageId);
+    if (!message) return callback?.({ error: 'پیام پیدا نشد.' });
+
+    // 👈 اینجا علامت سوال اضافه شد تا اگر senderId نبود (پیام سیستمی)، کرش نکنه
+    if (message.senderId?.toString() !== socket.userId) {
+      return callback?.({ error: 'شما فقط می‌توانید پیام‌های خود را حذف کنید.' });
+    }
+
+    if (deleteForEveryone) {
+      message.isDeletedForEveryone = true;
+      await message.save();
+      io.to(message.room).emit('message deleted', { messageId, deleteForEveryone: true });
+    } else {
+      if (!message.deletedFor.some(id => id.toString() === socket.userId)) {
+        message.deletedFor.push(socket.userId);
+        await message.save();
+      }
+      socket.emit('message deleted', { messageId, deleteForEveryone: false });
+    }
+
+    callback?.({ success: true });
+  };
+}
+
+export function handleGetMessages(socket, io, users) {
+  return async function onGetMessages({ room, before, limit = 50 }, callback) {
+    const user = users.get(socket.id);
+    if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
+
+    const query = { 
+      room,
+      $or: [
+        { deletedFor: { $ne: user.id } },
+        { isDeletedForEveryone: false }
+      ]
+    };
+
+    if (before) {
+      query.createdAt = { $lt: new Date(before) };
+    }
+
+    const messages = await Message.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    messages.reverse();
+
+    const formattedMessages = messages.map((m) => ({
+      id: m._id.toString(),
+      text: m.text,
+      sender: m.sender,
+      senderId: m.senderId?.toString(),
+      avatarColor: m.avatarColor,
+      type: m.type,
+      fileUrl: m.fileUrl,
+      fileName: m.fileName,
+      fileType: m.fileType,
+      fileSize: m.fileSize,
+      createdAt: m.createdAt,
+      time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+    }));
+
+    callback?.({ success: true, messages: formattedMessages });
   };
 }

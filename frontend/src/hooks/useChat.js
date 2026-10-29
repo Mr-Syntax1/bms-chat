@@ -24,13 +24,10 @@ export function useChat() {
 
   useEffect(() => {
     const onChatMessage = (msg) => {
-      // لاگ برای دیباگ
       console.log('📥 Received:', msg.type, '| Room:', msg.room, '| Current:', currentRoom);
 
-      // بررسی اینکه آیا پیام مربوط به اتاق فعلی است یا نه
       if (!msg.room || msg.room === currentRoom) {
         setMessages((prev) => {
-          // جلوگیری از تکراری شدن پیام‌ها (اگر از سرور echo شده باشد)
           if (prev.some((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
@@ -51,13 +48,25 @@ export function useChat() {
         return prev.filter((u) => u !== username);
       });
     };
-    const onRoomCreated = (room) => setRooms((prev) => [...prev, room]);
+    const onRoomCreated = (room) => setRooms((prev) => {
+      if (prev.some(r => r.id === room.id || r.name === room.name)) return prev;
+      return [...prev, room];
+    });
     const onRoomRemoved = ({ roomName }) => setRooms((prev) => prev.filter((r) => r.name !== roomName));
     const onRoomDeleted = ({ roomName }) => {
       if (currentRoom === roomName) {
         setCurrentRoom('general');
       }
       setRooms((prev) => prev.filter((r) => r.name !== roomName));
+    };
+    const onMessageDeleted = ({ messageId, deleteForEveryone }) => {
+      if (deleteForEveryone) {
+        // Remove message for everyone
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      } else {
+        // Mark message as deleted for current user (handled by server not sending it)
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      }
     };
 
     socket.on('chat message', onChatMessage);
@@ -67,6 +76,7 @@ export function useChat() {
     socket.on('room created', onRoomCreated);
     socket.on('room removed', onRoomRemoved);
     socket.on('room deleted', onRoomDeleted);
+    socket.on('message deleted', onMessageDeleted);
 
     return () => {
       socket.off('chat message', onChatMessage);
@@ -76,13 +86,13 @@ export function useChat() {
       socket.off('room created', onRoomCreated);
       socket.off('room removed', onRoomRemoved);
       socket.off('room deleted', onRoomDeleted);
+      socket.off('message deleted', onMessageDeleted);
     };
   }, [currentRoom]);
 
   const connectSocket = useCallback(() => {
     return new Promise((resolve) => {
       if (socket.connected) {
-        // اگه قبلاً وصله، مستقیم join کن
         socket.emit('join', {}, (res) => {
           if (res.error) {
             setError(res.error);
@@ -141,6 +151,12 @@ export function useChat() {
     });
   };
 
+  const searchRooms = (query) => {
+    return new Promise((resolve) => {
+      socket.emit('search rooms', { query }, (res) => resolve(res));
+    });
+  };
+
   const switchRoom = (roomName) => {
     return new Promise((resolve) => {
       socket.emit('join room', { roomName }, (res) => {
@@ -153,18 +169,38 @@ export function useChat() {
     });
   };
 
+  const openDM = (targetUserId, targetUsername) => {
+    return new Promise((resolve) => {
+      socket.emit('open dm', { targetUserId }, (res) => {
+        if (res.error) return resolve(res);
+        setMessages(res.history);
+        setCurrentRoom(res.room);
+        setTypingUsers([]);
+        resolve({ ...res, targetUsername });
+      });
+    });
+  };
+
   const deleteRoom = (roomName) => {
     return new Promise((resolve) => {
       socket.emit('delete room', { roomName }, (res) => resolve(res));
     });
   };
 
-  const leaveRoom = () => {
-    if (!currentRoom) return;
-    socket.emit('leave room', { roomName: currentRoom }, (res) => {
-      if (res.success) {
-        switchRoom('general');
-      }
+  const leaveRoom = (roomName) => {
+    return new Promise((resolve) => {
+      socket.emit('leave room', { roomName: roomName || currentRoom }, (res) => {
+        if (res.success && (!roomName || roomName === currentRoom)) {
+          switchRoom('general');
+        }
+        resolve(res);
+      });
+    });
+  };
+
+  const deleteMessage = (messageId, deleteForEveryone) => {
+    return new Promise((resolve) => {
+      socket.emit('delete message', { messageId, deleteForEveryone }, (res) => resolve(res));
     });
   };
 
@@ -181,9 +217,12 @@ export function useChat() {
     sendMessage,
     setTyping,
     createRoom,
+    searchRooms,
     switchRoom,
+    openDM,
     leaveRoom,
     deleteRoom,
+    deleteMessage,
     logout: disconnectSocket,
   };
 }

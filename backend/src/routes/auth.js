@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
+import { Message } from '../models/Message.js';
 import { signToken, verifyToken } from '../utils/jwt.js';
 
 export const authRouter = express.Router();
@@ -22,6 +23,23 @@ function setTokenCookie(res, token) {
 function clearTokenCookie(res) {
   console.log('[Auth] Clearing cookie');
   res.clearCookie('token', { httpOnly: true, secure: true, sameSite: 'none', path: '/' });
+}
+
+// Middleware to verify token and attach user
+function authMiddleware(req, res, next) {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).json({ error: 'توکن وجود ندارد' });
+  }
+  
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ error: 'توکن نامعتبر است' });
+  }
+  
+  req.userId = decoded.id;
+  req.username = decoded.username;
+  next();
 }
 
 // ثبت‌نام
@@ -93,6 +111,32 @@ authRouter.get('/me', async (req, res) => {
     res.json({ token, user: { id: user._id, username: user.username } });
   } catch (err) {
     console.error('[Auth/me] error:', err);
+    res.status(500).json({ error: 'خطای سرور' });
+  }
+});
+
+// پروفایل کاربر - GET /auth/profile
+authRouter.get('/profile', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('username createdAt').lean();
+    if (!user) {
+      return res.status(404).json({ error: 'کاربر یافت نشد' });
+    }
+
+    // Count total messages sent by user
+    const messageCount = await Message.countDocuments({ senderId: req.userId });
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id.toString(),
+        username: user.username,
+        createdAt: user.createdAt,
+        messageCount
+      }
+    });
+  } catch (err) {
+    console.error('[Auth/profile] error:', err);
     res.status(500).json({ error: 'خطای سرور' });
   }
 });

@@ -52,7 +52,7 @@ function DateSeparator({ label }) {
   );
 }
 
-export default function MessageList({ messages, currentUsername }) {
+export default function MessageList({ messages, currentUsername, onDeleteMessage }) {
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -80,13 +80,13 @@ export default function MessageList({ messages, currentUsername }) {
     if (isAtBottom) {
       scrollToBottom(false);
     } else {
-      setShowScrollButton(true);
+      setTimeout(() => setShowScrollButton(true), 0);
     }
   }, [messages.length, isAtBottom, scrollToBottom]);
 
   useEffect(() => {
     scrollToBottom(false);
-  }, []);
+  }, [scrollToBottom]);
 
   // گروه‌بندی پیام‌ها بر اساس تاریخ و اضافه کردن جداکننده‌ها
   const messagesWithSeparators = useMemo(() => {
@@ -140,7 +140,7 @@ export default function MessageList({ messages, currentUsername }) {
           </div>
         )}
 
-        {messagesWithSeparators.map((item, i) => {
+        {messagesWithSeparators.map((item) => {
           if (item.type === 'date-separator') {
             return <DateSeparator key={item.id} label={item.label} />;
           }
@@ -151,6 +151,7 @@ export default function MessageList({ messages, currentUsername }) {
               msg={item}
               isMine={item.sender === currentUsername}
               showHeader={item.showHeader}
+              onDeleteMessage={onDeleteMessage}
             />
           );
         })}
