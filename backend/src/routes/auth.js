@@ -116,14 +116,15 @@ authRouter.get('/me', async (req, res) => {
 });
 
 // پروفایل کاربر - GET /auth/profile
+
+//  این روت برای پروفایل خودِ کاربر است
 authRouter.get('/profile', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('username createdAt').lean();
+    const user = await User.findById(req.userId).select('username createdAt avatarColor').lean();
     if (!user) {
-      return res.status(404).json({ error: 'کاربر یافت نشد' });
+      return res.status(404).json({ success: false, error: 'کاربر یافت نشد' });
     }
 
-    // Count total messages sent by user
     const messageCount = await Message.countDocuments({ senderId: req.userId });
 
     res.json({
@@ -131,13 +132,40 @@ authRouter.get('/profile', authMiddleware, async (req, res) => {
       user: {
         id: user._id.toString(),
         username: user.username,
+        avatarColor: user.avatarColor || '#6366f1',
         createdAt: user.createdAt,
-        messageCount
+        messageCount,
       }
     });
   } catch (err) {
     console.error('[Auth/profile] error:', err);
-    res.status(500).json({ error: 'خطای سرور' });
+    res.status(500).json({ success: false, error: 'خطای سرور' });
+  }
+});
+
+// برای دیدن پروفایل دیگران
+authRouter.get('/profile/:username', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username }).select('-password');
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'کاربر پیدا نشد.' });
+    }
+
+    const messageCount = await Message.countDocuments({ senderId: user._id });
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        avatarColor: user.avatarColor || '#6366f1',
+        createdAt: user.createdAt,
+        messageCount,
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: 'خطای سرور' });
   }
 });
 

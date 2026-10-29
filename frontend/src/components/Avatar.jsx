@@ -1,3 +1,19 @@
+const AVATAR_COLORS = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
+  '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b',
+];
+
+// تابع تولید رنگ یکسان بر اساس نام کاربری
+function getConsistentColor(username) {
+  if (!username) return AVATAR_COLORS[5]; // رنگ پیش‌فرض
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[index];
+}
+
 export default function Avatar({ username, color, size = 'md', status, className = '' }) {
   const sizes = {
     xs: 'w-6 h-6 text-[10px]',
@@ -15,33 +31,24 @@ export default function Avatar({ username, color, size = 'md', status, className
     xl: 'w-4 h-4',
   };
 
-  // const getGradient = (color) => {
-  //   if (!color) return 'from-primary-500 to-primary-600';
-  //   const hues = {
-  //     indigo: 'from-indigo-500 to-indigo-600',
-  //     violet: 'from-violet-500 to-violet-600',
-  //     purple: 'from-purple-500 to-purple-600',
-  //     pink: 'from-pink-500 to-pink-600',
-  //     red: 'from-red-500 to-red-600',
-  //     orange: 'from-orange-500 to-orange-600',
-  //     amber: 'from-amber-500 to-amber-600',
-  //     yellow: 'from-yellow-500 to-yellow-600',
-  //     lime: 'from-lime-500 to-lime-600',
-  //     green: 'from-green-500 to-green-600',
-  //     emerald: 'from-emerald-500 to-emerald-600',
-  //     teal: 'from-teal-500 to-teal-600',
-  //     cyan: 'from-cyan-500 to-cyan-600',
-  //     sky: 'from-sky-500 to-sky-600',
-  //     blue: 'from-blue-500 to-blue-600',
-  //   };
-  //   return hues[color] || `from-[${color}] to-[${color}]`;
-  // };
+  //  اگر پراپ color پاس داده نشده بود، خودش رنگ ثابت رو انتخاب میکنه
+  const finalColor = color || getConsistentColor(username);
+
+  // برای ساختن گرادیانت، رنگ اصلی و یک نسخه تیره‌تر از اون رو لازم داریم
+  const baseColor = finalColor;
+  // یک ترفند ساده برای تیره‌تر کردن: اگر هگز بود، یک درجه تیره‌ترش میکنیم
+  // (برای سادگی از همون رنگ به عنوان گرادیانت استفاده میکنیم یا رنگ ثانیه رو ثابت می‌ذاریم)
+  const gradientColor = finalColor;
 
   return (
     <div className={`relative inline-flex ${className}`}>
       <div
-        className={`${sizes[size]} rounded-full flex items-center justify-center text-white font-bold shrink-0 bg-gradient-to-br shadow-lg ring-1 ring-white/10 transition-transform duration-300 hover:scale-105`}
-        style={{ backgroundImage: `linear-gradient(to bottom right, ${color || '#6366f1'}, ${color ? color.replace('500', '600') : '#4f46e5'})` }}
+        className={`${sizes[size]} rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-lg ring-1 ring-white/10 transition-transform duration-300 hover:scale-105`}
+        style={{ 
+          backgroundImage: `linear-gradient(to bottom right, ${baseColor}, ${gradientColor})`,
+          // اگر می‌خوای گرادیانت واقعی داشته باشی، می‌تونی یه رنگ تیره‌تر ثابت برای قسمت دوم بذاری
+          // backgroundColor: finalColor 
+        }}
       >
         {username?.charAt(0).toUpperCase()}
       </div>

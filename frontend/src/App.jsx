@@ -88,7 +88,15 @@ function App() {
           path="/profile"
           element={
             authUser ? (
-              <Profile user={authUser} />
+              <Profile currentUser={authUser} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route path="/profile/:username"
+          element={
+            authUser ? (<Profile currentUser={authUser} />
             ) : (
               <Navigate to="/login" replace />
             )

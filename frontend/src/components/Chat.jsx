@@ -14,7 +14,7 @@ export default function Chat({ chat, user, onLogout }) {
     openDM, deleteMessage,
     connectSocket, disconnectSocket, connected,
   } = chat;
-  
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,7 +22,6 @@ export default function Chat({ chat, user, onLogout }) {
     return () => disconnectSocket();
   }, [connectSocket, disconnectSocket]);
 
-  // sidebar state: 'rooms' | 'users' | null (closed on mobile)
   const [sidebar, setSidebar] = useState(null);
 
   const toggleSidebar = useCallback((panel = 'rooms') => {
@@ -33,15 +32,20 @@ export default function Chat({ chat, user, onLogout }) {
 
   const handleOpenDM = useCallback(async (targetUserId, targetUsername) => {
     const res = await openDM(targetUserId, targetUsername);
-    if (res.success) {
+    if (res?.success) {
       closeSidebar();
     }
   }, [openDM, closeSidebar]);
 
-  const handleOpenProfile = useCallback(() => {
-    navigate('/profile');
+  // 👈 تابع پروفایل برای استفاده در هر دو حالت
+  const handleOpenProfile = useCallback((username) => {
+    if (username) {
+      navigate(`/profile/${username}`);
+    } else {
+      navigate('/profile');
+    }
   }, [navigate]);
-
+  
   return (
     <div className="h-screen flex flex-col bg-aurora overflow-hidden">
       {/* Animated background orbs (decorative) */}
@@ -80,9 +84,9 @@ export default function Chat({ chat, user, onLogout }) {
 
           <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 backdrop-blur-sm">
             <div className="flex-1 overflow-hidden flex flex-col">
-              <MessageList 
-                messages={messages} 
-                currentUsername={user?.username} 
+              <MessageList
+                messages={messages}
+                currentUsername={user?.username}
                 onDeleteMessage={deleteMessage}
                 currentUserId={user?.id}
               />
@@ -92,10 +96,12 @@ export default function Chat({ chat, user, onLogout }) {
           </main>
 
           <aside className="hidden xl:flex w-72 shrink-0 flex-col border-l border-white/10 glass-panel-strong slide-in-right">
-            <OnlineUsersList 
-              users={onlineUsers} 
-              currentUser={user?.username} 
+            <OnlineUsersList
+              users={onlineUsers}
+              currentUser={user?.username}
+              onClose={closeSidebar}
               onOpenDM={handleOpenDM}
+              onOpenProfile={handleOpenProfile} // 👈 اصلاح شد
             />
           </aside>
         </div>
@@ -109,9 +115,9 @@ export default function Chat({ chat, user, onLogout }) {
             />
             <div
               className={`
-                fixed top-0 left-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong
-                flex flex-col shadow-2xl slide-in-left
-                 ${sidebar === 'rooms' ? 'right-0 left-auto slide-in-right' : 'left-0 right-auto slide-in-left'}
+                fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong
+                flex flex-col shadow-2xl
+                ${sidebar === 'rooms' ? 'right-0 left-auto slide-in-right' : 'left-0 right-auto slide-in-left'}
               `}
             >
               {sidebar === 'rooms' ? (
@@ -132,6 +138,7 @@ export default function Chat({ chat, user, onLogout }) {
                   currentUser={user?.username}
                   onOpenDM={handleOpenDM}
                   onClose={closeSidebar}
+                  onOpenProfile={handleOpenProfile} // 👈 اصلاح شد
                 />
               )}
             </div>

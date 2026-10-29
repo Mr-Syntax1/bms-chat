@@ -20,7 +20,7 @@ class UsersStore {
   add(socketId, username, userId) {
     const user = {
       id: socketId,
-      userId,
+      userId: userId,
       username,
       avatarColor: getConsistentColor(username),
     };

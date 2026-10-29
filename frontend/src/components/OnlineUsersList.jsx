@@ -1,7 +1,13 @@
 import { useEffect } from 'react';
 import Avatar from './Avatar';
 
-export default function OnlineUsersList({ users, currentUser, onClose, onOpenDM }) {
+export default function OnlineUsersList({ 
+  users, 
+  currentUser, 
+  onClose, 
+  onOpenDM, 
+  onOpenProfile // 👈 پراپ جدید برای پروفایل
+}) {
   useEffect(() => {
     const handleClickOutside = () => {
       if (window.innerWidth < 1024) {
@@ -65,6 +71,7 @@ export default function OnlineUsersList({ users, currentUser, onClose, onOpenDM 
                 size="md"
                 status="online"
               />
+              
               <div className="flex-1 min-w-0 flex flex-col">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-surface-50 truncate">
@@ -76,12 +83,14 @@ export default function OnlineUsersList({ users, currentUser, onClose, onOpenDM 
                 </div>
                 <span className="text-[11px] text-surface-500">آنلاین</span>
               </div>
+              
+              {/* 👈 اکشن‌ها (پیام خصوصی و پروفایل) */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* دکمه پیام خصوصی */}
                 {u.username !== currentUser && onOpenDM && (
                   <button
                     onClick={() => onOpenDM(u.id, u.username)}
-                    className="btn-ghost p-2 rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors"
-                    aria-label={`پیام خصوصی به ${u.username}`}
+                    className="p-2 rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors"
                     title="پیام خصوصی"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,9 +98,12 @@ export default function OnlineUsersList({ users, currentUser, onClose, onOpenDM 
                     </svg>
                   </button>
                 )}
+                
+                {/* 👈 دکمه پروفایل (جدید) */}
                 <button
-                  className="btn-ghost p-2 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
-                  aria-label={`پروفایل ${u.username}`}
+                  onClick={() => onOpenProfile && onOpenProfile(u.username)}
+                  className="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
+                  title="مشاهده پروفایل"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -105,7 +117,7 @@ export default function OnlineUsersList({ users, currentUser, onClose, onOpenDM 
 
       {/* Footer */}
       <div className="p-3 border-t border-white/10 backdrop-blur-sm">
-        <p className="text-xs text-center text-surface-500">کلیک روی آیکون پیام برای چت خصوصی</p>
+        <p className="text-xs text-center text-surface-500">کلیک روی آیکون‌ها برای چت خصوصی یا پروفایل</p>
       </div>
     </div>
   );

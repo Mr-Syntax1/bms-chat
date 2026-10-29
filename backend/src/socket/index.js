@@ -13,7 +13,7 @@ import {
   handleGetRoomInfo,
   getRoomUsers,
 } from './handlers/rooms.js';
-import { handleOpenDirectMessage } from './handlers/direct.js';
+import { handleStartDM } from './handlers/direct.js';
 import { verifyToken } from '../utils/jwt.js';
 
 function getSocketToken(socket) {
@@ -77,7 +77,7 @@ export function initSocket(server) {
     socket.on('leave room', handleLeaveRoom(socket, io, users));
     socket.on('delete room', handleDeleteRoom(socket, io, users));
     socket.on('get room info', handleGetRoomInfo(socket, io, users));
-    socket.on('open dm', handleOpenDirectMessage(socket, io));
+    socket.on('start dm', handleStartDM(socket, io,users));
 
     socket.on('disconnect', async () => {
       const user = users.remove(socket.id);

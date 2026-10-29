@@ -1,21 +1,37 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 
-export default function Profile({ onClose }) {
+export default function Profile({ onClose, currentUser }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  
+  // 👈 گرفتن نام کاربری از URL (اگر وجود داشته باشد)
+  const { username } = useParams(); 
+  
+  // آیا در حال مشاهده پروفایل خودم هستم؟
+  const isMyProfile = !username || username === currentUser?.username;
+  
+  // نام کاربری هدف (اگر در URL نبود، نام خودم است)
+  const targetUsername = username || currentUser?.username;
 
   const fetchProfile = async () => {
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch('/auth/profile', { credentials: 'include' });
+      // اگر پروفایل خودم بود، از روت /auth/profile استفاده می‌کنیم (چون توکن داریم)
+      // اگر پروفایل بقیه بود، از روت /auth/profile/:username استفاده می‌کنیم
+      const url = isMyProfile ? '/auth/profile' : `/auth/profile/${targetUsername}`;
+      
+      const res = await fetch(url, { credentials: 'include' });
       const data = await res.json();
-      if (data.success) {
+      
+      if (res.ok && data.success) {
         setProfile(data.user);
       } else {
-        setError(data.error || 'خطا در بارگذاری پروفایل');
+        setError(data.error || 'کاربر پیدا نشد');
       }
     } catch {
       setError('خطای اتصال به سرور');
@@ -25,31 +41,8 @@ export default function Profile({ onClose }) {
   };
 
   useEffect(() => {
-    let mounted = true;
-    const loadProfile = async () => {
-      try {
-        const res = await fetch('/auth/profile', { credentials: 'include' });
-        const data = await res.json();
-        if (mounted) {
-          if (data.success) {
-            setProfile(data.user);
-          } else {
-            setError(data.error || 'خطا در بارگذاری پروفایل');
-          }
-        }
-      } catch {
-        if (mounted) {
-          setError('خطای اتصال به سرور');
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-    loadProfile();
-    return () => { mounted = false; };
-  }, []);
+    fetchProfile();
+  }, [targetUsername, isMyProfile]); // وابستگی‌ها اضافه شدند
 
   const formatPersianDate = (dateString) => {
     if (!dateString) return '';
@@ -78,12 +71,7 @@ export default function Profile({ onClose }) {
           </svg>
         </div>
         <p className="text-red-400 font-medium">{error}</p>
-        <button 
-          onClick={fetchProfile}
-          className="mt-4 btn-primary px-6 py-2 rounded-xl"
-        >
-          تلاش مجدد
-        </button>
+        <button onClick={fetchProfile} className="mt-4 btn-primary px-6 py-2 rounded-xl">تلاش مجدد</button>
       </div>
     );
   }
@@ -106,7 +94,9 @@ export default function Profile({ onClose }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
-          <h2 className="font-bold text-surface-50 text-sm">پروفایل کاربری</h2>
+          <h2 className="font-bold text-surface-50 text-sm">
+            {isMyProfile ? 'پروفایل من' : `پروفایل ${profile.username}`}
+          </h2>
         </div>
         {onClose && (
           <button
@@ -128,6 +118,7 @@ export default function Profile({ onClose }) {
           <div className="relative">
             <Avatar 
               username={profile.username} 
+              color={profile.avatarColor} // 👈 رنگ آواتار از بک‌اند گرفته می‌شود
               size="xl" 
               status="online" 
             />
@@ -145,24 +136,9 @@ export default function Profile({ onClose }) {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-3 animate-slide-up">
-          <StatCard 
-            label="پیام‌ها" 
-            value={profile.messageCount?.toLocaleString('fa-IR') || '۰'} 
-            icon={<MessageIcon />} 
-            color="primary"
-          />
-          <StatCard 
-            label="تاریخ عضویت" 
-            value={formatPersianDate(profile.createdAt).split(' ').slice(0, 2).join(' ')} 
-            icon={<CalendarIcon />} 
-            color="accent"
-          />
-          <StatCard 
-            label="شناسه" 
-            value={profile.id.slice(-6)} 
-            icon={<IdIcon />} 
-            color="success"
-          />
+          <StatCard label="پیام‌ها" value={profile.messageCount?.toLocaleString('fa-IR') || '۰'} icon={<MessageIcon />} color="primary" />
+          <StatCard label="تاریخ عضویت" value={formatPersianDate(profile.createdAt).split(' ').slice(0, 2).join(' ')} icon={<CalendarIcon />} color="accent" />
+          <StatCard label="شناسه" value={profile.id?.slice(-6)} icon={<IdIcon />} color="success" />
         </div>
 
         {/* Info Section */}
@@ -183,10 +159,7 @@ export default function Profile({ onClose }) {
 
         {/* Actions */}
         <div className="space-y-2 animate-slide-up">
-          <button
-            onClick={() => navigate('/chat')}
-            className="w-full btn-primary py-3 rounded-xl font-medium flex items-center justify-center gap-2"
-          >
+          <button onClick={() => navigate('/chat')} className="w-full btn-primary py-3 rounded-xl font-medium flex items-center justify-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
@@ -197,6 +170,7 @@ export default function Profile({ onClose }) {
     </div>
   );
 }
+
 
 function StatCard({ label, value, icon, color }) {
   const colors = {

@@ -169,18 +169,17 @@ export function useChat() {
     });
   };
 
-  const openDM = (targetUserId, targetUsername) => {
-    return new Promise((resolve) => {
-      socket.emit('open dm', { targetUserId }, (res) => {
-        if (res.error) return resolve(res);
-        setMessages(res.history);
-        setCurrentRoom(res.room);
-        setTypingUsers([]);
-        resolve({ ...res, targetUsername });
-      });
+const openDM = (targetUserId, targetUsername) => {
+  return new Promise((resolve) => {
+    socket.emit('start dm', { targetUserId }, (res) => {
+      if (res.error) return resolve(res);
+      setMessages(res.history);
+      setCurrentRoom(res.roomName);
+      setTypingUsers([]);
+      resolve({ ...res, targetUsername });
     });
-  };
-
+  });
+};
   const deleteRoom = (roomName) => {
     return new Promise((resolve) => {
       socket.emit('delete room', { roomName }, (res) => resolve(res));
