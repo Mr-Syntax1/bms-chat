@@ -1,5 +1,56 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import MessageBubble from './MessageBubble';
+
+// تبدیل تاریخ میلادی به شمسی
+function toPersianDate(date) {
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date);
+}
+
+// تابع برای فرمت‌دهی جداکننده تاریخ (مشابه تلگرام)
+function formatDateSeparator(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const msgDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  if (msgDate.getTime() === today.getTime()) {
+    return 'امروز';
+  } else if (msgDate.getTime() === yesterday.getTime()) {
+    return 'دیروز';
+  } else {
+    return toPersianDate(d);
+  }
+}
+
+// چک کردن اینکه آیا باید جداکننده تاریخ نمایش داده شود
+function shouldShowDateSeparator(currentMsg, prevMsg) {
+  if (!prevMsg) return true;
+  const currDate = currentMsg.createdAt ? new Date(currentMsg.createdAt) : new Date();
+  const prevDate = prevMsg.createdAt ? new Date(prevMsg.createdAt) : new Date();
+  
+  const currDay = new Date(currDate.getFullYear(), currDate.getMonth(), currDate.getDate());
+  const prevDay = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+  
+  return currDay.getTime() !== prevDay.getTime();
+}
+
+// کامپوننت جداکننده تاریخ (مشابه پیام سیستم)
+function DateSeparator({ label }) {
+  return (
+    <div className="flex justify-center my-4 animate-fade-in">
+      <span className="px-4 py-1.5 rounded-full text-xs font-medium bg-surface-800/80 text-surface-400 border border-surface-700/50 shadow-sm backdrop-blur-sm whitespace-nowrap">
+        {label}
+      </span>
+    </div>
+  );
+}
 
 export default function MessageList({ messages, currentUsername }) {
   const messagesEndRef = useRef(null);
@@ -16,31 +67,55 @@ export default function MessageList({ messages, currentUsername }) {
     }
   }, []);
 
-  // تشخیص اینکه کاربر در پایین صفحه است یا نه
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const threshold = 80; // فاصله مجاز از پایین
+    const threshold = 80;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
     setIsAtBottom(atBottom);
     setShowScrollButton(!atBottom);
   }, []);
 
-  // وقتی پیام جدید می‌آید: اگر کاربر پایین بود، اسکرول کن؛ وگرنه دکمه را نشان بده
   useEffect(() => {
     if (isAtBottom) {
       scrollToBottom(false);
     } else {
       setShowScrollButton(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length]);
+  }, [messages.length, isAtBottom, scrollToBottom]);
 
-  // اسکرول اولیه بدون انیمیشن
   useEffect(() => {
     scrollToBottom(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // گروه‌بندی پیام‌ها بر اساس تاریخ و اضافه کردن جداکننده‌ها
+  const messagesWithSeparators = useMemo(() => {
+    if (!messages.length) return [];
+    
+    const result = [];
+    
+    messages.forEach((msg, i) => {
+      const prev = messages[i - 1];
+      const showSeparator = shouldShowDateSeparator(msg, prev);
+      
+      if (showSeparator) {
+        const dateLabel = msg.createdAt ? formatDateSeparator(msg.createdAt) : 'امروز';
+        result.push({ 
+          type: 'date-separator', 
+          id: `separator-${i}`, 
+          label: dateLabel 
+        });
+      }
+      
+      result.push({ 
+        type: 'message', 
+        ...msg, 
+        showHeader: !prev || prev.sender !== msg.sender 
+      });
+    });
+    
+    return result;
+  }, [messages]);
 
   return (
     <div className="relative flex-1 min-h-0">
@@ -49,7 +124,7 @@ export default function MessageList({ messages, currentUsername }) {
         onScroll={handleScroll}
         className="h-full overflow-y-auto p-4 space-y-3 bg-surface-900/30 scrollbar-thin"
       >
-        {messages.length === 0 && (
+        {messagesWithSeparators.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full py-12 text-center animate-fade-in">
             <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center mb-6 animate-pulse-soft">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary-500/30 to-accent-500/30 blur-xl -z-10" />
@@ -65,15 +140,17 @@ export default function MessageList({ messages, currentUsername }) {
           </div>
         )}
 
-        {messages.map((msg, i) => {
-          const prev = messages[i - 1];
-          const showHeader = !prev || prev.sender !== msg.sender;
+        {messagesWithSeparators.map((item, i) => {
+          if (item.type === 'date-separator') {
+            return <DateSeparator key={item.id} label={item.label} />;
+          }
+          
           return (
             <MessageBubble
-              key={msg.id}
-              msg={msg}
-              isMine={msg.sender === currentUsername}
-              showHeader={showHeader}
+              key={item.id}
+              msg={item}
+              isMine={item.sender === currentUsername}
+              showHeader={item.showHeader}
             />
           );
         })}
