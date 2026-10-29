@@ -44,7 +44,8 @@ export function handleJoin(socket, io, users) {
       fileName: m.fileName,
       fileType: m.fileType,
       fileSize: m.fileSize,
-      time: getPersianTime(),
+      createdAt: m.createdAt,
+      time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
     }));
 
     const rooms = await Room.find().sort({ createdAt: 1 }).lean();

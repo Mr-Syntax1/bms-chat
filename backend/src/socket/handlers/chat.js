@@ -14,13 +14,13 @@ export function handleChat(socket, io, users) {
     const { text, type, fileUrl, fileName, fileType, fileSize } = data;
 
     // دیباگ: لاگ داده‌های دریافتی
-    console.log('[Chat] received:', { 
-      text: typeof text, 
-      type, 
-      fileUrl: typeof fileUrl, 
-      fileName, 
-      fileType, 
-      fileSize 
+    console.log('[Chat] received:', {
+      text: typeof text,
+      type,
+      fileUrl: typeof fileUrl,
+      fileName,
+      fileType,
+      fileSize
     });
 
     // ۲. ایمن‌سازی متن
@@ -68,7 +68,8 @@ export function handleChat(socket, io, users) {
       fileType: saved.fileType,
       fileSize: saved.fileSize,
       room,
-      time: getPersianTime(),
+      createdAt: saved.createdAt.toISOString(),
+      time: new Date(saved.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
     };
 
     // ارسال به اعضای اتاق

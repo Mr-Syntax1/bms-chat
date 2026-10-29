@@ -18,6 +18,30 @@ function getFileIcon(fileType, fileName) {
   return 'file';
 }
 
+// تابع جدید برای فرمت‌دهی زمان و تاریخ
+function formatMessageDate(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+
+  const isToday = date.toDateString() === now.toDateString();
+  const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
+
+  const timeOptions = { hour: '2-digit', minute: '2-digit' };
+  const time = date.toLocaleTimeString('fa-IR', timeOptions);
+
+  if (isToday) {
+    return time; // اگر امروز بود، فقط ساعت
+  } else if (isYesterday) {
+    return `دیروز، ${time}`; // اگر دیروز بود
+  } else {
+    // اگر قدیمی‌تر بود، تاریخ و ساعت
+    const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+    const dateStr = date.toLocaleDateString('fa-IR', dateOptions);
+    return `${dateStr}، ${time}`;
+  }
+}
+
 function FilePreview({ msg, isMine }) {
   const isImage = msg.fileType?.startsWith('image/');
   const icon = getFileIcon(msg.fileType, msg.fileName);
@@ -56,11 +80,10 @@ function FilePreview({ msg, isMine }) {
       href={msg.fileUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className={`flex items-center gap-3 p-3 rounded-xl border ${
-        isMine
-          ? 'border-primary-800 bg-primary-900/30 text-white'
-          : 'border-surface-700 bg-surface-800 text-surface-50'
-      } hover:bg-opacity-80 transition-colors min-w-[200px] max-w-xs`}
+      className={`flex items-center gap-3 p-3 rounded-xl border ${isMine
+        ? 'border-primary-800 bg-primary-900/30 text-white'
+        : 'border-surface-700 bg-surface-800 text-surface-50'
+        } hover:bg-opacity-80 transition-colors min-w-[200px] max-w-xs`}
     >
       <div className="flex-shrink-0">{icons[icon]}</div>
       <div className="min-w-0 flex-1">
@@ -86,7 +109,7 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
     );
   }
 
-  const time = msg.time || new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+  const time = msg.createdAt ? formatMessageDate(msg.createdAt) : formatMessageDate(new Date());
 
   return (
     <div className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end' : 'justify-start'}`} dir='ltr'>
@@ -120,13 +143,20 @@ export default function MessageBubble({ msg, isMine, showHeader }) {
           )}
 
           <div className="flex items-center justify-end gap-2 mt-1.5">
-            <time className={isMine ? 'text-primary-100' : 'text-surface-500'}>
+            <time className={`text-[10px] ${isMine ? 'text-primary-100' : 'text-surface-500'}`}>
               {time}
             </time>
             {/* تیک پیام (فقط برای خودت) */}
             {isMine && (
-              <svg className="w-4 h-4 text-primary-100/70" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path d="M18 10c0 2.761-2.239 5-5 5-1.355 0-2.597-.523-3.502-1.354l-1.748 1.748A7.03 7.03 0 0011 18c3.866 0 7-3.134 7-7h2z" />
+              <svg
+                className="w-4 h-4 text-primary-100/70"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             )}
           </div>

@@ -71,7 +71,8 @@ export function handleJoinRoom(socket, io, users) {
       fileName: m.fileName,
       fileType: m.fileType,
       fileSize: m.fileSize,
-      time: getPersianTime(),
+      createdAt: m.createdAt,
+      time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
     }));
 
     // پیام سیستمی به اعضای اتاق
@@ -88,7 +89,7 @@ export function handleJoinRoom(socket, io, users) {
 }
 
 
-export function handleLeaveRoom(socket, io, users) { // 👈 اضافه کردن users
+export function handleLeaveRoom(socket, io, users) { //  اضافه کردن users
   return async function onLeaveRoom({ roomName }, callback) {
     if (!socket.currentRoom) return callback?.({ error: 'در هیچ اتاقی نیستی.' });
     if (socket.currentRoom !== roomName) {

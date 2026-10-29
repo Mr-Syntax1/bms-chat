@@ -5,9 +5,9 @@ import App from './App.jsx'
 import ToastProvider from './providers/ToastProvider'
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <ToastProvider>
-      <App />
-    </ToastProvider>
-  </StrictMode>,
+    <StrictMode>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </StrictMode>
 )
