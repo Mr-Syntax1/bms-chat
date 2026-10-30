@@ -166,7 +166,7 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
             scrollToBottom();
             setShowScrollButton(false);
           }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 btn-primary rounded-full p-3 shadow-xl animate-bounce-soft"
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 btn-primary rounded-full p-3 shadow-xl animate-bounce-soft cursor-pointer"
           aria-label="اسکرول به پایین"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

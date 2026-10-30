@@ -2,7 +2,7 @@ import { Room } from '../../models/Room.js';
 import { Message } from '../../models/Message.js';
 import { User } from '../../models/User.js';
 import { getRoomsForUser } from './users.js';
-import { users } from '../../utils/users.js'; 
+import { users } from '../../utils/users.js';
 import { markAllAsRead } from './notification.js';
 
 function escapeRegex(value) {
@@ -30,16 +30,37 @@ export function handleSearchRooms(socket, io) {
       const user = users.get(socket.id);
       if (!user) return callback({ error: 'ابتدا وارد شوید.' });
 
-      // The client may send either a raw string or { query: '...' }
+      // دریافت متن جستجو
       const raw = typeof payload === 'string' ? payload : payload?.query;
       const trimmed = typeof raw === 'string' ? raw.trim() : '';
       if (!trimmed) return callback({ rooms: [], users: [] });
 
       const regex = new RegExp(escapeRegex(trimmed), 'i');
 
+      //  ساخت کوئری جستجو برای کاربران (هم با نام و هم با آی‌دی)
+      const userQuery = {
+        _id: { $ne: socket.userId }, // کاربر خودم را نشان نده
+        $or: [
+          { username: regex },
+          // اگر عبارت وارد شده یک ObjectId کامل و معتبر بود
+          ...(trimmed.match(/^[0-9a-fA-F]{24}$/) ? [{ _id: trimmed }] : []),
+          // برای جستجوی بخشی از آی‌دی (مثل 018ab0)
+          {
+            $expr: {
+              $regexMatch: {
+                input: { $toString: "$_id" },
+                regex: escapeRegex(trimmed),
+                options: "i"
+              }
+            }
+          }
+        ]
+      };
+
+      // جستجوی همزمان اتاق‌ها و کاربران
       const [rooms, foundUsers] = await Promise.all([
         Room.find({ isPrivate: false, name: regex }).limit(20).lean(),
-        User.find({ _id: { $ne: socket.userId }, username: regex })
+        User.find(userQuery)
           .select('username')
           .limit(20)
           .lean(),
@@ -160,9 +181,8 @@ export function handleLeaveRoom(socket, io, users) {
     const isMember = room.members?.some((m) => m.toString() === socket.userId);
     if (!isMember) return callback?.({ error: 'شما عضو این اتاق نیستید.' });
 
-    if (!room.isPrivate && room.createdBy.toString() === socket.userId) {
-      return callback?.({ error: 'سازنده گروه باید از گزینه «حذف گروه» استفاده کند.' });
-    }
+    // Anyone who is a member (including the creator of a public group) can leave.
+    // Leaving only removes them from the room list; the group itself stays in the database.
 
     const isCurrent = socket.currentRoom === roomName;
     if (isCurrent) {

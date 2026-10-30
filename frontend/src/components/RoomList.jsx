@@ -118,6 +118,7 @@ export default function RoomList({
     if (!room.isPrivate && isCreator) {
       return [
         { label: 'حذف گروه (کامل)', icon: <DeleteIcon />, danger: true, onClick: () => handleDelete(room.name) },
+        { label: 'خروج از گروه', icon: <LeaveIcon />, danger: true, onClick: () => onLeave(room.name) },
       ];
     }
 

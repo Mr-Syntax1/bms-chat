@@ -18,6 +18,7 @@ export default function Chat({ chat, user, onLogout }) {
     notifications, unreadCount, showNotifications,
     fetchNotifications, markNotificationsAsRead,
     setUnreadCount, setShowNotifications,
+    dmPartnerName
   } = chat;
 
   const navigate = useNavigate();
@@ -104,6 +105,7 @@ export default function Chat({ chat, user, onLogout }) {
           onOpenProfile={handleOpenProfile}
           unreadNotifications={unreadCount}
           onOpenNotifications={handleOpenNotifications}
+          dmPartnerName={dmPartnerName}
         />
 
         <div className="flex-1 flex overflow-hidden">

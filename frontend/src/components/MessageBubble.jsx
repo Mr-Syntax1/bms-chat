@@ -46,8 +46,31 @@ function formatMessageDate(dateString) {
 
 function FilePreview({ msg, isMine }) {
   const isImage = msg.fileType?.startsWith('image/');
+  const isAudio = msg.fileType?.startsWith('audio/') || msg.fileName?.endsWith('.webm');
   const icon = getFileIcon(msg.fileType, msg.fileName);
   const size = msg.fileSize ? formatBytes(msg.fileSize) : '';
+
+
+  if (isAudio) {
+    return (
+      <div className={`flex flex-col gap-2 p-3 rounded-xl min-w-[250px] ${isMine ? 'bg-primary-800/50' : 'bg-surface-800'
+        }`}>
+        <audio
+          controls
+          src={msg.fileUrl}
+          className="w-full h-10"
+          style={{ filter: 'invert(1) hue-rotate(180deg)' }} // برای هماهنگی با تم تیره (اختیاری)
+        />
+        <div className="flex items-center gap-2 text-xs opacity-70">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+          </svg>
+          <span>پیام صوتی</span>
+          {size && <span>• {size}</span>}
+        </div>
+      </div>
+    );
+  }
 
   if (isImage) {
     return (
@@ -218,7 +241,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
   const time = msg.createdAt ? formatMessageDate(msg.createdAt) : formatMessageDate(new Date());
 
   return (
-    <div 
+    <div
       onContextMenu={handleContextMenu}
       className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end' : 'justify-start'}`}
       dir='ltr'
@@ -237,7 +260,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
           </span>
         )}
 
-        <div 
+        <div
           ref={bubbleRef}
           className={`
             relative px-4 py-2.5 text-sm rounded-2xl

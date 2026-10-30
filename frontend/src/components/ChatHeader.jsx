@@ -11,11 +11,18 @@ export default function ChatHeader({
   onOpenProfile,
   unreadNotifications,
   onOpenNotifications,
+  dmPartnerName,
 }) {
   // برای پروفایل خود کاربر، username نمی‌فرستیم تا به /profile برود
   const handleProfileClick = () => {
     if (onOpenProfile) onOpenProfile();
   };
+
+  const displayTitle = dmPartnerName 
+    ? `گفتگو با ${dmPartnerName}` 
+    : roomName?.startsWith('dm_') 
+      ? 'چت خصوصی' 
+      : roomName;
 
   return (
     <header className="glass-panel-strong border-b border-white/10 px-4 py-3.5 flex items-center justify-between gap-3 animate-slide-down sticky top-0 z-30">
@@ -39,7 +46,7 @@ export default function ChatHeader({
         </div>
         <div className="min-w-0">
           <h1 className="font-bold text-surface-50 truncate text-base">
-            {roomName}
+            {displayTitle}
           </h1>
           <div className="flex items-center gap-2 mt-0.5">
             <span

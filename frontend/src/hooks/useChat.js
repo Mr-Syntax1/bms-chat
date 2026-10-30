@@ -14,6 +14,7 @@ export function useChat() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const connectListenerRef = useRef(null);
+  const [dmPartnerName, setDmPartnerName] = useState(null);
 
   useEffect(() => {
     const onConnect = () => setConnected(true);
@@ -203,6 +204,7 @@ export function useChat() {
     setRooms([]);
     setCurrentRoom('general');
     setOnlineUsers([]);
+    setDmPartnerName(null);
     setConnected(false);
   }, []);
 
@@ -235,6 +237,10 @@ export function useChat() {
         setMessages(res.history);
         setCurrentRoom(res.room);
         setTypingUsers([]);
+        //  این خط اضافه شود: اگر اتاق جدید پیام خصوصی نبود، نام قبلی را پاک کن
+        if (!roomName.startsWith('dm_')) {
+          setDmPartnerName(null);
+        }
         refreshRooms();
         socket.emit('mark notifications as read', { roomName: res.room }, (markRes) => {
           if (markRes?.success) {
@@ -261,30 +267,31 @@ export function useChat() {
     });
   };
 
-const openDM = (targetUserId) => {
-  return new Promise((resolve) => {
-    // 👈 Event name 'open dm' matches backend
-    socket.emit('open dm', { targetUserId }, (res) => {
-      if (res.error) {
-        console.error("DM Error:", res.error);
-        return resolve({ success: false, error: res.error });
-      }
-      setMessages(res.history);
-      setCurrentRoom(res.room); // 👈 matches backend 'room'
-      setTypingUsers([]);
-      refreshRooms();
-      socket.emit('mark notifications as read', { roomName: res.room }, (markRes) => {
-        if (markRes?.success) {
-          setUnreadCount(markRes.count);
-          setNotifications((prev) =>
-            prev.map((n) => (n.roomName === res.room ? { ...n, isRead: true } : n))
-          );
+  const openDM = (targetUserId) => {
+    return new Promise((resolve) => {
+      // 👈 Event name 'open dm' matches backend
+      socket.emit('open dm', { targetUserId }, (res) => {
+        if (res.error) {
+          console.error("DM Error:", res.error);
+          return resolve({ success: false, error: res.error });
         }
+        setDmPartnerName(res.targetUser.username);
+        setMessages(res.history);
+        setCurrentRoom(res.room); // 👈 matches backend 'room'
+        setTypingUsers([]);
+        refreshRooms();
+        socket.emit('mark notifications as read', { roomName: res.room }, (markRes) => {
+          if (markRes?.success) {
+            setUnreadCount(markRes.count);
+            setNotifications((prev) =>
+              prev.map((n) => (n.roomName === res.room ? { ...n, isRead: true } : n))
+            );
+          }
+        });
+        resolve({ success: true, targetUsername: res.targetUser?.username });
       });
-      resolve({ success: true, targetUsername: res.targetUser?.username });
     });
-  });
-};
+  };
   const deleteRoom = (roomName) => {
     return new Promise((resolve) => {
       socket.emit('delete room', { roomName }, (res) => {
@@ -350,5 +357,6 @@ const openDM = (targetUserId) => {
     showNotifications,
     fetchNotifications,
     markNotificationsAsRead,
+    dmPartnerName
   };
 }
