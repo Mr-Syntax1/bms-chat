@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 
 const EmojiPickerPanel = lazy(() => import('./EmojiPickerPanel'));
 
-// Fallback ساده در حین لود پنل ایموجی
 function EmojiPickerFallback() {
   return (
     <div className="w-[340px] h-[380px] flex items-center justify-center bg-surface-900">
@@ -17,13 +16,15 @@ export default function ChatInput({ onSend, onTyping }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
-  // استیت‌های مربوط به فایل و آپلود
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   // استیت‌های ضبط صدا
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  
+  const cancelRecordingRef = useRef(false);
+  
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
@@ -36,7 +37,6 @@ export default function ChatInput({ onSend, onTyping }) {
     inputRef.current?.focus();
   }, []);
 
-  // بستن پنل ایموجی با کلیک بیرون
   useEffect(() => {
     function handleClickOutside(event) {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
@@ -51,18 +51,17 @@ export default function ChatInput({ onSend, onTyping }) {
     };
   }, [showEmojiPicker]);
 
-  // پاکسازی تایمرها و استریم ضبط صدا هنگام unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (typingTimer.current) clearTimeout(typingTimer.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        cancelRecordingRef.current = true;
         mediaRecorderRef.current.stop();
       }
     };
   }, []);
 
-  // اضافه کردن ایموجی به متن
   const handleEmojiSelect = (emoji) => {
     setValue((prev) => prev + emoji);
     inputRef.current?.focus();
@@ -105,27 +104,17 @@ export default function ChatInput({ onSend, onTyping }) {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsUploading(true);
-
     try {
       const presignRes = await fetch('/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, fileType: file.type }),
       });
-
       const { uploadUrl, headers, publicUrl } = await presignRes.json();
       if (!uploadUrl) throw new Error('خطا در دریافت لینک آپلود');
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: headers,
-      });
-
+      const uploadRes = await fetch(uploadUrl, { method: 'PUT', body: file, headers: headers });
       if (!uploadRes.ok) throw new Error('آپلود به Upstash ناموفق بود');
-
       onSend({
         type: 'file',
         fileUrl: publicUrl,
@@ -145,6 +134,7 @@ export default function ChatInput({ onSend, onTyping }) {
   // ==================== ضبط صدا ====================
   const startRecording = async () => {
     try {
+      cancelRecordingRef.current = false;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
@@ -156,9 +146,11 @@ export default function ChatInput({ onSend, onTyping }) {
       };
 
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (!cancelRecordingRef.current) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          await uploadAudio(audioBlob);
+        }
         stream.getTracks().forEach((track) => track.stop());
-        await uploadAudio(audioBlob);
       };
 
       mediaRecorderRef.current.start();
@@ -173,12 +165,23 @@ export default function ChatInput({ onSend, onTyping }) {
     }
   };
 
-  const stopRecording = () => {
+  const stopAndSendRecording = () => {
+    cancelRecordingRef.current = false;
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
     setIsRecording(false);
     clearInterval(timerRef.current);
+  };
+
+  const cancelAndStopRecording = () => {
+    cancelRecordingRef.current = true;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    clearInterval(timerRef.current);
+    setRecordingTime(0);
   };
 
   const uploadAudio = async (blob) => {
@@ -192,7 +195,6 @@ export default function ChatInput({ onSend, onTyping }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName, fileType }),
       });
-
       const { uploadUrl, headers, publicUrl } = await presignRes.json();
       if (!uploadUrl) throw new Error('خطا در دریافت لینک آپلود');
 
@@ -201,7 +203,6 @@ export default function ChatInput({ onSend, onTyping }) {
         body: blob,
         headers: headers,
       });
-
       if (!uploadRes.ok) throw new Error('آپلود به Upstash ناموفق بود');
 
       onSend({
@@ -219,7 +220,6 @@ export default function ChatInput({ onSend, onTyping }) {
     }
   };
 
-  // فرمت زمان (مثلا 1:05)
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -231,7 +231,6 @@ export default function ChatInput({ onSend, onTyping }) {
       onSubmit={handleSubmit}
       className="relative p-4 bg-gradient-to-t from-surface-950/80 to-surface-950/40 backdrop-blur-xl border-t border-white/10"
     >
-      {/* پنل ایموجی (Lazy Load شده + Suspense) */}
       {showEmojiPicker && (
         <div
           ref={emojiPickerRef}
@@ -248,7 +247,6 @@ export default function ChatInput({ onSend, onTyping }) {
           isFocused ? 'scale-[1.01]' : ''
         }`}
       >
-        {/* دکمه انتخاب فایل */}
         <button
           type="button"
           disabled={isUploading || isRecording}
@@ -283,7 +281,6 @@ export default function ChatInput({ onSend, onTyping }) {
           accept="image/*,application/pdf,.doc,.docx,.txt"
         />
 
-        {/* دکمه ایموجی (فقط اگر در حال ضبط نباشیم) */}
         {!isRecording && (
           <button
             type="button"
@@ -312,7 +309,6 @@ export default function ChatInput({ onSend, onTyping }) {
           </button>
         )}
 
-        {/* ناحیه ورودی متن */}
         <div
           className={`flex-1 relative transition-all duration-300 ${
             isRecording ? 'opacity-50 pointer-events-none' : ''
@@ -373,18 +369,35 @@ export default function ChatInput({ onSend, onTyping }) {
           )}
         </div>
 
-        {/* دکمه میکروفون / تایمر ضبط */}
+        {/* 👈 دکمه میکروفون / تایمر ضبط */}
         {isRecording ? (
-          <div className="flex items-center gap-2 bg-red-500/10 px-3 py-2 rounded-2xl border border-red-500/30 animate-pulse-soft shrink-0">
-            <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+          <div className="flex items-center gap-2 bg-red-500/10 px-3 py-2 rounded-2xl border border-red-500/30 shrink-0">
+            {/* دکمه لغو (ضربدر) در سمت چپ */}
+            <button
+              type="button"
+              onClick={cancelAndStopRecording}
+              className="text-surface-400 hover:text-red-400 p-1 transition-colors"
+              title="لغو ضبط"
+              aria-label="لغو ضبط"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* تایمر */}
             <span className="text-red-400 text-sm font-mono min-w-[40px] text-center">
               {formatTime(recordingTime)}
             </span>
+            <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+
+            {/* دکمه تایید و ارسال (مربع توپر) در سمت راست */}
             <button
               type="button"
-              onClick={stopRecording}
-              className="text-red-400 hover:text-red-300 p-1"
-              aria-label="توقف ضبط"
+              onClick={stopAndSendRecording}
+              className="text-gray-500 hover:text-gray-400 p-1 transition-colors cursor-pointer"
+              title="پایان ضبط و ارسال"
+              aria-label="پایان ضبط و ارسال"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -415,7 +428,6 @@ export default function ChatInput({ onSend, onTyping }) {
           </button>
         )}
 
-        {/* دکمه ارسال */}
         {!isRecording && (
           <button
             type="submit"

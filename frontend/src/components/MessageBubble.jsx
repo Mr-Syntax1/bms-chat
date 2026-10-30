@@ -1,6 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Avatar from './Avatar';
 import ContextMenu from './ContextMenu';
+import { useNavigate } from 'react-router-dom';
 
 function formatBytes(bytes) {
   if (bytes === 0) return '0 Bytes';
@@ -20,7 +21,6 @@ function getFileIcon(fileType, fileName) {
   return 'file';
 }
 
-// تابع جدید برای فرمت‌دهی زمان و تاریخ
 function formatMessageDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -33,33 +33,31 @@ function formatMessageDate(dateString) {
   const time = date.toLocaleTimeString('fa-IR', timeOptions);
 
   if (isToday) {
-    return time; // اگر امروز بود، فقط ساعت
+    return time;
   } else if (isYesterday) {
-    return `دیروز، ${time}`; // اگر دیروز بود
+    return `دیروز، ${time}`;
   } else {
-    // اگر قدیمی‌تر بود، تاریخ و ساعت
     const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
     const dateStr = date.toLocaleDateString('fa-IR', dateOptions);
     return `${dateStr}، ${time}`;
   }
 }
 
-function FilePreview({ msg, isMine }) {
+// 👈 اضافه کردن پراپ onImageClick به FilePreview
+function FilePreview({ msg, isMine, onImageClick }) {
   const isImage = msg.fileType?.startsWith('image/');
   const isAudio = msg.fileType?.startsWith('audio/') || msg.fileName?.endsWith('.webm');
   const icon = getFileIcon(msg.fileType, msg.fileName);
   const size = msg.fileSize ? formatBytes(msg.fileSize) : '';
 
-
   if (isAudio) {
     return (
-      <div className={`flex flex-col gap-2 p-3 rounded-xl min-w-[250px] ${isMine ? 'bg-primary-800/50' : 'bg-surface-800'
-        }`}>
+      <div className={`flex flex-col gap-2 p-3 rounded-xl min-w-[250px] ${isMine ? 'bg-primary-800/50' : 'bg-surface-800'}`}>
         <audio
           controls
           src={msg.fileUrl}
           className="w-full h-10"
-          style={{ filter: 'invert(1) hue-rotate(180deg)' }} // برای هماهنگی با تم تیره (اختیاری)
+          style={{ filter: 'invert(1) hue-rotate(180deg)' }}
         />
         <div className="flex items-center gap-2 text-xs opacity-70">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,20 +72,31 @@ function FilePreview({ msg, isMine }) {
 
   if (isImage) {
     return (
-      <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
-        <img
-          src={msg.fileUrl}
-          alt={msg.fileName || 'Image'}
-          className="max-w-xs max-h-64 rounded-xl object-cover cursor-zoom-in shadow-md"
-          loading="lazy"
-        />
+      <div className="block">
+        {/* 👈 تغییر: کلیک روی عکس، تابع onImageClick را صدا می‌زند */}
+        <button
+          type="button"
+          onClick={() => onImageClick?.({ src: msg.fileUrl, alt: msg.fileName || 'Image' })}
+          className="block cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-xl"
+          aria-label="مشاهده تصویر"
+        >
+          <img
+            src={msg.fileUrl}
+            alt={msg.fileName || 'Image'}
+            className="max-w-xs max-h-64 rounded-xl object-cover shadow-md transition-transform hover:scale-[1.02]"
+            loading="lazy"
+          />
+        </button>
         <div className="flex items-center gap-2 mt-2 px-1 text-xs opacity-70">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
           <p className="font-medium truncate max-w-[200px]">{msg.fileName}</p>
           {size && <span>•</span>}
           {size && <span>{size}</span>}
         </div>
-      </a>
+      </div>
     );
   }
 
@@ -145,16 +154,39 @@ function EditIcon() {
 }
 
 export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage, onEditMessage }) {
+  const navigate = useNavigate();
+
   const isSystem = msg.type === 'system';
   const isFile = msg.type === 'file';
 
-  // Context menu state
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
   const [menuItems, setMenuItems] = useState([]);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.text || '');
   const bubbleRef = useRef(null);
   const editInputRef = useRef(null);
+
+  // 👈 استیت‌های Lightbox
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [lightboxAlt, setLightboxAlt] = useState('');
+
+  // 👈 بستن Lightbox با کلید Escape و قفل کردن اسکرول
+  useEffect(() => {
+    if (!lightboxSrc) return;
+
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setLightboxSrc(null);
+    };
+
+    document.addEventListener('keydown', handleKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [lightboxSrc]);
 
   const closeContextMenu = useCallback(() => {
     setContextMenu({ x: null, y: null });
@@ -188,7 +220,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
       },
     ];
 
-    // Only the sender can edit or delete for everyone.
     if (isMine) {
       if (!isFile) {
         items.unshift({
@@ -219,7 +250,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     let y = e.clientY;
 
     if (rect) {
-      // Anchor the menu right next to the bubble instead of the cursor.
       x = isMine ? rect.right - menuWidth : rect.left;
       y = rect.bottom + 2;
     }
@@ -227,6 +257,12 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     setContextMenu({ x, y });
     setMenuItems(buildMenuItems());
   }, [isSystem, isMine, buildMenuItems]);
+
+  // 👈 تابع باز کردن Lightbox
+  const handleImageClick = ({ src, alt }) => {
+    setLightboxSrc(src);
+    setLightboxAlt(alt);
+  };
 
   if (isSystem) {
     return (
@@ -246,14 +282,20 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
       className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end' : 'justify-start'}`}
       dir='ltr'
     >
-      {!isMine && (
-        <div className="w-10 flex-shrink-0 flex justify-start items-end pb-1">
-          {showHeader && <Avatar username={msg.sender} color={msg.avatarColor} size="sm" />}
-        </div>
-      )}
-
+{!isMine && (
+  <div className="w-10 flex-shrink-0 flex justify-start items-end pb-1">
+    {showHeader && (
+      <button 
+        onClick={() => navigate(`/profile/${msg.sender}`)} //  این خط
+        className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-full"
+        title={`مشاهده پروفایل ${msg.sender}`}
+      >
+        <Avatar username={msg.sender} color={msg.avatarColor} size="sm" />
+      </button>
+    )}
+  </div>
+)}
       <div className={`max-w-[75%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-        {/* نام فرستنده بالای پیام (فقط برای بقیه) */}
         {showHeader && !isMine && (
           <span className="text-xs font-semibold text-surface-400 mb-1 px-1">
             {msg.sender}
@@ -288,7 +330,8 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
               <button onClick={handleCancelEdit} className="px-3 py-2 text-sm text-surface-400 hover:text-surface-300">انصراف</button>
             </div>
           ) : isFile ? (
-            <FilePreview msg={msg} isMine={isMine} />
+            // 👈 پاس دادن handleImageClick به FilePreview
+            <FilePreview msg={msg} isMine={isMine} onImageClick={handleImageClick} />
           ) : (
             <p className="whitespace-pre-wrap break-words">{msg.text}</p>
           )}
@@ -297,7 +340,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
             <time className={`text-[10px] ${isMine ? 'text-primary-100' : 'text-surface-500'}`}>
               {time}
             </time>
-            {/* تیک پیام (فقط برای خودت) */}
             {isMine && (
               <svg
                 className="w-4 h-4 text-primary-100/70"
@@ -314,13 +356,38 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
         </div>
       </div>
 
-      {/* Context Menu */}
       <ContextMenu
         x={contextMenu.x}
         y={contextMenu.y}
         items={menuItems}
         onClose={closeContextMenu}
       />
+
+      {/* 👈 Lightbox Overlay */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <div className="relative max-w-full max-h-full">
+            <img
+              src={lightboxSrc}
+              alt={lightboxAlt}
+              className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl animate-scale-in"
+              onClick={(e) => e.stopPropagation()} // جلوگیری از بسته شدن با کلیک روی خود عکس
+            />
+            <button
+              onClick={() => setLightboxSrc(null)}
+              className="absolute top-4 right-4 p-2 bg-gray-600/40 hover:bg-gray-600/60 rounded-full text-white transition-colors cursor-pointer"
+              aria-label="بستن تصویر"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

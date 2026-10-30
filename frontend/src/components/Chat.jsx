@@ -113,6 +113,7 @@ export default function Chat({ chat, user, onLogout }) {
           <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong slide-in-left">
             <RoomList
               rooms={rooms}
+              onlineUsers={onlineUsers}
               currentRoom={currentRoom}
               onSwitch={switchRoom}
               onCreate={createRoom}

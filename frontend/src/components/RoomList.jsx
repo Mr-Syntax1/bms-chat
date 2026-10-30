@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ContextMenu from './ContextMenu';
 
-export default function RoomList({ 
-  rooms, 
-  currentRoom, 
-  onSwitch, 
-  onCreate, 
+export default function RoomList({
+  rooms,
+  currentRoom,
+  onlineUsers = [],
+  onSwitch,
+  onCreate,
   onDelete,
   onLeave,
   onOpenDM,
@@ -241,8 +242,11 @@ export default function RoomList({
                 currentRoom={currentRoom}
                 currentUser={currentUser}
                 onSwitch={handleRoomClick}
+                onlineUsers={onlineUsers}
                 onOpenDM={onOpenDM}
+                onOpenProfile={onOpenProfile}
                 onContextMenu={handleContextMenu}
+                showPartnerStatus={!showSearch}
               />
             ))}
           </>
@@ -324,33 +328,52 @@ export default function RoomList({
   );
 }
 
-function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
+function RoomItem({
+  room,
+  currentRoom,
+  onSwitch,
+  onOpenDM,
+  onOpenProfile,
+  onContextMenu,
+  showPartnerStatus = false,
+  onlineUsers = [],
+}) {
   const isCurrentRoom = room.name === currentRoom;
   const isPrivate = room.isPrivate;
 
+  // وضعیت آنلاین بودن شریک چت خصوصی
+  // اگر نام فیلد در پروژه‌ی شما متفاوت است، اینجا را تغییر دهید (مثلاً room.isOnline)
+    const partnerOnline = onlineUsers.some(u => u.username === room.dmPartnerUsername);
+
+  const handleItemClick = () => {
+    if (isPrivate && room.dmPartnerId && onOpenDM) {
+      onOpenDM(room.dmPartnerId, room.dmPartnerUsername);
+    } else {
+      onSwitch(room.name);
+    }
+  };
+
   return (
     <li className="relative group" onContextMenu={(e) => onContextMenu(e, room)}>
-      <button
-        onClick={() => {
-          if (isPrivate && room.dmPartnerId && onOpenDM) {
-            onOpenDM(room.dmPartnerId, room.dmPartnerUsername);
-          } else {
-            onSwitch(room.name);
-          }
-        }}
+      <div
         className={`
-          w-full text-right px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between card-hover
+          w-full rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between card-hover
           ${isCurrentRoom
             ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-glow-primary relative'
             : 'text-surface-300 hover:bg-white/5 hover:text-white'
           }
         `}
-        aria-current={isCurrentRoom ? 'true' : 'false'}
       >
-        <span className="flex items-center gap-2">
-          <div className="relative">
+        <button
+          type="button"
+          onClick={handleItemClick}
+          className="flex-1 min-w-0 text-right px-3 py-2.5 flex items-center gap-2"
+          aria-current={isCurrentRoom ? 'true' : 'false'}
+        >
+          <div className="relative shrink-0">
             {isPrivate ? (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm shrink-0"
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
                 style={{
                   backgroundImage: `linear-gradient(to bottom right, ${room.dmPartnerAvatar || '#6366f1'}, ${room.dmPartnerAvatar || '#6366f1'})`,
                 }}
@@ -358,21 +381,70 @@ function RoomItem({ room, currentRoom, onSwitch, onOpenDM, onContextMenu }) {
                 {room.dmPartnerUsername?.charAt(0).toUpperCase()}
               </div>
             ) : (
-              <svg className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             )}
-            {isCurrentRoom && (
+
+            {/* نقطه‌ی سبز روی آواتار در چت خصوصی، اگر آنلاین بود */}
+            {isPrivate && partnerOnline && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-surface-950" />
+            )}
+
+            {isCurrentRoom && !isPrivate && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-primary-600 animate-pulse-soft" />
             )}
           </div>
-          <span className="truncate">{isPrivate ? room.dmPartnerUsername || '@' : '#'} {isPrivate ? '' : room.name}</span>
-        </span>
-        
-        {isCurrentRoom && (
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse-soft" />
+
+          <span className="min-w-0 flex-1">
+            <span className="block truncate">
+              {isPrivate ? room.dmPartnerUsername || '@' : `#${room.name}`}
+            </span>
+
+            {/* نمایش وضعیت آنلاین/آفلاین فقط برای چت‌های خصوصی در حالت عادی */}
+            {isPrivate && showPartnerStatus && (
+              <span
+                className={`inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium w-fit ${partnerOnline
+                    ? 'bg-green-500/15 text-green-300 ring-1 ring-inset ring-green-500/30'
+                    : 'bg-surface-700/60 text-surface-300 ring-1 ring-inset ring-white/5'
+                  }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${partnerOnline ? 'bg-green-400' : 'bg-surface-400'
+                    }`}
+                />
+                {partnerOnline ? 'آنلاین' : 'آفلاین'}
+              </span>
+            )}
+          </span>
+        </button>
+
+        {/* دکمه مشاهده پروفایل فقط برای چت‌های خصوصی */}
+        {isPrivate && onOpenProfile && room.dmPartnerUsername && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenProfile(room.dmPartnerUsername);
+            }}
+            className={`p-2 ml-1 mr-1 rounded-lg transition-colors shrink-0 ${isCurrentRoom
+                ? 'text-white/70 hover:text-white hover:bg-white/10'
+                : 'text-surface-500 hover:text-white hover:bg-white/10'
+              }`}
+            title="مشاهده پروفایل"
+            aria-label="مشاهده پروفایل"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </button>
         )}
-      </button>
+      </div>
     </li>
   );
 }
