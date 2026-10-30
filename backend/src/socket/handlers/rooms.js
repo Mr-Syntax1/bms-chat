@@ -135,6 +135,11 @@ export function handleJoinRoom(socket, io, users) {
     socket.join(roomName);
     socket.currentRoom = roomName;
 
+    const currentUser = users.get(socket.id);
+    if (currentUser) {
+      currentUser.currentRoom = roomName;
+    }
+
     // Mark notifications for this room as read
     await markAllAsRead(socket.userId, roomName);
 
@@ -188,6 +193,11 @@ export function handleLeaveRoom(socket, io, users) {
     if (isCurrent) {
       socket.leave(roomName);
       socket.currentRoom = null;
+
+      const currentUser = users.get(socket.id);
+      if (currentUser) {
+        currentUser.currentRoom = null;
+      }
     }
 
     // Removing the user from members takes the room out of their room list

@@ -7,6 +7,7 @@ import OnlineUsersList from './OnlineUsersList';
 import TypingIndicator from './TypingIndicator';
 import RoomList from './RoomList';
 import NotificationDropdown from './NotificationDropdown';
+import WelcomeScreen from './WelcomeScreen'; // 👈 اضافه شد
 
 export default function Chat({ chat, user, onLogout }) {
   const {
@@ -128,17 +129,31 @@ export default function Chat({ chat, user, onLogout }) {
 
           <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 backdrop-blur-sm">
             <div className="flex-1 overflow-hidden flex flex-col">
-              <MessageList
-                messages={messages}
-                currentUsername={user?.username}
-                onDeleteMessage={deleteMessage}
-                onEditMessage={editMessage}
-                currentUserId={user?.id}
-              />
-              <TypingIndicator
-                users={typingUsers.filter((u) => u !== user?.username)}
-              />
-              <ChatInput onSend={sendMessage} onTyping={setTyping} />
+              
+              {/* 👈 اینجا شرط را اضافه کردیم */}
+              {currentRoom ? (
+                <>
+                  <MessageList
+                    messages={messages}
+                    currentUsername={user?.username}
+                    onDeleteMessage={deleteMessage}
+                    onEditMessage={editMessage}
+                    currentUserId={user?.id}
+                  />
+                  <TypingIndicator
+                    users={typingUsers.filter((u) => u !== user?.username)}
+                  />
+                  <ChatInput onSend={sendMessage} onTyping={setTyping} />
+                </>
+              ) : (
+                <WelcomeScreen 
+                  user={user} 
+                  rooms={rooms} 
+                  onSelectRoom={switchRoom} 
+                />
+              )}
+              {/* 👈 پایان شرط */}
+
             </div>
           </main>
 

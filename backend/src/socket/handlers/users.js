@@ -13,38 +13,28 @@ export function handleJoin(socket, io, users) {
     }
 
     const user = users.add(socket.id, username, socket.userId);
-    socket.currentRoom = 'general';
+    
+    // 👈 هیچ اتاقی به صورت خودکار باز نمی‌شود
+    socket.currentRoom = null; 
 
-    let general = await Room.findOne({ name: 'general' });
-    if (!general) {
-      general = await Room.create({ name: 'general', createdBy: socket.userId, members: [socket.userId] });
-    } else if (!general.members.includes(socket.userId)) {
-      general.members.push(socket.userId);
-      await general.save();
-    }
-    socket.join('general');
-
-    const history = await Message.find({
-      room: 'general',
-      isDeletedForEveryone: { $ne: true },
-      deletedFor: { $ne: socket.userId },
-    }).sort({ createdAt: -1 }).limit(100).lean();
-    history.reverse();
-
+    // دریافت لیست اتاق‌هایی که کاربر در آن‌ها عضو است
     const rooms = await getRoomsForUser(socket, io, users);
 
+    // ارسال پاسخ به فرانت‌اند با تاریخچه خالی و اتاق فعلی null
     callback({
       success: true,
       user,
-      history: history.map(formatMsg),
+      history: [], 
       rooms,
-      currentRoom: 'general',
+      currentRoom: null, 
     });
 
+    // اطلاع‌رسانی به همه که لیست آنلاین‌ها تغییر کرد
     io.emit('online users', users.getAll());
   };
 }
 
+// این تابع برای فرمت‌دهی پیام‌هاست (اگر جایی استفاده می‌شود)
 function formatMsg(m) {
   return {
     id: m._id.toString(), text: m.text, sender: m.sender, senderId: m.senderId?.toString(),
@@ -54,6 +44,7 @@ function formatMsg(m) {
   };
 }
 
+// این تابع لیست اتاق‌های یک کاربر خاص را برمی‌گرداند
 export async function getRoomsForUser(socket, io, users) {
   const rooms = await Room.find({
     $or: [{ members: socket.userId }, { isPrivate: true, members: socket.userId }]
@@ -64,7 +55,7 @@ export async function getRoomsForUser(socket, io, users) {
     const result = {
       id: r._id.toString(),
       name: r.name,
-      createdBy: r.createdBy.toString(),
+      createdBy: r.createdBy?.toString(), // برای اطمینان از وجود مقدار
       isMember: isMember,
       isPrivate: r.isPrivate,
     };

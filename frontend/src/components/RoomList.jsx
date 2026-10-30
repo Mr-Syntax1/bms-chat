@@ -114,8 +114,6 @@ export default function RoomList({
       ];
     }
 
-    if (room.name === 'general') return [];
-
     if (!room.isPrivate && isCreator) {
       return [
         { label: 'حذف گروه (کامل)', icon: <DeleteIcon />, danger: true, onClick: () => handleDelete(room.name) },
@@ -204,7 +202,7 @@ export default function RoomList({
                   </button>
                   <button
                     onClick={() => onOpenProfile?.(u.username)}
-                    className="p-2 rounded-lg text-surface-500 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                    className="p-2 rounded-lg text-surface-500 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
                     title="مشاهده پروفایل"
                     aria-label="مشاهده پروفایل"
                   >
@@ -271,7 +269,7 @@ export default function RoomList({
         )}
       </ul>
 
-      {currentRoom && currentRoom !== 'general' && !rooms.find(r => r.name === currentRoom && r.isPrivate) && (
+      {currentRoom && !rooms.find(r => r.name === currentRoom && r.isPrivate) && (
         <div className="p-3 border-t border-white/10">
           <button
             onClick={() => (isCurrentRoomCreator ? handleDelete(currentRoom) : onLeave(currentRoom))}
@@ -432,7 +430,7 @@ function RoomItem({
               e.stopPropagation();
               onOpenProfile(room.dmPartnerUsername);
             }}
-            className={`p-2 ml-1 mr-1 rounded-lg transition-colors shrink-0 ${isCurrentRoom
+            className={`p-2 ml-1 cursor-pointer mr-1 rounded-lg transition-colors shrink-0 ${isCurrentRoom
                 ? 'text-white/70 hover:text-white hover:bg-white/10'
                 : 'text-surface-500 hover:text-white hover:bg-white/10'
               }`}

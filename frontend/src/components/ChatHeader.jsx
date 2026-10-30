@@ -1,4 +1,5 @@
 import Avatar from './Avatar';
+import InstallButton from './InstallButton';
 
 export default function ChatHeader({
   isConnected,
@@ -70,7 +71,7 @@ export default function ChatHeader({
         {/* HAMBURGER -> opens ROOMS (only on mobile/tablet) */}
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden btn-ghost p-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="lg:hidden btn-ghost p-2.5 rounded-xl text-surface-400 cursor-pointer hover:text-white hover:bg-white/10 transition-colors"
           title="اتاق‌ها"
           aria-label="منوی اتاق‌ها"
         >
@@ -93,7 +94,7 @@ export default function ChatHeader({
         {/* Online users button (distinct icon) */}
         <button
           onClick={onOpenUsers}
-          className="xl:hidden btn-ghost p-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors relative"
+          className="xl:hidden btn-ghost p-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer relative"
           title="کاربران آنلاین"
           aria-label="کاربران آنلاین"
         >
@@ -123,7 +124,7 @@ export default function ChatHeader({
           type="button"
           data-notification-toggle
           onClick={onOpenNotifications}
-          className="relative btn-ghost p-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="relative btn-ghost p-2.5 rounded-xl text-surface-400 cursor-pointer hover:text-white hover:bg-white/10 transition-colors"
           title="اعلان‌ها"
           aria-label="اعلان‌ها"
         >
@@ -148,10 +149,12 @@ export default function ChatHeader({
           )}
         </button>
 
+        <InstallButton />
+
         {/* Profile button (single, desktop) */}
         <button
           onClick={handleProfileClick}
-          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-800/50 hover:bg-surface-800 transition-colors"
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-800/50 hover:bg-surface-800 transition-colors cursor-pointer"
           title="پروفایل"
           aria-label="پروفایل"
         >
@@ -178,7 +181,7 @@ export default function ChatHeader({
         {/* Logout */}
         <button
           onClick={onLogout}
-          className="btn-ghost p-2.5 rounded-xl text-surface-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          className="btn-ghost p-2.5 rounded-xl cursor-pointer text-surface-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
           title="خروج"
           aria-label="خروج"
         >

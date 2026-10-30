@@ -90,7 +90,7 @@ export default function OnlineUsersList({
                 {u.username !== currentUser && onOpenDM && (
                   <button
                     onClick={() => onOpenDM(u.id, u.username)}
-                    className="p-2 rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors"
+                    className="p-2 rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors cursor-pointer"
                     title="پیام خصوصی"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +102,7 @@ export default function OnlineUsersList({
                 {/* 👈 دکمه پروفایل (جدید) */}
                 <button
                   onClick={() => onOpenProfile && onOpenProfile(u.username)}
-                  className="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-2 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   title="مشاهده پروفایل"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

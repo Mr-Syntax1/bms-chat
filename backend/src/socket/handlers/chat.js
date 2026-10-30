@@ -68,29 +68,39 @@ export function handleChat(socket, io, users) {
 
     io.to(room).emit('chat message', message);
 
-    if (room !== 'general') {
-      const roomDoc = await Room.findOne({ name: room });
-      const roomSockets = io.sockets.adapter.rooms.get(room);
-      if (roomDoc) {
-        for (const memberId of roomDoc.members) {
-          if (memberId.toString() === socket.userId) continue;
+    // 👈 این بخش را جایگزین if (room !== 'general') کنید
 
-          // Online members currently inside the room already see the message.
-          const memberUser = users.findByUserId(memberId.toString());
-          const isInsideRoom = memberUser && roomSockets?.has(memberUser.id);
-          if (isInsideRoom) continue;
+const roomDoc = await Room.findOne({ name: room });
+const roomSockets = io.sockets.adapter.rooms.get(room);
 
-          // Offline members still get a stored notification for their next login.
-          await notifyUser(socket, io, users, {
-            userId: memberId,
-            senderId: socket.userId,
-            senderName: user.username,
-            roomName: room,
-            messagePreview: safeText.slice(0, 120) || safeFileName || 'فایل',
-          });
-        }
-      }
-    }
+if (roomDoc) {
+  for (const memberId of roomDoc.members) {
+    // به خود فرستنده نوتیفیکیشن نفرست
+    if (memberId.toString() === socket.userId) continue;
+
+    const memberUser = users.findByUserId(memberId.toString());
+
+    // بررسی وضعیت کاربر:
+    // 1. آیا کاربر آنلاین است؟
+    // 2. آیا کاربر در حال حاضر داخل همین اتاق است؟
+    
+    const isOnline = !!memberUser;
+    const isInsideCurrentRoom = isOnline && memberUser.currentRoom === room;
+    
+    // اگر کاربر آنلاین است و داخل همین اتاق است، یعنی پیام را دارد می‌بیند (نوتیفیکیشن نده)
+    if (isInsideCurrentRoom) continue;
+
+    // در غیر این صورت (چه آفلاین باشد، چه آنلاین ولی در اتاق دیگر)، نوتیفیکیشن بفرست
+    await notifyUser(socket, io, users, {
+      userId: memberId,
+      senderId: socket.userId,
+      senderName: user.username,
+      roomName: room,
+      messagePreview: safeText.slice(0, 120) || safeFileName || 'فایل',
+    });
+  }
+}
+
     callback?.({ success: true, message });
   };
 }

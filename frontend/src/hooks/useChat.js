@@ -7,7 +7,7 @@ export function useChat() {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [rooms, setRooms] = useState([]);
-  const [currentRoom, setCurrentRoom] = useState('general');
+  const [currentRoom, setCurrentRoom] = useState(null); //  تغییر به null
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -58,24 +58,21 @@ export function useChat() {
       return [...prev, room];
     });
     const onRoomRemoved = ({ roomName }) => setRooms((prev) => prev.filter((r) => r.name !== roomName));
+    
     const onRoomDeleted = ({ roomName }) => {
       setRooms((prev) => prev.filter((r) => r.name !== roomName));
       if (currentRoom === roomName) {
-        socket.emit('join room', { roomName: 'general' }, (res) => {
-          if (!res?.error) {
-            setMessages(res.history);
-            setCurrentRoom('general');
-            setTypingUsers([]);
-          }
-        });
+        //  به جای رفتن به general، به صفحه خوش‌آمدگویی برو
+        setCurrentRoom(null);
+        setMessages([]);
+        setTypingUsers([]);
       }
     };
+    
     const onMessageDeleted = ({ messageId, deleteForEveryone }) => {
       if (deleteForEveryone) {
-        // Remove message for everyone
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
       } else {
-        // Mark message as deleted for current user (handled by server not sending it)
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
       }
     };
@@ -94,6 +91,7 @@ export function useChat() {
     socket.on('room deleted', onRoomDeleted);
     socket.on('message deleted', onMessageDeleted);
     socket.on('message edited', onMessageEdited);
+    
     const onNewNotification = (notif) => {
       setNotifications((prev) => {
         if (prev.some((n) => n.id === notif.id)) return prev;
@@ -161,9 +159,9 @@ export function useChat() {
             setError(res.error);
             socket.disconnect();
           } else {
-            setMessages(res.history);
+            setMessages(res.history || []);
             setRooms(res.rooms || []);
-            setCurrentRoom(res.currentRoom || 'general');
+            setCurrentRoom(res.currentRoom || null);
             setError(null);
             handleLoginNotifications();
           }
@@ -179,9 +177,9 @@ export function useChat() {
             setError(res.error);
             socket.disconnect();
           } else {
-            setMessages(res.history);
+            setMessages(res.history || []);
             setRooms(res.rooms || []);
-            setCurrentRoom(res.currentRoom || 'general');
+            setCurrentRoom(res.currentRoom || null);
             setError(null);
             handleLoginNotifications();
           }
@@ -202,7 +200,7 @@ export function useChat() {
     socket.disconnect();
     setMessages([]);
     setRooms([]);
-    setCurrentRoom('general');
+    setCurrentRoom(null);
     setOnlineUsers([]);
     setDmPartnerName(null);
     setConnected(false);
@@ -231,16 +229,19 @@ export function useChat() {
   };
 
   const switchRoom = (roomName) => {
+    if (!roomName) return Promise.resolve({ error: 'نام اتاق نامعتبر است.' });
+    
     return new Promise((resolve) => {
       socket.emit('join room', { roomName }, (res) => {
         if (res.error) return resolve(res);
         setMessages(res.history);
         setCurrentRoom(res.room);
         setTypingUsers([]);
-        //  این خط اضافه شود: اگر اتاق جدید پیام خصوصی نبود، نام قبلی را پاک کن
+        
         if (!roomName.startsWith('dm_')) {
           setDmPartnerName(null);
         }
+        
         refreshRooms();
         socket.emit('mark notifications as read', { roomName: res.room }, (markRes) => {
           if (markRes?.success) {
@@ -269,7 +270,6 @@ export function useChat() {
 
   const openDM = (targetUserId) => {
     return new Promise((resolve) => {
-      // 👈 Event name 'open dm' matches backend
       socket.emit('open dm', { targetUserId }, (res) => {
         if (res.error) {
           console.error("DM Error:", res.error);
@@ -277,7 +277,7 @@ export function useChat() {
         }
         setDmPartnerName(res.targetUser.username);
         setMessages(res.history);
-        setCurrentRoom(res.room); // 👈 matches backend 'room'
+        setCurrentRoom(res.room);
         setTypingUsers([]);
         refreshRooms();
         socket.emit('mark notifications as read', { roomName: res.room }, (markRes) => {
@@ -292,12 +292,17 @@ export function useChat() {
       });
     });
   };
+  
   const deleteRoom = (roomName) => {
     return new Promise((resolve) => {
       socket.emit('delete room', { roomName }, (res) => {
         if (res.success) {
-          if (roomName === currentRoom) switchRoom('general');
-          else refreshRooms();
+          if (roomName === currentRoom) {
+            // 👈 به جای رفتن به general، به صفحه خوش‌آمدگویی برو
+            setCurrentRoom(null);
+            setMessages([]);
+          }
+          refreshRooms();
         }
         resolve(res);
       });
@@ -308,8 +313,12 @@ export function useChat() {
     return new Promise((resolve) => {
       socket.emit('leave room', { roomName: roomName || currentRoom }, (res) => {
         if (res.success) {
-          if (!roomName || roomName === currentRoom) switchRoom('general');
-          else refreshRooms();
+          if (!roomName || roomName === currentRoom) {
+            // 👈 به جای رفتن به general، به صفحه خوش‌آمدگویی برو
+            setCurrentRoom(null);
+            setMessages([]);
+          }
+          refreshRooms();
         }
         resolve(res);
       });
