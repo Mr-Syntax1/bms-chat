@@ -56,6 +56,7 @@ export function handleSearchRooms(socket, io) {
         users: foundUsers.map((u) => ({
           id: u._id.toString(),
           username: u.username,
+          isOnline: !!users.findByUserId(u._id.toString()),
         })),
       });
     } catch (err) {
@@ -119,10 +120,8 @@ export function handleJoinRoom(socket, io, users) {
     // 👈 اصلاح نهایی: استفاده از socket.userId در کوئری دیتابیس
     const history = await Message.find({
       room: roomName,
-      $or: [
-        { deletedFor: { $ne: socket.userId } }, 
-        { isDeletedForEveryone: false }
-      ]
+      isDeletedForEveryone: { $ne: true },
+      deletedFor: { $ne: socket.userId },
     }).sort({ createdAt: -1 }).limit(100).lean();
     history.reverse();
 
@@ -148,27 +147,41 @@ export function handleJoinRoom(socket, io, users) {
 }
 
 export function handleLeaveRoom(socket, io, users) {
-  return async function onLeaveRoom({ roomName }, callback) {
-    if (!socket.currentRoom) return callback?.({ error: 'در هیچ اتاقی نیستی.' });
-    if (socket.currentRoom !== roomName) return callback?.({ error: 'در این اتاق نیستی.' });
+  return async function onLeaveRoom(payload, callback) {
+    const roomName = payload?.roomName || socket.currentRoom;
+    if (!roomName) return callback?.({ error: 'اتاقی انتخاب نشده است.' });
 
-    const leavingRoom = socket.currentRoom;
     const user = users.get(socket.id);
+    if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
 
-    socket.leave(leavingRoom);
-    socket.currentRoom = null;
+    const room = await Room.findOne({ name: roomName });
+    if (!room) return callback?.({ error: 'اتاق پیدا نشد.' });
 
-    const room = await Room.findOne({ name: leavingRoom });
-    if (room && !room.isPrivate && room.createdBy.toString() !== socket.userId) {
-      room.members = room.members.filter(m => m.toString() !== socket.userId);
-      await room.save();
+    const isMember = room.members?.some((m) => m.toString() === socket.userId);
+    if (!isMember) return callback?.({ error: 'شما عضو این اتاق نیستید.' });
+
+    if (!room.isPrivate && room.createdBy.toString() === socket.userId) {
+      return callback?.({ error: 'سازنده گروه باید از گزینه «حذف گروه» استفاده کند.' });
     }
 
-    socket.to(leavingRoom).emit('system message', { text: `${user.username} اتاق را ترک کرد.`, room: leavingRoom });
-    callback?.({ success: true });
+    const isCurrent = socket.currentRoom === roomName;
+    if (isCurrent) {
+      socket.leave(roomName);
+      socket.currentRoom = null;
+    }
 
-    const roomSockets = io.sockets.adapter.rooms.get(leavingRoom);
-    if (roomSockets) io.to(leavingRoom).emit('room users', getRoomUsers(io, leavingRoom, users));
+    // Removing the user from members takes the room out of their room list
+    // (it stays in the database for everyone else).
+    room.members = room.members.filter((m) => m.toString() !== socket.userId);
+    await room.save();
+
+    if (isCurrent) {
+      socket.to(roomName).emit('system message', { text: `${user.username} اتاق را ترک کرد.`, room: roomName });
+      const roomSockets = io.sockets.adapter.rooms.get(roomName);
+      if (roomSockets) io.to(roomName).emit('room users', getRoomUsers(io, roomName, users));
+    }
+
+    callback?.({ success: true });
   };
 }
 

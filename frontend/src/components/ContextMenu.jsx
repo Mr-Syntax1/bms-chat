@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function ContextMenu({ 
   x, 
@@ -62,13 +63,13 @@ export default function ContextMenu({
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
-  const posX = Math.min(x, viewportWidth - menuWidth - 10);
-  const posY = Math.min(y, viewportHeight - menuHeight - 10);
+  const posX = Math.max(10, Math.min(x, viewportWidth - menuWidth - 10));
+  const posY = Math.max(10, Math.min(y, viewportHeight - menuHeight - 10));
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
-      className={`fixed z-50 pointer-events-auto ${className}`}
+      className={`fixed z-[100] pointer-events-auto ${className}`}
       style={{ left: posX, top: posY }}
       role="menu"
       aria-orientation="vertical"
@@ -107,7 +108,8 @@ export default function ContextMenu({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

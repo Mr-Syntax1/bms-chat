@@ -127,17 +127,11 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
+  const [menuItems, setMenuItems] = useState([]);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.text || '');
   const bubbleRef = useRef(null);
   const editInputRef = useRef(null);
-
-  const handleContextMenu = useCallback((e) => {
-    e.preventDefault();
-    // Only show context menu for non-system messages
-    if (isSystem) return;
-    setContextMenu({ x: e.clientX, y: e.clientY });
-  }, [isSystem]);
 
   const closeContextMenu = useCallback(() => {
     setContextMenu({ x: null, y: null });
@@ -152,8 +146,8 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
 
   const handleSaveEdit = useCallback(async () => {
     if (!editText.trim()) return;
-    await onEditMessage?.(msg.id, editText.trim());
-    setEditing(false);
+    const res = await onEditMessage?.(msg.id, editText.trim());
+    if (res?.success !== false) setEditing(false);
   }, [msg.id, editText, onEditMessage]);
 
   const handleCancelEdit = useCallback(() => {
@@ -161,37 +155,55 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     setEditing(false);
   }, [msg.text]);
 
-  const getContextMenuItems = () => {
-    if (isSystem) return [];
-    
+  const buildMenuItems = useCallback(() => {
     const items = [
-      { 
-        label: 'حذف برای من', 
-        icon: <DeleteIcon />, 
-        danger: true, 
-        onClick: () => onDeleteMessage?.(msg.id, false)
+      {
+        label: 'حذف برای من',
+        icon: <DeleteIcon />,
+        danger: true,
+        onClick: () => onDeleteMessage?.(msg.id, false),
       },
     ];
 
-    // Only show "Delete for Everyone" and "Edit" if it's my message
+    // Only the sender can edit or delete for everyone.
     if (isMine) {
-      items.push(
-        { 
-          label: 'ویرایش', 
-          icon: <EditIcon />, 
-          onClick: handleEdit
-        },
-        { 
-          label: 'حذف برای همه', 
-          icon: <DeleteForEveryoneIcon />, 
-          danger: true, 
-          onClick: () => onDeleteMessage?.(msg.id, true)
-        }
-      );
+      if (!isFile) {
+        items.unshift({
+          label: 'ویرایش',
+          icon: <EditIcon />,
+          onClick: handleEdit,
+        });
+      }
+      items.push({
+        label: 'حذف برای همه',
+        icon: <DeleteForEveryoneIcon />,
+        danger: true,
+        onClick: () => onDeleteMessage?.(msg.id, true),
+      });
     }
 
     return items;
-  };
+  }, [isMine, isFile, msg.id, onDeleteMessage, handleEdit]);
+
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
+    if (isSystem) return;
+
+    const rect = bubbleRef.current?.getBoundingClientRect();
+    const menuWidth = 180;
+
+    let x = e.clientX;
+    let y = e.clientY;
+
+    if (rect) {
+      // Anchor the menu right next to the bubble instead of the cursor.
+      x = isMine ? rect.right - menuWidth : rect.left;
+      y = rect.bottom + 2;
+    }
+
+    setContextMenu({ x, y });
+    setMenuItems(buildMenuItems());
+  }, [isSystem, isMine, buildMenuItems]);
 
   if (isSystem) {
     return (
@@ -207,7 +219,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
 
   return (
     <div 
-      ref={bubbleRef}
       onContextMenu={handleContextMenu}
       className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end' : 'justify-start'}`}
       dir='ltr'
@@ -227,6 +238,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
         )}
 
         <div 
+          ref={bubbleRef}
           className={`
             relative px-4 py-2.5 text-sm rounded-2xl
             ${isMine
@@ -283,7 +295,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
       <ContextMenu
         x={contextMenu.x}
         y={contextMenu.y}
-        items={getContextMenuItems()}
+        items={menuItems}
         onClose={closeContextMenu}
       />
     </div>

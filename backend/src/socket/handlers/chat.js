@@ -73,18 +73,21 @@ export function handleChat(socket, io, users) {
       const roomSockets = io.sockets.adapter.rooms.get(room);
       if (roomDoc) {
         for (const memberId of roomDoc.members) {
-          if (memberId.toString() !== socket.userId) {
-            const memberUser = users.findByUserId(memberId.toString());
-            if (memberUser && !roomSockets?.has(memberUser.id)) {
-              await notifyUser(socket, io, users, {
-                userId: memberId,
-                senderId: socket.userId,
-                senderName: user.username,
-                roomName: room,
-                messagePreview: safeText.slice(0, 120),
-              });
-            }
-          }
+          if (memberId.toString() === socket.userId) continue;
+
+          // Online members currently inside the room already see the message.
+          const memberUser = users.findByUserId(memberId.toString());
+          const isInsideRoom = memberUser && roomSockets?.has(memberUser.id);
+          if (isInsideRoom) continue;
+
+          // Offline members still get a stored notification for their next login.
+          await notifyUser(socket, io, users, {
+            userId: memberId,
+            senderId: socket.userId,
+            senderName: user.username,
+            roomName: room,
+            messagePreview: safeText.slice(0, 120) || safeFileName || 'فایل',
+          });
         }
       }
     }
@@ -93,23 +96,26 @@ export function handleChat(socket, io, users) {
 }
 
 export function handleDeleteMessage(socket, io, users) {
-  return async function onDeleteMessage({ messageId, deleteForEveryone }, callback) {
+  return async function onDeleteMessage(payload, callback) {
     const user = users.get(socket.id);
     if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
+
+    const { messageId, deleteForEveryone } = payload || {};
 
     const message = await Message.findById(messageId);
     if (!message) return callback?.({ error: 'پیام پیدا نشد.' });
 
-    if (message.senderId?.toString() !== socket.userId) {
-      return callback?.({ error: 'شما فقط می‌توانید پیام‌های خود را حذف کنید.' });
-    }
+    const isSender = message.senderId?.toString() === socket.userId;
 
     if (deleteForEveryone) {
+      if (!isSender) {
+        return callback?.({ error: 'فقط فرستنده می‌تواند پیام را برای همه حذف کند.' });
+      }
       message.isDeletedForEveryone = true;
       await message.save();
       io.to(message.room).emit('message deleted', { messageId, deleteForEveryone: true });
     } else {
-      if (!message.deletedFor.some(id => id.toString() === socket.userId)) {
+      if (!message.deletedFor.some((id) => id.toString() === socket.userId)) {
         message.deletedFor.push(socket.userId);
         await message.save();
       }
@@ -121,16 +127,16 @@ export function handleDeleteMessage(socket, io, users) {
 }
 
 export function handleGetMessages(socket, io, users) {
-  return async function onGetMessages({ room, before, limit = 50 }, callback) {
+  return async function onGetMessages(payload, callback) {
     const user = users.get(socket.id);
     if (!user) return callback?.({ error: 'ابتدا وارد شوید.' });
 
+    const { room, before, limit = 50 } = payload || {};
+
     const query = {
       room,
-      $or: [
-        { deletedFor: { $ne: user.id } },
-        { isDeletedForEveryone: false }
-      ]
+      isDeletedForEveryone: { $ne: true },
+      deletedFor: { $ne: socket.userId },
     };
 
     if (before) {

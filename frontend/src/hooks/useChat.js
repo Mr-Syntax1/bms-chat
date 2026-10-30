@@ -58,10 +58,16 @@ export function useChat() {
     });
     const onRoomRemoved = ({ roomName }) => setRooms((prev) => prev.filter((r) => r.name !== roomName));
     const onRoomDeleted = ({ roomName }) => {
-      if (currentRoom === roomName) {
-        setCurrentRoom('general');
-      }
       setRooms((prev) => prev.filter((r) => r.name !== roomName));
+      if (currentRoom === roomName) {
+        socket.emit('join room', { roomName: 'general' }, (res) => {
+          if (!res?.error) {
+            setMessages(res.history);
+            setCurrentRoom('general');
+            setTypingUsers([]);
+          }
+        });
+      }
     };
     const onMessageDeleted = ({ messageId, deleteForEveryone }) => {
       if (deleteForEveryone) {
@@ -255,11 +261,6 @@ export function useChat() {
     });
   };
 
-  const openNotifications = () => {
-    setShowNotifications(true);
-    fetchNotifications();
-  };
-
 const openDM = (targetUserId) => {
   return new Promise((resolve) => {
     // 👈 Event name 'open dm' matches backend
@@ -286,15 +287,22 @@ const openDM = (targetUserId) => {
 };
   const deleteRoom = (roomName) => {
     return new Promise((resolve) => {
-      socket.emit('delete room', { roomName }, (res) => resolve(res));
+      socket.emit('delete room', { roomName }, (res) => {
+        if (res.success) {
+          if (roomName === currentRoom) switchRoom('general');
+          else refreshRooms();
+        }
+        resolve(res);
+      });
     });
   };
 
   const leaveRoom = (roomName) => {
     return new Promise((resolve) => {
       socket.emit('leave room', { roomName: roomName || currentRoom }, (res) => {
-        if (res.success && (!roomName || roomName === currentRoom)) {
-          switchRoom('general');
+        if (res.success) {
+          if (!roomName || roomName === currentRoom) switchRoom('general');
+          else refreshRooms();
         }
         resolve(res);
       });
@@ -342,6 +350,5 @@ const openDM = (targetUserId) => {
     showNotifications,
     fetchNotifications,
     markNotificationsAsRead,
-    openNotifications,
   };
 }

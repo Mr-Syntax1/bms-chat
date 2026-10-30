@@ -24,7 +24,11 @@ export function handleJoin(socket, io, users) {
     }
     socket.join('general');
 
-    const history = await Message.find({ room: 'general' }).sort({ createdAt: -1 }).limit(100).lean();
+    const history = await Message.find({
+      room: 'general',
+      isDeletedForEveryone: { $ne: true },
+      deletedFor: { $ne: socket.userId },
+    }).sort({ createdAt: -1 }).limit(100).lean();
     history.reverse();
 
     const rooms = await getRoomsForUser(socket, io, users);
