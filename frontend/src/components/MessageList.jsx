@@ -122,7 +122,7 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto p-4 space-y-3 bg-surface-900/30 scrollbar-thin"
+        className="h-full overflow-y-auto p-4 space-y-3 bg-surface-900/30 scrollbar-thin lg:px-28"
       >
         {messagesWithSeparators.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full py-12 text-center animate-fade-in">

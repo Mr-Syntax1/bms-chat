@@ -12,6 +12,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      devOptions: {
+        enabled: false, // سرویس‌ورکر در حالت dev غیرفعال شود
+      },
       manifest: {
         name: 'BMS Real-time Chat',
         short_name: 'BMS Chat',
@@ -36,7 +39,7 @@ export default defineConfig({
     })
   ],
   server: {
-    port: 4173,
+    port: 5000,
     proxy: {
       '/auth': {
         target: 'http://localhost:3000',
@@ -54,5 +57,8 @@ export default defineConfig({
         secure: false,
       },
     },
+  },
+  preview: {
+    port: 5000,
   },
 })

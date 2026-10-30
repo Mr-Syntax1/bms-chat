@@ -71,35 +71,32 @@ export function handleChat(socket, io, users) {
     // 👈 این بخش را جایگزین if (room !== 'general') کنید
 
 const roomDoc = await Room.findOne({ name: room });
-const roomSockets = io.sockets.adapter.rooms.get(room);
+    const roomSockets = io.sockets.adapter.rooms.get(room);
 
-if (roomDoc) {
-  for (const memberId of roomDoc.members) {
-    // به خود فرستنده نوتیفیکیشن نفرست
-    if (memberId.toString() === socket.userId) continue;
+    if (roomDoc) {
+      for (const memberId of roomDoc.members) {
+        // به خود فرستنده نوتیفیکیشن نفرست
+        if (memberId.toString() === socket.userId) continue;
 
-    const memberUser = users.findByUserId(memberId.toString());
+        // بررسی آیا کاربر در این اتاق حاضر است (از طریق سوکت‌های در اتاق)
+        const isInRoom = roomSockets ? Array.from(roomSockets).some(sid => {
+          const u = users.get(sid);
+          return u && u.userId === memberId.toString();
+        }) : false;
 
-    // بررسی وضعیت کاربر:
-    // 1. آیا کاربر آنلاین است؟
-    // 2. آیا کاربر در حال حاضر داخل همین اتاق است؟
-    
-    const isOnline = !!memberUser;
-    const isInsideCurrentRoom = isOnline && memberUser.currentRoom === room;
-    
-    // اگر کاربر آنلاین است و داخل همین اتاق است، یعنی پیام را دارد می‌بیند (نوتیفیکیشن نده)
-    if (isInsideCurrentRoom) continue;
+        // اگر کاربر در اتاق است، نوتیفیکیشن نده (پیام را می‌بیند)
+        if (isInRoom) continue;
 
-    // در غیر این صورت (چه آفلاین باشد، چه آنلاین ولی در اتاق دیگر)، نوتیفیکیشن بفرست
-    await notifyUser(socket, io, users, {
-      userId: memberId,
-      senderId: socket.userId,
-      senderName: user.username,
-      roomName: room,
-      messagePreview: safeText.slice(0, 120) || safeFileName || 'فایل',
-    });
-  }
-}
+        // در غیر این صورت (آفلاین یا آنلاین در اتاق دیگر)، نوتیفیکیشن بفرست
+        await notifyUser(socket, io, users, {
+          userId: memberId,
+          senderId: socket.userId,
+          senderName: user.username,
+          roomName: room,
+          messagePreview: safeText.slice(0, 120) || safeFileName || 'فایل',
+        });
+      }
+    }
 
     callback?.({ success: true, message });
   };

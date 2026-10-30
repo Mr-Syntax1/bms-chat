@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ContextMenu from './ContextMenu';
+import Avatar from './Avatar'; // 👈 ایمپورت شد
 
 export default function RoomList({
   rooms,
@@ -137,7 +138,7 @@ export default function RoomList({
     <div className="flex flex-col h-full bg-surface-950/40 backdrop-blur-sm relative">
       <div className="p-4 border-b border-white/10 flex items-center justify-between backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
             <svg className="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
@@ -147,7 +148,7 @@ export default function RoomList({
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setShowCreate(true); }}
-            className="btn-ghost p-2 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="btn-ghost p-2 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             aria-label="ایجاد اتاق جدید"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,12 +188,16 @@ export default function RoomList({
                 <div className="w-full px-2 py-2 rounded-xl transition-all duration-200 flex items-center justify-between text-surface-300 hover:bg-white/5 card-hover">
                   <button
                     onClick={() => onOpenDM?.(u.id, u.username)}
-                    className="flex-1 min-w-0 flex items-center gap-2 text-right"
+                    className="flex-1 min-w-0 flex items-center gap-2 text-right cursor-pointer"
                     title="ارسال پیام"
                   >
-                    <span className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm shrink-0 bg-gradient-to-br from-purple-500 to-indigo-500">
-                      {u.username?.charAt(0).toUpperCase()}
-                    </span>
+                    {/* 👈 استفاده از کامپوننت Avatar */}
+                    <Avatar
+                      username={u.username}
+                      color={u.avatarColor}
+                      size="md"
+                      status={u.isOnline ? 'online' : 'offline'}
+                    />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-surface-200">{u.username}</span>
                       <span className={`block text-[10px] ${u.isOnline ? 'text-green-400' : 'text-surface-500'}`}>
@@ -340,8 +345,7 @@ function RoomItem({
   const isPrivate = room.isPrivate;
 
   // وضعیت آنلاین بودن شریک چت خصوصی
-  // اگر نام فیلد در پروژه‌ی شما متفاوت است، اینجا را تغییر دهید (مثلاً room.isOnline)
-    const partnerOnline = onlineUsers.some(u => u.username === room.dmPartnerUsername);
+  const partnerOnline = onlineUsers.some(u => u.username === room.dmPartnerUsername);
 
   const handleItemClick = () => {
     if (isPrivate && room.dmPartnerId && onOpenDM) {
@@ -352,12 +356,12 @@ function RoomItem({
   };
 
   return (
-    <li className="relative group" onContextMenu={(e) => onContextMenu(e, room)}>
+    <li className="relative group cursor-pointer" onContextMenu={(e) => onContextMenu(e, room)}>
       <div
         className={`
           w-full rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-between card-hover
           ${isCurrentRoom
-            ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-glow-primary relative'
+            ? 'bg-linear-to-r from-primary-600 to-primary-700 text-white shadow-glow-primary relative'
             : 'text-surface-300 hover:bg-white/5 hover:text-white'
           }
         `}
@@ -365,19 +369,18 @@ function RoomItem({
         <button
           type="button"
           onClick={handleItemClick}
-          className="flex-1 min-w-0 text-right px-3 py-2.5 flex items-center gap-2"
+          className="flex-1 min-w-0 text-right px-3 py-2.5 flex items-center gap-2 cursor-pointer"
           aria-current={isCurrentRoom ? 'true' : 'false'}
         >
           <div className="relative shrink-0">
             {isPrivate ? (
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
-                style={{
-                  backgroundImage: `linear-gradient(to bottom right, ${room.dmPartnerAvatar || '#6366f1'}, ${room.dmPartnerAvatar || '#6366f1'})`,
-                }}
-              >
-                {room.dmPartnerUsername?.charAt(0).toUpperCase()}
-              </div>
+              // 👈 استفاده از کامپوننت Avatar برای چت‌های خصوصی
+              <Avatar
+                username={room.dmPartnerUsername}
+                color={room.dmPartnerAvatar}
+                size="sm"
+                status={partnerOnline ? 'online' : 'offline'}
+              />
             ) : (
               <svg
                 className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity"
@@ -387,15 +390,6 @@ function RoomItem({
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
-            )}
-
-            {/* نقطه‌ی سبز روی آواتار در چت خصوصی، اگر آنلاین بود */}
-            {isPrivate && partnerOnline && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-surface-950" />
-            )}
-
-            {isCurrentRoom && !isPrivate && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border-2 border-primary-600 animate-pulse-soft" />
             )}
           </div>
 

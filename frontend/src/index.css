@@ -100,9 +100,63 @@
   font-display: swap;
 }
 
+/* =========================================
+   Custom Scrollbar Styling
+   ========================================= */
+
+/* برای مرورگرهای Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 6px;  /* عرض اسکرول‌بار عمودی */
+  height: 6px; /* ارتفاع اسکرول‌بار افقی */
+}
+
+/* پس‌زمینه اسکرول‌بار (شیار) */
+::-webkit-scrollbar-track {
+  background: transparent; 
+}
+
+/* دسته اسکرول‌بار (قسمتی که حرکت می‌کند) */
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1); /* رنگ شیشه‌ای ملایم برای تم تیره */
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+/* وقتی ماوس روی دسته اسکرول‌بار می‌رود */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5); /* رنگ Primary (بنفش/آبی) هنگام Hover */
+}
+
+/* =========================================
+   Custom Scrollbar Utility Class (اختیاری)
+   ========================================= */
+
+/* اگر می‌خواهید اسکرول‌بار را مخفی کنید و فقط هنگام Hover نشان دهید */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* اگر می‌خواهید اسکرول‌بار ظریف‌تر و سفارشی‌تر باشد (مثل شیشه‌ای) */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+
 /* اعمال فونت به کل سایت */
 * {
   font-family: 'Vazir-light', sans-serif;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 .vazir-medium {

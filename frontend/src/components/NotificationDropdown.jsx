@@ -42,7 +42,7 @@ export default function NotificationDropdown({
   };
 
   return (
-    <div className="fixed right-4 top-20 w-[min(24rem,calc(100vw-2rem))] bg-surface-900 border border-white/10 rounded-2xl shadow-2xl z-50 animate-scale-in overflow-hidden">
+    <div className="fixed left-4 top-20 w-[min(24rem,calc(100vw-2rem))] bg-surface-900 border border-white/10 rounded-2xl shadow-2xl z-50 animate-scale-in overflow-hidden">
       <div className="p-3.5 border-b border-white/10 flex items-center justify-between bg-surface-800/50 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
@@ -60,7 +60,7 @@ export default function NotificationDropdown({
         </div>
         <button
           onClick={onClose}
-          className="btn-ghost p-1.5 rounded-lg text-surface-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="btn-ghost p-1.5 rounded-lg text-surface-400 cursor-pointer hover:text-white hover:bg-white/10 transition-colors"
           aria-label="بستن"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

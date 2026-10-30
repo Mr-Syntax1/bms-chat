@@ -8,7 +8,7 @@ export default function ChatHeader({
   roomName,
   onLogout,
   onToggleSidebar,
-  onOpenUsers,
+  // onOpenUsers,
   onOpenProfile,
   unreadNotifications,
   onOpenNotifications,
@@ -91,33 +91,6 @@ export default function ChatHeader({
           </svg>
         </button>
 
-        {/* Online users button (distinct icon) */}
-        <button
-          onClick={onOpenUsers}
-          className="xl:hidden btn-ghost p-2.5 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer relative"
-          title="کاربران آنلاین"
-          aria-label="کاربران آنلاین"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-2a4 4 0 11-8 0 4 4 0 018 0z"
-            />
-          </svg>
-          {onlineCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 text-[10px] font-bold flex items-center justify-center rounded-full bg-success-500 text-white animate-pulse-soft">
-              {onlineCount > 9 ? '9+' : onlineCount}
-            </span>
-          )}
-        </button>
 
         {/* Notification bell */}
         <button

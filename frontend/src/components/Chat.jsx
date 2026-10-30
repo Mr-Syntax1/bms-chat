@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
-import OnlineUsersList from './OnlineUsersList';
 import TypingIndicator from './TypingIndicator';
 import RoomList from './RoomList';
 import NotificationDropdown from './NotificationDropdown';
-import WelcomeScreen from './WelcomeScreen'; // 👈 اضافه شد
+import WelcomeScreen from './WelcomeScreen';
 
 export default function Chat({ chat, user, onLogout }) {
   const {
@@ -64,7 +63,7 @@ export default function Chat({ chat, user, onLogout }) {
     [openDM, closeSidebar]
   );
 
-  // باز کردن پروفایل (هم برای خود و هم دیگران)
+  // باز کردن پروفایل
   const handleOpenProfile = useCallback(
     (username) => {
       if (username) {
@@ -76,7 +75,7 @@ export default function Chat({ chat, user, onLogout }) {
     [navigate]
   );
 
-  // باز/بسته کردن نوتیفیکیشن‌ها + گرفتن لیست جدید
+  // باز/بسته کردن نوتیفیکیشن‌ها
   const handleOpenNotifications = useCallback(() => {
     setShowNotifications((prev) => {
       const next = !prev;
@@ -87,7 +86,6 @@ export default function Chat({ chat, user, onLogout }) {
 
   return (
     <div className="h-screen flex flex-col bg-aurora overflow-hidden">
-      {/* Animated background orbs (decorative) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-gradient-to-br from-primary-500/20 to-accent-500/20 blur-3xl animate-blob" />
         <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-gradient-to-br from-cyan-500/15 to-primary-500/15 blur-3xl animate-blob animation-delay-2000" />
@@ -102,7 +100,6 @@ export default function Chat({ chat, user, onLogout }) {
           roomName={currentRoom}
           onLogout={onLogout}
           onToggleSidebar={() => toggleSidebar('rooms')}
-          onOpenUsers={() => toggleSidebar('users')}
           onOpenProfile={handleOpenProfile}
           unreadNotifications={unreadCount}
           onOpenNotifications={handleOpenNotifications}
@@ -110,7 +107,7 @@ export default function Chat({ chat, user, onLogout }) {
         />
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Desktop: always visible sidebars */}
+          {/* سایدبار اتاق‌ها (دسکتاپ) */}
           <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong slide-in-left">
             <RoomList
               rooms={rooms}
@@ -129,8 +126,6 @@ export default function Chat({ chat, user, onLogout }) {
 
           <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 backdrop-blur-sm">
             <div className="flex-1 overflow-hidden flex flex-col">
-              
-              {/* 👈 اینجا شرط را اضافه کردیم */}
               {currentRoom ? (
                 <>
                   <MessageList
@@ -140,35 +135,22 @@ export default function Chat({ chat, user, onLogout }) {
                     onEditMessage={editMessage}
                     currentUserId={user?.id}
                   />
-                  <TypingIndicator
-                    users={typingUsers.filter((u) => u !== user?.username)}
-                  />
+                  <TypingIndicator users={typingUsers.filter((u) => u !== user?.username)} />
                   <ChatInput onSend={sendMessage} onTyping={setTyping} />
                 </>
               ) : (
-                <WelcomeScreen 
-                  user={user} 
-                  rooms={rooms} 
-                  onSelectRoom={switchRoom} 
+                <WelcomeScreen
+                  user={user}
+                  rooms={rooms}
+                  onSelectRoom={switchRoom}
+                  onCreateRoom={createRoom}
                 />
               )}
-              {/* 👈 پایان شرط */}
-
             </div>
           </main>
-
-          <aside className="hidden xl:flex w-72 shrink-0 flex-col border-l border-white/10 glass-panel-strong slide-in-right">
-            <OnlineUsersList
-              users={onlineUsers}
-              currentUser={user?.username}
-              onClose={closeSidebar}
-              onOpenDM={handleOpenDM}
-              onOpenProfile={handleOpenProfile}
-            />
-          </aside>
         </div>
 
-        {/* Mobile hamburger overlay panels */}
+        {/*  پنل‌های موبایل (اصلاح‌شده) */}
         {sidebar && (
           <>
             <div
@@ -176,12 +158,9 @@ export default function Chat({ chat, user, onLogout }) {
               onClick={closeSidebar}
             />
             <div
-              className={`
-                fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong
-                flex flex-col shadow-2xl
-                ${sidebar === 'rooms' ? 'right-0 left-auto slide-in-right' : 'left-0 right-auto slide-in-left'}
-              `}
+              className="fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong flex flex-col shadow-2xl right-0 left-auto slide-in-right"
             >
+              {/*  شرط سه‌گانه درست (اتاق‌ها / کاربران آنلاین / بسته) */}
               {sidebar === 'rooms' ? (
                 <RoomList
                   rooms={rooms}
@@ -199,15 +178,7 @@ export default function Chat({ chat, user, onLogout }) {
                   currentUser={user?.id}
                   onClose={closeSidebar}
                 />
-              ) : (
-                <OnlineUsersList
-                  users={onlineUsers}
-                  currentUser={user?.username}
-                  onOpenDM={handleOpenDM}
-                  onClose={closeSidebar}
-                  onOpenProfile={handleOpenProfile}
-                />
-              )}
+              ) : null}
             </div>
           </>
         )}

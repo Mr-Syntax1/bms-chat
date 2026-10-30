@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "backend": "cd ../backend && npm run dev",
-    "start": "concurrently \"npm run backend\" \"npm run preview\""
+    "start": "concurrently \"npm run backend\" \"npm run dev\"",
+    "devi": "npm run build && concurrently \"npm run backend\" \"npm run preview\""
   },
   "dependencies": {
     "@ferrucc-io/emoji-picker": "^0.1.2",
