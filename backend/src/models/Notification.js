@@ -5,12 +5,12 @@ const notificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },
+  }, // گیرنده
   senderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },
+  }, // فرستنده
   senderName: {
     type: String,
     required: true

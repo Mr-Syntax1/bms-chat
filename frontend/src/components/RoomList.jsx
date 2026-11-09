@@ -48,6 +48,13 @@ export default function RoomList({
     setCreating(false);
   };
 
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setShowSearch(false);
+    setSearchResults([]);
+    setUserResults([]);
+  }, []);
+
   const handleDelete = async (roomName) => {
     if (window.confirm(`آیا از حذف اتاق "${roomName}" مطمئن هستید؟`)) {
       await onDelete(roomName);
@@ -60,7 +67,7 @@ export default function RoomList({
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
 
     const trimmed = query.trim();
-    if (!trimmed) {
+    if (!trimmed || trimmed.length < 2) {
       setShowSearch(false);
       setSearchResults([]);
       setUserResults([]);
@@ -87,14 +94,9 @@ export default function RoomList({
 
   const handleRoomClick = useCallback(async (roomName) => {
     const res = await onSwitch(roomName);
-    if (res?.success && showSearch) {
-      setSearchQuery('');
-      setShowSearch(false);
-      setSearchResults([]);
-      setUserResults([]);
-    }
+    clearSearch();   // بدون شرط
     return res;
-  }, [onSwitch, showSearch]);
+  }, [onSwitch, clearSearch]);
 
   const handleContextMenu = useCallback((e, room) => {
     e.preventDefault();
@@ -187,7 +189,10 @@ export default function RoomList({
               <li key={`user-${u.id}`}>
                 <div className="w-full px-2 py-2 rounded-xl transition-all duration-200 flex items-center justify-between text-surface-300 hover:bg-white/5 card-hover">
                   <button
-                    onClick={() => onOpenDM?.(u.id, u.username)}
+                    onClick={() => {
+                      onOpenDM?.(u.id, u.username);
+                      clearSearch();
+                    }}
                     className="flex-1 min-w-0 flex items-center gap-2 text-right cursor-pointer"
                     title="ارسال پیام"
                   >
@@ -245,6 +250,7 @@ export default function RoomList({
                 currentRoom={currentRoom}
                 currentUser={currentUser}
                 onSwitch={handleRoomClick}
+                onAfterClick={clearSearch}
                 onlineUsers={onlineUsers}
                 onOpenDM={onOpenDM}
                 onOpenProfile={onOpenProfile}
@@ -339,6 +345,7 @@ function RoomItem({
   onOpenProfile,
   onContextMenu,
   showPartnerStatus = false,
+  onAfterClick,
   onlineUsers = [],
 }) {
   const isCurrentRoom = room.name === currentRoom;
@@ -350,11 +357,11 @@ function RoomItem({
   const handleItemClick = () => {
     if (isPrivate && room.dmPartnerId && onOpenDM) {
       onOpenDM(room.dmPartnerId, room.dmPartnerUsername);
+      onAfterClick?.();   // فقط DM (چون handleRoomClick این رو پوشش نمی‌ده)
     } else {
-      onSwitch(room.name);
+      onSwitch(room.name); // handleRoomClick خودش پاک می‌کنه
     }
   };
-
   return (
     <li className="relative group cursor-pointer" onContextMenu={(e) => onContextMenu(e, room)}>
       <div
@@ -402,8 +409,8 @@ function RoomItem({
             {isPrivate && showPartnerStatus && (
               <span
                 className={`inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-medium w-fit ${partnerOnline
-                    ? 'bg-green-500/15 text-green-300 ring-1 ring-inset ring-green-500/30'
-                    : 'bg-surface-700/60 text-surface-300 ring-1 ring-inset ring-white/5'
+                  ? 'bg-green-500/15 text-green-300 ring-1 ring-inset ring-green-500/30'
+                  : 'bg-surface-700/60 text-surface-300 ring-1 ring-inset ring-white/5'
                   }`}
               >
                 <span
@@ -425,8 +432,8 @@ function RoomItem({
               onOpenProfile(room.dmPartnerUsername);
             }}
             className={`p-2 ml-1 cursor-pointer mr-1 rounded-lg transition-colors shrink-0 ${isCurrentRoom
-                ? 'text-white/70 hover:text-white hover:bg-white/10'
-                : 'text-surface-500 hover:text-white hover:bg-white/10'
+              ? 'text-white/70 hover:text-white hover:bg-white/10'
+              : 'text-surface-500 hover:text-white hover:bg-white/10'
               }`}
             title="مشاهده پروفایل"
             aria-label="مشاهده پروفایل"

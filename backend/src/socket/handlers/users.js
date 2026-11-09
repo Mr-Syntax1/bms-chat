@@ -38,7 +38,6 @@ export function handleJoin(socket, io, users) {
 function formatMsg(m) {
   return {
     id: m._id.toString(), text: m.text, sender: m.sender, senderId: m.senderId?.toString(),
-    avatarColor: m.avatarColor, type: m.type, fileUrl: m.fileUrl, fileName: m.fileName,
     fileType: m.fileType, createdAt: m.createdAt,
     time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
   };

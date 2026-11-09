@@ -85,7 +85,6 @@ export function handleOpenDM(socket, io, users) {
         text: m.text,
         sender: m.sender,
         senderId: m.senderId?.toString(),
-        avatarColor: m.avatarColor,
         type: m.type,
         fileUrl: m.fileUrl,
         fileName: m.fileName,

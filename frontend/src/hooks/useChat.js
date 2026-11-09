@@ -58,7 +58,7 @@ export function useChat() {
       return [...prev, room];
     });
     const onRoomRemoved = ({ roomName }) => setRooms((prev) => prev.filter((r) => r.name !== roomName));
-    
+
     const onRoomDeleted = ({ roomName }) => {
       setRooms((prev) => prev.filter((r) => r.name !== roomName));
       if (currentRoom === roomName) {
@@ -68,7 +68,7 @@ export function useChat() {
         setTypingUsers([]);
       }
     };
-    
+
     const onMessageDeleted = ({ messageId, deleteForEveryone }) => {
       if (deleteForEveryone) {
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
@@ -91,7 +91,7 @@ export function useChat() {
     socket.on('room deleted', onRoomDeleted);
     socket.on('message deleted', onMessageDeleted);
     socket.on('message edited', onMessageEdited);
-    
+
     const onNewNotification = (notif) => {
       setNotifications((prev) => {
         if (prev.some((n) => n.id === notif.id)) return prev;
@@ -229,19 +229,25 @@ export function useChat() {
   };
 
   const switchRoom = (roomName) => {
-    if (!roomName) return Promise.resolve({ error: 'نام اتاق نامعتبر است.' });
-    
+    if (!roomName) {
+      setCurrentRoom(null);
+      setMessages([]);
+      setTypingUsers([]);
+      setDmPartnerName(null);
+      return Promise.resolve({ success: true });
+    }
+
     return new Promise((resolve) => {
       socket.emit('join room', { roomName }, (res) => {
         if (res.error) return resolve(res);
         setMessages(res.history);
         setCurrentRoom(res.room);
         setTypingUsers([]);
-        
+
         if (!roomName.startsWith('dm_')) {
           setDmPartnerName(null);
         }
-        
+
         refreshRooms();
         socket.emit('mark notifications as read', { roomName: res.room }, (markRes) => {
           if (markRes?.success) {
@@ -292,7 +298,7 @@ export function useChat() {
       });
     });
   };
-  
+
   const deleteRoom = (roomName) => {
     return new Promise((resolve) => {
       socket.emit('delete room', { roomName }, (res) => {

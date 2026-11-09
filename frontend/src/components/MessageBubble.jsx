@@ -21,29 +21,42 @@ function getFileIcon(fileType, fileName) {
   return 'file';
 }
 
-function formatMessageDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  const now = new Date();
+// function formatMessageDate(dateString) {
+//   if (!dateString) return '';
 
-  const isToday = date.toDateString() === now.toDateString();
-  const isYesterday = new Date(now.setDate(now.getDate() - 1)).toDateString() === date.toDateString();
+//   const date = new Date(dateString);
+//   if (isNaN(date.getTime())) return '';
+//   console.log("ورودی:", dateString);
+//   console.log("بعد از new Date:", new Date(dateString));
 
-  const timeOptions = { hour: '2-digit', minute: '2-digit' };
-  const time = date.toLocaleTimeString('fa-IR', timeOptions);
+//   const now = new Date();
+//   const yesterday = new Date(now);
+//   yesterday.setDate(yesterday.getDate() - 1);
 
-  if (isToday) {
-    return time;
-  } else if (isYesterday) {
-    return `دیروز، ${time}`;
-  } else {
-    const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
-    const dateStr = date.toLocaleDateString('fa-IR', dateOptions);
-    return `${dateStr}، ${time}`;
-  }
-}
+//   const isToday = date.toDateString() === now.toDateString();
+//   const isYesterday = date.toDateString() === yesterday.toDateString();
 
-// 👈 اضافه کردن پراپ onImageClick به FilePreview
+//   //  ساعت
+//   const time = date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+
+//   if (isToday) {
+//     return time;
+//   } else if (isYesterday) {
+//     return `دیروز، ${time}`;
+//   } else {
+//     //  تاریخ شمسی دقیق (روز/ماه/سال)
+//     const dateStr = new Intl.DateTimeFormat('fa-IR', {
+//       calendar: 'persian', //  اجبار به تقویم شمسی
+//       year: 'numeric',
+//       month: '2-digit',
+//       day: '2-digit',
+//     }).format(date);
+
+//     return `${dateStr}، ${time}`;
+//   }
+// }
+
+//  اضافه کردن پراپ onImageClick به FilePreview
 function FilePreview({ msg, isMine, onImageClick }) {
   const isImage = msg.fileType?.startsWith('image/');
   const isAudio = msg.fileType?.startsWith('audio/') || msg.fileName?.endsWith('.webm');
@@ -73,7 +86,7 @@ function FilePreview({ msg, isMine, onImageClick }) {
   if (isImage) {
     return (
       <div className="block">
-        {/* 👈 تغییر: کلیک روی عکس، تابع onImageClick را صدا می‌زند */}
+        {/*  تغییر: کلیک روی عکس، تابع onImageClick را صدا می‌زند */}
         <button
           type="button"
           onClick={() => onImageClick?.({ src: msg.fileUrl, alt: msg.fileName || 'Image' })}
@@ -119,12 +132,12 @@ function FilePreview({ msg, isMine, onImageClick }) {
         : 'border-surface-700 bg-surface-800 text-surface-50'
         } hover:bg-opacity-80 transition-colors min-w-[200px] max-w-xs`}
     >
-      <div className="flex-shrink-0">{icons[icon]}</div>
+      <div className="shrink-0">{icons[icon]}</div>
       <div className="min-w-0 flex-1">
         <p className="font-medium truncate">{msg.fileName}</p>
         <p className="text-xs opacity-60">{size}</p>
       </div>
-      <svg className="w-5 h-5 opacity-50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+      <svg className="w-5 h-5 opacity-50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
     </a>
   );
 }
@@ -166,11 +179,11 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
   const bubbleRef = useRef(null);
   const editInputRef = useRef(null);
 
-  // 👈 استیت‌های Lightbox
+  // استیت‌های Lightbox
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [lightboxAlt, setLightboxAlt] = useState('');
 
-  // 👈 بستن Lightbox با کلید Escape و قفل کردن اسکرول
+  // بستن Lightbox با کلید Escape و قفل کردن اسکرول
   useEffect(() => {
     if (!lightboxSrc) return;
 
@@ -258,7 +271,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     setMenuItems(buildMenuItems());
   }, [isSystem, isMine, buildMenuItems]);
 
-  // 👈 تابع باز کردن Lightbox
+  //  تابع باز کردن Lightbox
   const handleImageClick = ({ src, alt }) => {
     setLightboxSrc(src);
     setLightboxAlt(alt);
@@ -274,28 +287,34 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     );
   }
 
-  const time = msg.createdAt ? formatMessageDate(msg.createdAt) : formatMessageDate(new Date());
+  // const time = msg.createdAt ? formatMessageDate(msg.createdAt) : formatMessageDate(new Date());
+  const time = msg.createdAt
+    ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    : '';
 
   return (
     <div
       onContextMenu={handleContextMenu}
-      className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end' : 'justify-start'}`}
+      className={`flex gap-2 animate-message-appear ${isMine ? 'justify-end mr-1' : 'justify-start'}`}
       dir='ltr'
     >
-{!isMine && (
-  <div className="w-10 flex-shrink-0 flex justify-start items-end pb-1">
-    {showHeader && (
-      <button 
-        onClick={() => navigate(`/profile/${msg.sender}`)} //  این خط
-        className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-full"
-        title={`مشاهده پروفایل ${msg.sender}`}
-      >
-        <Avatar username={msg.sender} color={msg.avatarColor} size="sm" />
-      </button>
-    )}
-  </div>
-)}
-      <div className={`max-w-[75%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+      {!isMine && (
+        <div className="w-10 shrink-0 flex justify-start items-end pb-1">
+          {showHeader && (
+            <button
+              onClick={() => navigate(`/profile/${msg.sender}`)} //  این خط
+              className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-full"
+              title={`مشاهده پروفایل ${msg.sender}`}
+            >
+              <Avatar username={msg.sender} color={msg.avatarColor} size="sm" />
+            </button>
+          )}
+        </div>
+      )}
+      <div className={`max-w-[85%] sm:max-w-[75%] flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
         {showHeader && !isMine && (
           <span className="text-xs font-semibold text-surface-400 mb-1 px-1">
             {msg.sender}
@@ -305,12 +324,12 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
         <div
           ref={bubbleRef}
           className={`
-            relative px-4 py-2.5 text-sm rounded-2xl
-            ${isMine
-              ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg rounded-tr-sm'
+  relative px-4 py-2.5 text-sm rounded-2xl max-w-full min-w-0 overflow-hidden
+  ${isMine
+              ? 'bg-linear-to-br from-primary-600 to-primary-700 text-white shadow-lg rounded-tr-sm'
               : 'bg-surface-800 text-surface-50 shadow-md border border-surface-700 rounded-tl-sm'
             }
-          `}
+`}
         >
           {editing ? (
             <div className="flex gap-2">
@@ -330,10 +349,10 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
               <button onClick={handleCancelEdit} className="px-3 py-2 text-sm text-surface-400 hover:text-surface-300">انصراف</button>
             </div>
           ) : isFile ? (
-            // 👈 پاس دادن handleImageClick به FilePreview
+            //  پاس دادن handleImageClick به FilePreview
             <FilePreview msg={msg} isMine={isMine} onImageClick={handleImageClick} />
           ) : (
-            <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+            <p className="whitespace-pre-wrap wrap-break-word">{msg.text}</p>
           )}
 
           <div className="flex items-center justify-end gap-2 mt-1.5">
@@ -363,7 +382,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
         onClose={closeContextMenu}
       />
 
-      {/* 👈 Lightbox Overlay */}
+      {/*  Lightbox Overlay */}
       {lightboxSrc && (
         <div
           className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"

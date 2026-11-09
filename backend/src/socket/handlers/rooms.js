@@ -33,7 +33,9 @@ export function handleSearchRooms(socket, io) {
       // دریافت متن جستجو
       const raw = typeof payload === 'string' ? payload : payload?.query;
       const trimmed = typeof raw === 'string' ? raw.trim() : '';
-      if (!trimmed) return callback({ rooms: [], users: [] });
+      if (!trimmed || trimmed.length < 2) {
+        return callback({ rooms: [], users: [] });
+      }
 
       const regex = new RegExp(escapeRegex(trimmed), 'i');
 
@@ -156,7 +158,6 @@ export function handleJoinRoom(socket, io, users) {
       text: m.text,
       sender: m.sender,
       senderId: m.senderId?.toString(),
-      avatarColor: m.avatarColor,
       type: m.type,
       fileUrl: m.fileUrl,
       fileName: m.fileName,

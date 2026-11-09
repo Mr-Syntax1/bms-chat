@@ -22,9 +22,9 @@ export default function ChatInput({ onSend, onTyping }) {
   // استیت‌های ضبط صدا
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  
+
   const cancelRecordingRef = useRef(false);
-  
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
@@ -111,10 +111,21 @@ export default function ChatInput({ onSend, onTyping }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, fileType: file.type }),
       });
-      const { uploadUrl, headers, publicUrl } = await presignRes.json();
+      
+      const { uploadUrl, publicUrl } = await presignRes.json(); // 👈 headers را حذف کردیم
       if (!uploadUrl) throw new Error('خطا در دریافت لینک آپلود');
-      const uploadRes = await fetch(uploadUrl, { method: 'PUT', body: file, headers: headers });
-      if (!uploadRes.ok) throw new Error('آپلود به Upstash ناموفق بود');
+
+      // 👈 هدر Content-Type را اینجا دستی تنظیم می‌کنیم
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+
+      if (!uploadRes.ok) throw new Error('آپلود به سرور ابری ناموفق بود');
+
       onSend({
         type: 'file',
         fileUrl: publicUrl,
@@ -130,7 +141,6 @@ export default function ChatInput({ onSend, onTyping }) {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
-
   // ==================== ضبط صدا ====================
   const startRecording = async () => {
     try {
@@ -161,7 +171,7 @@ export default function ChatInput({ onSend, onTyping }) {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
     } catch (err) {
-      alert('دسترسی به میکروفون امکان‌پذیر نیست.');
+      alert('دسترسی به میکروفون امکان‌پذیر نیست.', err);
     }
   };
 
@@ -229,7 +239,7 @@ export default function ChatInput({ onSend, onTyping }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="relative p-4 bg-gradient-to-t from-surface-950/80 to-surface-950/40 backdrop-blur-xl border-t border-white/10"
+      className="relative p-4 bg-linear-to-t from-surface-950/80 to-surface-950/40 backdrop-blur-xl border-t border-white/10"
     >
       {showEmojiPicker && (
         <div
@@ -243,9 +253,8 @@ export default function ChatInput({ onSend, onTyping }) {
       )}
 
       <div
-        className={`relative flex items-end gap-2 transition-all duration-300 ${
-          isFocused ? 'scale-[1.01]' : ''
-        }`}
+        className={`relative flex items-end gap-2 transition-all duration-300 ${isFocused ? 'scale-[1.01]' : ''
+          }`}
       >
         <button
           type="button"
@@ -285,11 +294,10 @@ export default function ChatInput({ onSend, onTyping }) {
           <button
             type="button"
             onClick={() => setShowEmojiPicker((prev) => !prev)}
-            className={`p-3 rounded-2xl shrink-0 transition-all cursor-pointer group ${
-              showEmojiPicker
-                ? 'bg-primary-500/15 text-primary-400'
-                : 'text-surface-400 hover:text-primary-400 hover:bg-primary-500/10'
-            }`}
+            className={`p-3 rounded-2xl shrink-0 transition-all cursor-pointer group ${showEmojiPicker
+              ? 'bg-primary-500/15 text-primary-400'
+              : 'text-surface-400 hover:text-primary-400 hover:bg-primary-500/10'
+              }`}
             aria-label="انتخاب ایموجی"
           >
             <svg
@@ -310,9 +318,8 @@ export default function ChatInput({ onSend, onTyping }) {
         )}
 
         <div
-          className={`flex-1 relative transition-all duration-300 ${
-            isRecording ? 'opacity-50 pointer-events-none' : ''
-          }`}
+          className={`flex-1 relative transition-all duration-300 ${isRecording ? 'opacity-50 pointer-events-none' : ''
+            }`}
         >
           <label htmlFor="message-input" className="sr-only">
             پیام شما
@@ -434,10 +441,9 @@ export default function ChatInput({ onSend, onTyping }) {
             disabled={!value.trim() || isUploading}
             className={`
               p-3 rounded-2xl shrink-0 transition-all duration-200 group
-              ${
-                value.trim() && !isUploading
-                  ? 'bg-gradient-to-r from-primary-600 via-primary-700 to-accent-600 hover:from-primary-500 hover:to-accent-500 shadow-glow-primary hover:shadow-glow-accent active:scale-95'
-                  : 'bg-surface-800 opacity-50 cursor-not-allowed'
+              ${value.trim() && !isUploading
+                ? 'bg-linear-to-r from-primary-600 via-primary-700 to-accent-600 hover:from-primary-500 hover:to-accent-500 shadow-glow-primary hover:shadow-glow-accent active:scale-95'
+                : 'bg-surface-800 opacity-50 cursor-not-allowed'
               }
             `}
             aria-label="Send message"

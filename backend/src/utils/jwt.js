@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 
-const SECRET = process.env.JWT_SECRET || 'super-secret-change-me';
+dotenv.config();
+
+const SECRET = process.env.JWT_SECRET;
 
 export function signToken(user) {
   return jwt.sign(

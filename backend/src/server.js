@@ -7,9 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { connectDB } from './config/db.js';
 import { initSocket } from './socket/index.js';
+// Routes
 import { authRouter } from './routes/auth.js';
 import { uploadRouter } from './routes/upload.js';
-import roomsRouter  from './routes/rooms.js';
+// import roomsRouter from './routes/rooms.js';
 
 
 dotenv.config();
@@ -23,7 +24,7 @@ const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, '../../frontend/dist');
 
 app.use(cors({
-  origin: 'http://localhost:5000',
+  origin: 'http://localhost:5001',
   credentials: true
 }));
 
@@ -31,7 +32,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/auth', authRouter)
 app.use('/upload', uploadRouter);
-app.use('/api/rooms', roomsRouter);
+// app.use('/api/rooms', roomsRouter);
 
 // Serve static files from frontend/dist
 app.use(express.static(distPath));

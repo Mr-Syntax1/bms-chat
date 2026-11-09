@@ -11,49 +11,52 @@ export default function ChatHeader({
   // onOpenUsers,
   onOpenProfile,
   unreadNotifications,
+  rooms = [],
   onOpenNotifications,
-  dmPartnerName,
+  onGoHome,
 }) {
+
   // برای پروفایل خود کاربر، username نمی‌فرستیم تا به /profile برود
   const handleProfileClick = () => {
     if (onOpenProfile) onOpenProfile();
   };
 
-  const displayTitle = dmPartnerName 
-    ? `گفتگو با ${dmPartnerName}` 
-    : roomName?.startsWith('dm_') 
-      ? 'چت خصوصی' 
+  const currentRoomObj = rooms.find((r) => r.name === roomName);
+  const resolvedDmName = currentRoomObj?.isPrivate
+    ? currentRoomObj.dmPartnerUsername
+    : null;
+
+  const displayTitle = resolvedDmName
+    ? `گفتگو با ${resolvedDmName}`
+    : roomName?.startsWith('dm_')
+      ? 'چت خصوصی'
       : roomName;
 
   return (
     <header className="glass-panel-strong border-b border-white/10 px-4 py-3.5 flex items-center justify-between gap-3 animate-slide-down sticky top-0 z-30">
       {/* Left: room info */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-primary-500/15 to-accent-500/15">
-          <svg
-            className="w-5 h-5 text-primary-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
-          </svg>
-        </div>
+        <button
+          type="button"
+          onClick={onGoHome}
+          className="group relative p-2.5 rounded-xl bg-surface-900 ring-2 ring-primary-500/50 shadow-[0_0_20px_-4px] shadow-primary-500/60 hover:ring-primary-600 hover:shadow-primary-400/80 transition-all duration-200 cursor-pointer shrink-0 ml-2 mr-1"
+        >
+          <img
+            className="w-10 h-10 rounded-lg object-contain drop-shadow"
+            src="/pwa-192x192.png"
+            alt="لوگو"
+          />
+          {/* درخشش ملایم روی دکمه */}
+          <span className="pointer-events-none absolute inset-0 rounded-xl bg-white/5 opacity-0 group-hover:opacity-80 transition-opacity duration-200" />
+        </button>
         <div className="min-w-0">
           <h1 className="font-bold text-surface-50 truncate text-base">
             {displayTitle}
           </h1>
           <div className="flex items-center gap-2 mt-0.5">
             <span
-              className={`status-dot ${
-                isConnected ? 'status-online' : 'status-offline'
-              } animate-pulse-soft`}
+              className={`status-dot ${isConnected ? 'status-online' : 'status-offline'
+                } animate-pulse-soft`}
             />
             <span className="text-xs text-surface-400 font-medium">
               {isConnected ? 'متصل' : 'قطع شده'}

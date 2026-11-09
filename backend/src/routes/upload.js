@@ -1,5 +1,7 @@
 import express from 'express';
-import { bucket } from '../config/upstash.js';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { s3Client, BUCKET_NAME } from '../config/s3.js'; // 👈 به فایل کانفیگ جدید اشاره می‌کند
 import crypto from 'node:crypto';
 
 export const uploadRouter = express.Router();
@@ -11,25 +13,29 @@ uploadRouter.post('/presign', async (req, res) => {
       return res.status(400).json({ error: 'نام و نوع فایل الزامی است.' });
     }
 
-    // تولید یک کلید یکتا برای جلوگیری از تداخل نام فایل‌ها
+    // تولید یک کلید یکتا
     const ext = fileName.split('.').pop();
     const key = `uploads/${crypto.randomUUID()}.${ext}`;
 
-    // تولید لینک آپلود موقت (اعتبار ۱۰ دقیقه)
-    const upload = await bucket.signedUploadUrl(key, {
-      contentType: fileType,
-      expiresIn: '10m',
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      ContentType: fileType,
     });
 
-    // لینک عمومی فایل (برای نمایش بعد از آپلود)
-    const publicUrl = await bucket.publicUrl(key);
-    console.log('[Upload] presign:', { key, publicUrl, uploadUrl: upload.url });
+    // تولید لینک آپلود موقت (اعتبار ۱۰ دقیقه)
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 });
 
-    res.json({ 
-      uploadUrl: upload.url, 
-      headers: upload.headers, // هدرهایی که فرانت‌اند باید هنگام آپلود بفرستد
-      publicUrl: String(publicUrl), // اطمینان از string بودن
-      key 
+    // 👈 لینک نهایی فایل برای نمایش
+    // دقت کن که S3_ENDPOINT در فایل .env حتماً باید با https:// شروع شود
+    const publicUrl = `${process.env.S3_ENDPOINT}/${BUCKET_NAME}/${key}`;
+
+    console.log('[Upload] presign:', { key, publicUrl, uploadUrl });
+
+    res.json({
+      uploadUrl,
+      publicUrl,
+      key,
     });
   } catch (err) {
     console.error('[Upload] presign error:', err);

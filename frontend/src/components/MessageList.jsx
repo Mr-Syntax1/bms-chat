@@ -34,10 +34,10 @@ function shouldShowDateSeparator(currentMsg, prevMsg) {
   if (!prevMsg) return true;
   const currDate = currentMsg.createdAt ? new Date(currentMsg.createdAt) : new Date();
   const prevDate = prevMsg.createdAt ? new Date(prevMsg.createdAt) : new Date();
-  
+
   const currDay = new Date(currDate.getFullYear(), currDate.getMonth(), currDate.getDate());
   const prevDay = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
-  
+
   return currDay.getTime() !== prevDay.getTime();
 }
 
@@ -58,6 +58,11 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
+  // استیت‌های کادر شناور تاریخ
+  const [floatingDate, setFloatingDate] = useState('');
+  const [isFloatingVisible, setIsFloatingVisible] = useState(false);
+  const scrollTimeoutRef = useRef(null);
+
   const scrollToBottom = useCallback((smooth = true) => {
     if (containerRef.current) {
       containerRef.current.scrollTo({
@@ -74,6 +79,42 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
     setIsAtBottom(atBottom);
     setShowScrollButton(!atBottom);
+
+    // کادر شناور تاریخ
+    if (atBottom) {
+      setIsFloatingVisible(false);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    } else {
+      // پیدا کردن تاریخ پیامی که در حال نمایش است
+      const containerTop = el.getBoundingClientRect().top;
+      const bubbles = el.querySelectorAll('[data-message-date]');
+      let currentDate = '';
+
+      for (const bubble of bubbles) {
+        const rect = bubble.getBoundingClientRect();
+        if (rect.bottom > containerTop + 20) { // 20 پیکسل تلورانس
+          currentDate = bubble.getAttribute('data-message-date');
+          break;
+        }
+      }
+
+      if (currentDate) {
+        setFloatingDate(currentDate);
+        setIsFloatingVisible(true);
+      }
+
+      // محو شدن بعد از توقف اسکرول
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsFloatingVisible(false);
+      }, 1000);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -91,34 +132,47 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
   // گروه‌بندی پیام‌ها بر اساس تاریخ و اضافه کردن جداکننده‌ها
   const messagesWithSeparators = useMemo(() => {
     if (!messages.length) return [];
-    
+
     const result = [];
-    
+
     messages.forEach((msg, i) => {
       const prev = messages[i - 1];
       const showSeparator = shouldShowDateSeparator(msg, prev);
-      
+
       if (showSeparator) {
         const dateLabel = msg.createdAt ? formatDateSeparator(msg.createdAt) : 'امروز';
-        result.push({ 
-          type: 'date-separator', 
-          id: `separator-${i}`, 
-          label: dateLabel 
+        result.push({
+          type: 'date-separator',
+          id: `separator-${i}`,
+          label: dateLabel
         });
       }
-      
-      result.push({ 
-        type: 'message', 
-        ...msg, 
-        showHeader: !prev || prev.sender !== msg.sender 
+
+      result.push({
+        type: 'message',
+        ...msg,
+        showHeader: !prev || prev.sender !== msg.sender
       });
     });
-    
+
     return result;
   }, [messages]);
 
   return (
     <div className="relative flex-1 min-h-0">
+      {/* کادر شناور تاریخ (مشابه تلگرام) */}
+      <div
+        className={`absolute top-3 left-1/2 ml-1 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none ${
+          isFloatingVisible
+            ? 'opacity-100 -translate-y-0'
+            : 'opacity-0 -translate-y-2'
+        }`}
+      >
+        <div className="px-4 py-1.5 rounded-full bg-surface-800/90 backdrop-blur-md border border-white/10 shadow-lg text-xs font-medium text-surface-200 whitespace-nowrap">
+          {floatingDate}
+        </div>
+      </div>
+
       <div
         ref={containerRef}
         onScroll={handleScroll}
@@ -144,16 +198,21 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
           if (item.type === 'date-separator') {
             return <DateSeparator key={item.id} label={item.label} />;
           }
-          
+
+          // اضافه کردن data-message-date به هر پیام برای تشخیص در اسکرول
           return (
-            <MessageBubble
+            <div
               key={item.id}
-              msg={item}
-              isMine={item.sender === currentUsername}
-              showHeader={item.showHeader}
-              onDeleteMessage={onDeleteMessage}
-              onEditMessage={onEditMessage}
-            />
+              data-message-date={item.createdAt ? formatDateSeparator(item.createdAt) : 'امروز'}
+            >
+              <MessageBubble
+                msg={item}
+                isMine={item.sender === currentUsername}
+                showHeader={item.showHeader}
+                onDeleteMessage={onDeleteMessage}
+                onEditMessage={onEditMessage}
+              />
+            </div>
           );
         })}
 

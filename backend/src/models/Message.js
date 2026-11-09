@@ -17,10 +17,6 @@ const messageSchema = new mongoose.Schema({
         ref: 'User'
     },
 
-    avatarColor: {
-        type: String
-    },
-
     type: {
         type: String,
         enum: ['message', 'system', 'file'],
