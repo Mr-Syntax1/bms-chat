@@ -61,7 +61,7 @@ export default function OnlineUsersList({
                 ? 'bg-gradient-to-r from-primary-900/40 to-primary-800/20 ring-1 ring-primary-500/30'
                 : 'hover:bg-white/5'
               }
-              ${isSpeaking === true ? 'ring-2 ring-[#23a559]/50 bg-[#383a40]/30' : ''}
+              ${usersSpeaking.includes(u.id) ? 'ring-2 ring-[#23a559]/50 bg-[#383a40]/30' : ''}
             `}>
               {/* hover glow */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
