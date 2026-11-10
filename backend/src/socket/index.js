@@ -98,13 +98,14 @@ export function initSocket(server) {
     // hangup — فقط یک بار از handler استفاده می‌کنیم
     socket.on('webrtc-hangup', handleWebRTCHangup(socket, io, users));
 
-    socket.on('webrtc-offer', ({ targetUserId, offer }) => {
+    socket.on('webrtc-offer', ({ targetUserId, offer, renegotiate }) => {
       const targetUser = users.findByUserId(targetUserId);
       if (targetUser) {
         io.to(targetUser.id).emit('webrtc-offer', {
           fromUserId: socket.userId,
           fromUsername: socket.username,
           offer,
+          renegotiate: !!renegotiate,
         });
       }
     });
@@ -133,6 +134,24 @@ export function initSocket(server) {
       const targetUser = users.findByUserId(targetUserId);
       if (targetUser) {
         io.to(targetUser.id).emit('webrtc-stream-updated', {
+          fromUserId: socket.userId,
+        });
+      }
+    });
+    
+    socket.on('webrtc-screen-lock', ({ targetUserId }) => {
+      const targetUser = users.findByUserId(targetUserId);
+      if (targetUser) {
+        io.to(targetUser.id).emit('webrtc-screen-lock', {
+          fromUserId: socket.userId,
+        });
+      }
+    });
+
+    socket.on('webrtc-screen-unlock', ({ targetUserId }) => {
+      const targetUser = users.findByUserId(targetUserId);
+      if (targetUser) {
+        io.to(targetUser.id).emit('webrtc-screen-unlock', {
           fromUserId: socket.userId,
         });
       }

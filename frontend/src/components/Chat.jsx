@@ -195,11 +195,11 @@ export default function Chat({ chat, user, onLogout }) {
           key={
             rtc.callState === 'idle' || rtc.callState === 'ended'
               ? 'no-call'
-              : `${rtc.remoteUser?.id ?? 'unknown'}-${
-                  rtc.isCalling ? 'out' : 'in'
-                }`
+              : `${rtc.remoteUser?.id ?? 'unknown'}-${rtc.isCalling ? 'out' : 'in'
+              }`
           }
           isCalling={rtc.isCalling}
+          remoteScreenSharing={rtc.remoteScreenSharing}
           incomingCall={rtc.incomingCall}
           remoteUser={rtc.remoteUser}
           localStream={rtc.localStream}

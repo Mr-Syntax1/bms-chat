@@ -14,7 +14,7 @@ function getConsistentColor(username) {
   return AVATAR_COLORS[index];
 }
 
-export default function Avatar({ username, color, size = 'md', status, className = '' }) {
+export default function Avatar({ username, color, size = 'md', status, className = '', speaking = false }) {
   const sizes = {
     xs: 'w-6 h-6 text-[10px]',
     sm: 'w-8 h-8 text-xs',
@@ -43,11 +43,11 @@ export default function Avatar({ username, color, size = 'md', status, className
   return (
     <div className={`relative inline-flex ${className}`}>
       <div
-        className={`${sizes[size]} rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-lg ring-1 ring-white/10 transition-transform duration-300 hover:scale-105`}
+        className={`${sizes[size]} rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-lg ring-1 ring-white/10 transition-transform duration-200 hover:scale-105 ${
+          speaking ? 'speaking' : ''
+        }`}
         style={{ 
           backgroundImage: `linear-gradient(to bottom right, ${baseColor}, ${gradientColor})`,
-          // اگر می‌خوای گرادیانت واقعی داشته باشی، می‌تونی یه رنگ تیره‌تر ثابت برای قسمت دوم بذاری
-          // backgroundColor: finalColor 
         }}
       >
         {username?.charAt(0).toUpperCase()}
@@ -57,7 +57,7 @@ export default function Avatar({ username, color, size = 'md', status, className
           className={`
             absolute bottom-0 left-0 rounded-full border-2 border-surface-950
             ${statusSizes[size]}
-            ${status === 'online' ? 'bg-green-500 shadow-glow-success' : ''}
+            ${status === 'online' ? 'bg-green-500 speaking-dot' : ''}
             ${status === 'away' ? 'bg-yellow-500' : ''}
             ${status === 'offline' ? 'bg-surface-400' : ''}
             animate-scale-in

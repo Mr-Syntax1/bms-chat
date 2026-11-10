@@ -6,14 +6,18 @@ const hasRemoteAudio = (stream) =>
     ? stream.getAudioTracks().some((t) => t.enabled)
     : false;
 
-const ControlButton = ({ active, activeBg, activeShadow, onClick, title, children }) => (
+const ControlButton = ({ active, activeBg, activeShadow, onClick, title, children, disabled }) => (
   <button
     onClick={onClick}
     title={title}
-    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 ${active
-      ? `${activeBg} text-white shadow-md ${activeShadow}`
-      : 'bg-[#1e1f22] text-[#b5bac1] hover:bg-[#383a40] hover:text-[#dbdee1]'
-      }`}
+    disabled={disabled}
+     className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 ${
+      disabled
+        ? 'opacity-40 cursor-not-allowed'
+        : active
+        ? `${activeBg} text-white shadow-md ${activeShadow}`
+        : 'bg-[#1e1f22] text-[#b5bac1] hover:bg-[#383a40] hover:text-[#dbdee1]'
+    }`}
   >
     {children}
   </button>
@@ -31,6 +35,7 @@ export default function CallModal({
   isMuted,
   isVideoOn,
   remoteStreamVersion,
+  remoteScreenSharing,
   isScreenSharing,
   isDeafened,
   onAnswer,
@@ -58,7 +63,10 @@ export default function CallModal({
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
+      const video = remoteVideoRef.current;
+      video.srcObject = remoteStream;
+      // برای جلوگیری از مشکل play
+      video.play().catch(() => { });
     }
   }, [remoteStream, remoteStreamVersion]);
 
@@ -224,8 +232,11 @@ export default function CallModal({
 
   // ===================== CONNECTED / CONNECTING STATE =====================
   if (isCalling && (callState === 'connected' || callState === 'connecting')) {
-    const remoteHasVideo = remoteStream && remoteStream.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
-    const localHasVideo = localStream && localStream.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
+    // تشخیص اینکه آیا remoteStream ویدیو داره یا نه
+    const remoteHasVideo = remoteStream && remoteStream.getVideoTracks().some((t) => t.kind === 'video' && t.readyState === 'live');
+
+    // localStream همیشه ویدیو داره (کamera یا screen) - پس localVideo همیشه نشون داده بشه
+    const localHasVideo = (localStream && localStream.getVideoTracks().length > 0) || isVideoOn || isScreenSharing;
 
     const showRemoteVideo = remoteHasVideo;
     const showLocalVideo = localHasVideo;
@@ -244,7 +255,7 @@ export default function CallModal({
                   autoPlay
                   playsInline
                   className="w-full h-full object-cover"
-                  style={{ objectFit: isScreenSharing ? 'contain' : 'cover' }}
+                  style={{ objectFit: 'contain' }}
                 />
                 {/* Name badge over video */}
                 <div className="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-lg text-[#f2f3f5] text-sm font-semibold flex items-center gap-2">
@@ -390,37 +401,40 @@ export default function CallModal({
 
                 {/* Others */}
                 {participants
-                .filter((p) => !p.isLocal)
-                .map((p) => (
-                  <div key={p.id} 
-                  className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#383a40]/50 transition-colors group">
-                    <div className="relative">
-                      <div
-                        className={`w-9 h-9 rounded-full ${getColorFromName(p.username)} flex items-center justify-center text-sm font-bold text-white transition-all`}
-                        style={p.speaking ? { boxShadow: '0 0 0 2px #23a559' } : undefined}
-                      >
-                        {getInitials(p.username)}
+                  .filter((p) => !p.isLocal)
+                  .map((p) => (
+                    <div key={p.id}
+                      className={`flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#383a40]/50 transition-colors group ${p.speaking ? 'bg-[#383a40]/70' : ''
+                        }`}
+                    >
+                      <div className="relative">
+                        <div
+                          className={`w-9 h-9 rounded-full ${getColorFromName(p.username)} flex items-center justify-center text-sm font-bold text-white transition-all ${p.speaking ? 'speaking' : ''
+                            }`}
+                          style={p.speaking ? { boxShadow: '0 0 0 2px #23a559' } : undefined}
+                        >
+                          {getInitials(p.username)}
+                        </div>
+                        <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-[#1e1f22] ${p.speaking ? 'speaking-dot bg-[#23a559]' : 'bg-[#80848e]'}`} />
                       </div>
-                      <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[3px] border-[#1e1f22] ${p.speaking ? 'bg-[#23a559]' : 'bg-[#80848e]'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[#f2f3f5] text-sm font-medium truncate">{p.username}</p>
+                        {p.speaking && <p className="text-[#23a559] text-[11px] font-medium">در حال صحبت...</p>}
+                      </div>
+                      <div className="flex items-center gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
+                        {p.muted && (
+                          <svg className="w-4 h-4 text-[#ed4245]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                          </svg>
+                        )}
+                        {p.video && (
+                          <svg className="w-4 h-4 text-[#23a559]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[#f2f3f5] text-sm font-medium truncate">{p.username}</p>
-                      {p.speaking && <p className="text-[#23a559] text-[11px] font-medium">در حال صحبت...</p>}
-                    </div>
-                    <div className="flex items-center gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
-                      {p.muted && (
-                        <svg className="w-4 h-4 text-[#ed4245]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                        </svg>
-                      )}
-                      {p.video && (
-                        <svg className="w-4 h-4 text-[#23a559]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}

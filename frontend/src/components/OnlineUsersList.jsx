@@ -6,7 +6,9 @@ export default function OnlineUsersList({
   currentUser, 
   onClose, 
   onOpenDM, 
-  onOpenProfile // 👈 پراپ جدید برای پروفایل
+  onOpenProfile,
+  usersSpeaking = [],
+  usersMuted = [],
 }) {
   useEffect(() => {
     const handleClickOutside = () => {
@@ -59,6 +61,7 @@ export default function OnlineUsersList({
                 ? 'bg-gradient-to-r from-primary-900/40 to-primary-800/20 ring-1 ring-primary-500/30'
                 : 'hover:bg-white/5'
               }
+              ${isSpeaking === true ? 'ring-2 ring-[#23a559]/50 bg-[#383a40]/30' : ''}
             `}>
               {/* hover glow */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -70,6 +73,7 @@ export default function OnlineUsersList({
                 color={u.avatarColor}
                 size="md"
                 status="online"
+                speaking={usersSpeaking.includes(u.id)}
               />
               
               <div className="flex-1 min-w-0 flex flex-col">
@@ -81,7 +85,15 @@ export default function OnlineUsersList({
                     <span className="badge badge-primary text-[10px] animate-pulse-soft">شما</span>
                   )}
                 </div>
-                <span className="text-[11px] text-surface-500">آنلاین</span>
+                <span className="text-[11px] text-surface-500">
+                  {u.username === currentUser ? 'آنلاین' : (usersSpeaking.includes(u.id) ? 'در حال صحبت' : 'آنلاین')}
+                  {usersMuted.includes(u.id) && u.username !== currentUser && (
+                    <>
+                      {' | '}
+                      <span className="text-[#ed4245]">مکث</span>
+                    </>
+                  )}
+                </span>
               </div>
               
               {/* 👈 اکشن‌ها (پیام خصوصی و پروفایل) */}
