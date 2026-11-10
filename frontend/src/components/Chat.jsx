@@ -7,28 +7,53 @@ import TypingIndicator from './TypingIndicator';
 import RoomList from './RoomList';
 import NotificationDropdown from './NotificationDropdown';
 import WelcomeScreen from './WelcomeScreen';
+import { useWebRTC } from '../hooks/useWebRTC';
+import CallModal from './CallModal';
 
 export default function Chat({ chat, user, onLogout }) {
   const {
-    messages, onlineUsers, typingUsers, rooms, currentRoom,
-    sendMessage, setTyping, createRoom, switchRoom, leaveRoom, deleteRoom,
+    messages,
+    onlineUsers,
+    typingUsers,
+    rooms,
+    currentRoom,
+    sendMessage,
+    setTyping,
+    createRoom,
+    switchRoom,
+    leaveRoom,
+    deleteRoom,
     searchRooms,
-    openDM, deleteMessage, editMessage,
-    connectSocket, disconnectSocket, connected,
-    notifications, unreadCount, showNotifications,
-    fetchNotifications, markNotificationsAsRead,
-    setUnreadCount, setShowNotifications,
+    openDM,
+    deleteMessage,
+    editMessage,
+    connectSocket,
+    disconnectSocket,
+    connected,
+    notifications,
+    unreadCount,
+    showNotifications,
+    fetchNotifications,
+    markNotificationsAsRead,
+    setUnreadCount,
+    setShowNotifications,
   } = chat;
 
   const navigate = useNavigate();
 
-  // اتصال سوکت
+  const rtc = useWebRTC(user);
+
+  // ============================================================
+  // اتصال سوکت — فقط یک بار موقع mount
+  // ============================================================
   useEffect(() => {
     connectSocket();
     return () => disconnectSocket();
   }, [connectSocket, disconnectSocket]);
 
+  // ============================================================
   // مدیریت سایدبار (روی موبایل)
+  // ============================================================
   const [sidebar, setSidebar] = useState(null);
 
   const toggleSidebar = useCallback((panel = 'rooms') => {
@@ -37,7 +62,9 @@ export default function Chat({ chat, user, onLogout }) {
 
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
+  // ============================================================
   // بستن نوتیفیکیشن با کلیک بیرون
+  // ============================================================
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -52,14 +79,12 @@ export default function Chat({ chat, user, onLogout }) {
   }, [setShowNotifications]);
 
   const handleGoHome = () => {
-    // اگر در اتاقی هستیم، ازش خارج شو تا WelcomeScreen نشون داده بشه
-
-        switchRoom(null); 
- // این تابع از useChat میاد
-    
+    switchRoom(null);
   };
 
+  // ============================================================
   // باز کردن DM
+  // ============================================================
   const handleOpenDM = useCallback(
     async (targetUserId, targetUsername) => {
       const res = await openDM(targetUserId, targetUsername);
@@ -70,7 +95,9 @@ export default function Chat({ chat, user, onLogout }) {
     [openDM, closeSidebar]
   );
 
+  // ============================================================
   // باز کردن پروفایل
+  // ============================================================
   const handleOpenProfile = useCallback(
     (username) => {
       if (username) {
@@ -82,7 +109,9 @@ export default function Chat({ chat, user, onLogout }) {
     [navigate]
   );
 
+  // ============================================================
   // باز/بسته کردن نوتیفیکیشن‌ها
+  // ============================================================
   const handleOpenNotifications = useCallback(() => {
     setShowNotifications((prev) => {
       const next = !prev;
@@ -105,6 +134,7 @@ export default function Chat({ chat, user, onLogout }) {
           rooms={rooms}
           onGoHome={handleGoHome}
           user={user}
+          onlineUsers={onlineUsers}
           onlineCount={onlineUsers.length}
           roomName={currentRoom}
           onLogout={onLogout}
@@ -112,7 +142,7 @@ export default function Chat({ chat, user, onLogout }) {
           onOpenProfile={handleOpenProfile}
           unreadNotifications={unreadCount}
           onOpenNotifications={handleOpenNotifications}
-
+          onStartCall={rtc.startCall}
         />
 
         <div className="flex-1 flex overflow-hidden">
@@ -144,7 +174,9 @@ export default function Chat({ chat, user, onLogout }) {
                     onEditMessage={editMessage}
                     currentUserId={user?.id}
                   />
-                  <TypingIndicator users={typingUsers.filter((u) => u !== user?.username)} />
+                  <TypingIndicator
+                    users={typingUsers.filter((u) => u !== user?.username)}
+                  />
                   <ChatInput onSend={sendMessage} onTyping={setTyping} />
                 </>
               ) : (
@@ -159,20 +191,49 @@ export default function Chat({ chat, user, onLogout }) {
           </main>
         </div>
 
-        {/*  پنل‌های موبایل (اصلاح‌شده) */}
+        <CallModal
+          key={
+            rtc.callState === 'idle' || rtc.callState === 'ended'
+              ? 'no-call'
+              : `${rtc.remoteUser?.id ?? 'unknown'}-${
+                  rtc.isCalling ? 'out' : 'in'
+                }`
+          }
+          isCalling={rtc.isCalling}
+          incomingCall={rtc.incomingCall}
+          remoteUser={rtc.remoteUser}
+          localStream={rtc.localStream}
+          remoteStream={rtc.remoteStream}
+          remoteStreamVersion={rtc.remoteStreamVersion}
+          callState={rtc.callState}
+          callType={rtc.callType}
+          participants={rtc.participants}
+          isMuted={rtc.isMuted}
+          isVideoOn={rtc.isVideoOn}
+          isScreenSharing={rtc.isScreenSharing}
+          isDeafened={rtc.isDeafened}
+          onAnswer={rtc.answerCall}
+          onDecline={rtc.declineCall}
+          onEnd={rtc.endCall}
+          onToggleMute={rtc.toggleMute}
+          onToggleDeafen={rtc.toggleDeafen}
+          onToggleVideo={rtc.toggleVideo}
+          onToggleScreenShare={rtc.toggleScreenShare}
+          user={user}
+        />
+
+        {/* پنل‌های موبایل */}
         {sidebar && (
           <>
             <div
               className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in"
               onClick={closeSidebar}
             />
-            <div
-              className="fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong flex flex-col shadow-2xl right-0 left-auto slide-in-right"
-            >
-              {/*  شرط سه‌گانه درست (اتاق‌ها / کاربران آنلاین / بسته) */}
+            <div className="fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong flex flex-col shadow-2xl right-0 left-auto slide-in-right">
               {sidebar === 'rooms' ? (
                 <RoomList
                   rooms={rooms}
+                  onlineUsers={onlineUsers}
                   currentRoom={currentRoom}
                   onSwitch={(name) => {
                     switchRoom(name);

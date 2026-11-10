@@ -1,7 +1,14 @@
 import { Server } from 'socket.io';
 import { users } from '../utils/users.js';
 import { handleJoin } from './handlers/users.js';
-import { handleChat, handleDeleteMessage, handleGetMessages, handleEditMessage, handleGetNotifications, handleMarkNotificationsAsRead } from './handlers/chat.js';
+import {
+  handleChat,
+  handleDeleteMessage,
+  handleGetMessages,
+  handleEditMessage,
+  handleGetNotifications,
+  handleMarkNotificationsAsRead,
+} from './handlers/chat.js';
 import { handleTyping } from './handlers/typing.js';
 import {
   handleListRooms,
@@ -11,18 +18,21 @@ import {
   handleLeaveRoom,
   handleDeleteRoom,
   handleGetRoomInfo,
-  getRoomUsers,
 } from './handlers/rooms.js';
 import { handleOpenDM } from './handlers/direct.js';
+import {
+  handleWebRTCOffer,
+  handleWebRTCAnswer,
+  handleWebRTCIceCandidate,
+  handleWebRTCHangup,
+} from './handlers/webrtc.js';
 import { verifyToken } from '../utils/jwt.js';
 
 function getSocketToken(socket) {
   if (socket.handshake.auth?.token) return socket.handshake.auth.token;
   const cookieHeader = socket.handshake.headers.cookie;
-  if (!cookieHeader) {
-    console.log('[Socket Auth] No cookie header');
-    return null;
-  }
+  if (!cookieHeader) return null;
+
   const cookies = Object.fromEntries(
     cookieHeader.split(';').map((c) => {
       const idx = c.indexOf('=');
@@ -32,9 +42,7 @@ function getSocketToken(socket) {
       return [k, v];
     })
   );
-  const token = cookies.token || null;
-  console.log('[Socket Auth] Token from cookie:', token ? 'FOUND' : 'NOT FOUND');
-  return token;
+  return cookies.token || null;
 }
 
 export function initSocket(server) {
@@ -42,33 +50,30 @@ export function initSocket(server) {
     cors: {
       origin: 'http://localhost:5001',
       methods: ['GET', 'POST'],
-      credentials: true
+      credentials: true,
     },
   });
 
+  // احراز هویت
   io.use((socket, next) => {
     const token = getSocketToken(socket);
-    if (!token) {
-      console.log('[Socket Auth] REJECT: No token');
-      return next(new Error('Authentication error: No token provided'));
-    }
+    if (!token) return next(new Error('Authentication error: No token provided'));
 
     const decoded = verifyToken(token);
-    if (!decoded) {
-      console.log('[Socket Auth] REJECT: Invalid token');
-      return next(new Error('Authentication error: Invalid token'));
-    }
+    if (!decoded) return next(new Error('Authentication error: Invalid token'));
 
-    console.log('[Socket Auth] ACCEPT:', decoded.username);
     socket.userId = decoded.id;
     socket.username = decoded.username;
     next();
   });
 
-
   io.on('connection', (socket) => {
     console.log('🟢 connected:', socket.id);
 
+    // کاربر به اتاق شخصی خودش (socket.id) join می‌شه
+    socket.join(socket.id);
+
+    // --- رویدادهای چت ---
     socket.on('join', handleJoin(socket, io, users));
     socket.on('chat message', handleChat(socket, io, users));
     socket.on('delete message', handleDeleteMessage(socket, io, users));
@@ -84,9 +89,56 @@ export function initSocket(server) {
     socket.on('open dm', handleOpenDM(socket, io, users));
     socket.on('edit message', handleEditMessage(socket, io, users));
     socket.on('get notifications', handleGetNotifications(socket, io, users));
-    socket.on('mark notifications as read', handleMarkNotificationsAsRead(socket, io, users));
-    socket.join(socket.id);
+    socket.on(
+      'mark notifications as read',
+      handleMarkNotificationsAsRead(socket, io, users)
+    );
 
+    // --- رویدادهای WebRTC ---
+    // hangup — فقط یک بار از handler استفاده می‌کنیم
+    socket.on('webrtc-hangup', handleWebRTCHangup(socket, io, users));
+
+    socket.on('webrtc-offer', ({ targetUserId, offer }) => {
+      const targetUser = users.findByUserId(targetUserId);
+      if (targetUser) {
+        io.to(targetUser.id).emit('webrtc-offer', {
+          fromUserId: socket.userId,
+          fromUsername: socket.username,
+          offer,
+        });
+      }
+    });
+
+    socket.on('webrtc-answer', ({ targetUserId, answer }) => {
+      const targetUser = users.findByUserId(targetUserId);
+      if (targetUser) {
+        io.to(targetUser.id).emit('webrtc-answer', {
+          fromUserId: socket.userId,
+          answer,
+        });
+      }
+    });
+
+    socket.on('webrtc-ice-candidate', ({ targetUserId, candidate }) => {
+      const targetUser = users.findByUserId(targetUserId);
+      if (targetUser) {
+        io.to(targetUser.id).emit('webrtc-ice-candidate', {
+          fromUserId: socket.userId,
+          candidate,
+        });
+      }
+    });
+
+    socket.on('webrtc-stream-updated', ({ targetUserId }) => {
+      const targetUser = users.findByUserId(targetUserId);
+      if (targetUser) {
+        io.to(targetUser.id).emit('webrtc-stream-updated', {
+          fromUserId: socket.userId,
+        });
+      }
+    });
+
+    // --- قطع اتصال ---
     socket.on('disconnect', async () => {
       const user = users.remove(socket.id);
       if (user) {

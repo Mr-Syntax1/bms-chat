@@ -1,7 +1,7 @@
 import express from 'express';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3Client, BUCKET_NAME } from '../config/s3.js'; // 👈 به فایل کانفیگ جدید اشاره می‌کند
+import { s3Client, BUCKET_NAME } from '../config/s3.js';
 import crypto from 'node:crypto';
 
 export const uploadRouter = express.Router();
@@ -26,8 +26,7 @@ uploadRouter.post('/presign', async (req, res) => {
     // تولید لینک آپلود موقت (اعتبار ۱۰ دقیقه)
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 600 });
 
-    // 👈 لینک نهایی فایل برای نمایش
-    // دقت کن که S3_ENDPOINT در فایل .env حتماً باید با https:// شروع شود
+    //  لینک نهایی فایل برای نمایش
     const publicUrl = `${process.env.S3_ENDPOINT}/${BUCKET_NAME}/${key}`;
 
     console.log('[Upload] presign:', { key, publicUrl, uploadUrl });

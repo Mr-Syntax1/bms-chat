@@ -6,10 +6,11 @@ import { signToken, verifyToken } from '../utils/jwt.js';
 
 export const authRouter = express.Router();
 
+const isProduction = process.env.NODE_ENV === 'production';
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: true,
-  sameSite: 'lax',
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
@@ -58,7 +59,7 @@ authRouter.post('/register', async (req, res) => {
     const token = signToken(user);
     // console.log('[Auth/register] Token generated:', token?.substring(0, 20) + '...');
     setTokenCookie(res, token);
-    res.json({ user: { id: user._id, username: user.username } });
+    res.json({ user: { id: user._id, username: user.username }, token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطای سرور' });
@@ -76,7 +77,7 @@ authRouter.post('/login', async (req, res) => {
     const token = signToken(user);
     // console.log('[Auth/login] Token generated:', token?.substring(0, 20) + '...');
     setTokenCookie(res, token);
-    res.json({ user: { id: user._id, username: user.username } });
+    res.json({ user: { id: user._id, username: user.username }, token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطای سرور' });
@@ -115,7 +116,7 @@ authRouter.get('/me', async (req, res) => {
     }
 
     console.log('[Auth/me] Success:', user.username);
-    res.json({ user: { id: user._id, username: user.username } });
+    res.json({ user: { id: user._id, username: user.username }, token });
   } catch (err) {
     console.error('[Auth/me] error:', err);
     res.status(500).json({ error: 'خطای سرور' });
@@ -173,4 +174,13 @@ authRouter.get('/profile/:username', async (req, res) => {
     console.error(err);
     res.status(500).json({ success: false, error: 'خطای سرور' });
   }
+});
+
+// دریافت توکن برای تماس
+authRouter.get('/call-token', authMiddleware, (req, res) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).json({ error: 'توکن یافت نشد' });
+  }
+  res.json({ token });
 });

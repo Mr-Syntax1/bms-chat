@@ -13,9 +13,9 @@ export function handleJoin(socket, io, users) {
     }
 
     const user = users.add(socket.id, username, socket.userId);
-    
+
     // 👈 هیچ اتاقی به صورت خودکار باز نمی‌شود
-    socket.currentRoom = null; 
+    socket.currentRoom = null;
 
     // دریافت لیست اتاق‌هایی که کاربر در آن‌ها عضو است
     const rooms = await getRoomsForUser(socket, io, users);
@@ -24,9 +24,9 @@ export function handleJoin(socket, io, users) {
     callback({
       success: true,
       user,
-      history: [], 
+      history: [],
       rooms,
-      currentRoom: null, 
+      currentRoom: null,
     });
 
     // اطلاع‌رسانی به همه که لیست آنلاین‌ها تغییر کرد
@@ -79,7 +79,8 @@ export async function getRoomsForUser(socket, io, users) {
 
       result.dmPartnerUsername = dmPartnerUsername;
       result.dmPartnerAvatar = dmPartnerAvatar;
-      result.dmPartnerId = dmPartnerId;
+      // result.dmPartnerId = dmPartnerId;
+      result.dmPartnerId = otherMemberId.toString();
     }
 
     return result;
