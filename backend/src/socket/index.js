@@ -21,10 +21,13 @@ import {
 } from './handlers/rooms.js';
 import { handleOpenDM } from './handlers/direct.js';
 import {
-  handleWebRTCOffer,
+  handleWebRTCOffer,        
   handleWebRTCAnswer,
   handleWebRTCIceCandidate,
   handleWebRTCHangup,
+  handleWebRTCStreamUpdated,
+  handleWebRTCScreenLock,   
+  handleWebRTCScreenUnlock, 
 } from './handlers/webrtc.js';
 import { verifyToken } from '../utils/jwt.js';
 
@@ -89,73 +92,18 @@ export function initSocket(server) {
     socket.on('open dm', handleOpenDM(socket, io, users));
     socket.on('edit message', handleEditMessage(socket, io, users));
     socket.on('get notifications', handleGetNotifications(socket, io, users));
-    socket.on(
-      'mark notifications as read',
-      handleMarkNotificationsAsRead(socket, io, users)
-    );
+    socket.on('mark notifications as read', handleMarkNotificationsAsRead(socket, io, users));
 
-    // --- رویدادهای WebRTC ---
-    // hangup — فقط یک بار از handler استفاده می‌کنیم
-    socket.on('webrtc-hangup', handleWebRTCHangup(socket, io, users));
-
-    socket.on('webrtc-offer', ({ targetUserId, offer, renegotiate }) => {
-      const targetUser = users.findByUserId(targetUserId);
-      if (targetUser) {
-        io.to(targetUser.id).emit('webrtc-offer', {
-          fromUserId: socket.userId,
-          fromUsername: socket.username,
-          offer,
-          renegotiate: !!renegotiate,
-        });
-      }
-    });
-
-    socket.on('webrtc-answer', ({ targetUserId, answer }) => {
-      const targetUser = users.findByUserId(targetUserId);
-      if (targetUser) {
-        io.to(targetUser.id).emit('webrtc-answer', {
-          fromUserId: socket.userId,
-          answer,
-        });
-      }
-    });
-
-    socket.on('webrtc-ice-candidate', ({ targetUserId, candidate }) => {
-      const targetUser = users.findByUserId(targetUserId);
-      if (targetUser) {
-        io.to(targetUser.id).emit('webrtc-ice-candidate', {
-          fromUserId: socket.userId,
-          candidate,
-        });
-      }
-    });
-
-    socket.on('webrtc-stream-updated', ({ targetUserId }) => {
-      const targetUser = users.findByUserId(targetUserId);
-      if (targetUser) {
-        io.to(targetUser.id).emit('webrtc-stream-updated', {
-          fromUserId: socket.userId,
-        });
-      }
-    });
-    
-    socket.on('webrtc-screen-lock', ({ targetUserId }) => {
-      const targetUser = users.findByUserId(targetUserId);
-      if (targetUser) {
-        io.to(targetUser.id).emit('webrtc-screen-lock', {
-          fromUserId: socket.userId,
-        });
-      }
-    });
-
-    socket.on('webrtc-screen-unlock', ({ targetUserId }) => {
-      const targetUser = users.findByUserId(targetUserId);
-      if (targetUser) {
-        io.to(targetUser.id).emit('webrtc-screen-unlock', {
-          fromUserId: socket.userId,
-        });
-      }
-    });
+    // ============================================================
+    // --- رویدادهای WebRTC (استفاده از هندلرهای ماژولار) ---
+    // ============================================================
+    socket.on('webrtc-offer', handleWebRTCOffer(socket, io));
+    socket.on('webrtc-answer', handleWebRTCAnswer(socket, io));
+    socket.on('webrtc-ice-candidate', handleWebRTCIceCandidate(socket, io));
+    socket.on('webrtc-hangup', handleWebRTCHangup(socket, io));
+    socket.on('webrtc-stream-updated', handleWebRTCStreamUpdated(socket, io));
+    socket.on('webrtc-screen-lock', handleWebRTCScreenLock(socket, io));
+    socket.on('webrtc-screen-unlock', handleWebRTCScreenUnlock(socket, io));
 
     // --- قطع اتصال ---
     socket.on('disconnect', async () => {

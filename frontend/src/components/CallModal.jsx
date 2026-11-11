@@ -13,7 +13,7 @@ const hasRemoteAudio = (stream) =>
 // ============================================================
 const hasLiveVideo = (stream) =>
   !!stream && typeof stream.getVideoTracks === 'function'
-    ? stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live')
+    ? stream.getVideoTracks().some((t) => t.enabled && t.readyState === 'live' && !t.muted)
     : false;
 
 // ============================================================
@@ -125,31 +125,41 @@ export default function CallModal({
   }, []);
 
   // ============================================================
-  // ویدیوی ریموت — muted (صدا با <audio> بالاست)
+  // ویدیوی ریموت — مدیریت دقیق replaceTrack و بارگذاری مجدد
   // ============================================================
+  // ============================================================
+  // ویدیوی ریموت — مدیریت دقیق replaceTrack و بارگذاری مجدد
+  // ============================================================
+  // ویدیوی ریموت
   useEffect(() => {
     const video = remoteVideoRef.current;
     if (!video) return;
 
-    // چک می‌کنیم آیا استریم جدید دارای ویدیوی زنده است یا خیر
     const hasVideo = remoteStream && hasLiveVideo(remoteStream);
 
     if (!hasVideo) {
-      // اگر ویدیوی زنده‌ای وجود ندارد، ویدیو را متوقف و پاکسازی کن
-      // این کار باعث می‌شود آخرین فریم روی صفحه "فریز" نشود
       video.pause();
       video.srcObject = null;
       return;
     }
 
-    // اگر ویدیوی زنده وجود دارد، آن را وصل و پخش کن
-    if (video.srcObject !== remoteStream) {
-      video.srcObject = remoteStream;
-    }
-
+    // چون از key استفاده کردیم، تگ ویدیو از نو ساخته می‌شود
+    // و نیازی به setTimeout و null کردن دستی نیست.
+    video.srcObject = remoteStream;
     video.play().catch(() => { });
 
-  }, [remoteStream, remoteStreamVersion]); // remoteStreamVersion باعث می‌شود هر بار تغییر کند
+  }, [remoteStream, remoteStreamVersion]);
+
+  // ✅ Extra: explicit cleanup when remoteStream becomes null/empty
+  useEffect(() => {
+    const video = remoteVideoRef.current;
+    if (!video) return;
+
+    if (!remoteStream || !hasLiveVideo(remoteStream)) {
+      video.pause();
+      video.srcObject = null;
+    }
+  }, [remoteStream]);
 
   // cleanup ویدیوی ریموت
   useEffect(() => {
@@ -390,6 +400,7 @@ export default function CallModal({
               {showRemoteVideo ? (
                 <>
                   <video
+                    key={remoteStreamVersion}
                     ref={remoteVideoRef}
                     autoPlay
                     playsInline
