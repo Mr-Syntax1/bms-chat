@@ -1,6 +1,28 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { socket } from '../socket';
 
+// تابع کمکی برای تنظیم بیت‌ریت و فریم‌ریت ارسال ویدیو
+const setVideoSenderParameters = async (sender, maxBitrate = 8_000_000) => {
+    if (!sender || !sender.track || sender.track.kind !== 'video') return;
+    try {
+        const params = sender.getParameters();
+        // در برخی مرورگرها (مثل فایرفاکس) ممکن است encodings خالی باشد
+        if (!params.encodings || params.encodings.length === 0) {
+            params.encodings = [{}];
+        }
+        // تنظیم سقف بیت‌ریت (مثلاً 4 مگابیت بر ثانیه برای کیفیت بالا)
+        params.encodings[0].maxBitrate = maxBitrate;
+        // تنظیم نرخ فریم (اختیاری، اگر مطمئنی سخت‌افزار می‌کشد)
+        // params.encodings[0].maxFramerate = 30;
+
+        await sender.setParameters(params);
+        console.log(`[WebRTC] Video sender bitrate set to ${maxBitrate / 1_000_000} Mbps`);
+    } catch (err) {
+        console.warn('[WebRTC] Could not set video sender parameters:', err);
+    }
+};
+
+
 export function useWebRTC(currentUser) {
     const [isCalling, setIsCalling] = useState(false);
     const [incomingCall, setIncomingCall] = useState(null);
@@ -26,7 +48,7 @@ export function useWebRTC(currentUser) {
     const isInitiatorRef = useRef(false);
     const targetUserIdRef = useRef(null);
     const callStateRef = useRef(callState);
-    const remoteStreamRef = useRef(null); //  استریم ریموت دائمی
+    const remoteStreamRef = useRef(null);
     const isScreenSharingDuringCallRef = useRef(false);
     const screenVideoSenderRef = useRef(null);
     const screenAudioSenderRef = useRef(null);
@@ -35,8 +57,7 @@ export function useWebRTC(currentUser) {
     const pendingRenegotiationRef = useRef(false);
     const endCallRef = useRef(null);
 
-
-    // همگام‌سازی refها
+    // Ref sync
     useEffect(() => {
         callStateRef.current = callState;
     }, [callState]);
@@ -50,31 +71,77 @@ export function useWebRTC(currentUser) {
     }, [isDeafened]);
 
     // ============================================================
-    // استریم ریموت دائمی — یک آبجکت یکتا که ترک‌ها به آن
-    //    اضافه/حذف می‌شوند؛ دیگر srcObject عوض نمی‌شود و صدا قطع نمی‌شود
+    // Remote stream sync — CRITICAL FIX #2:
+    // filter `readyState !== 'ended'`, NOT `=== 'live'`.
+    // A muted track is a TRANSIENT state (first frame not arrived,
+    // replaceTrack in progress). Dropping it removes audio/video
+    // from the UI exactly during renegotiation.
+    // Also keeps remoteStreamRef.current ALWAYS current.
     // ============================================================
-
     const syncRemoteStream = useCallback((tracks) => {
-        // ✅ یک MediaStream جدید بساز تا React تغییر را تشخیص دهد
+        const live = tracks.filter((t) => t && t.readyState !== 'ended');
+        const audioTracks = live.filter((t) => t.kind === 'audio');
+        const videoTracks = live.filter((t) => t.kind === 'video');
+
+        // Only one video track is ever shown (screen replaces camera).
+        // Prefer the newest unmuted one; otherwise the newest live (muted is
+        // transient). This stops a stale muted receiver shadowing the new track.
+        const activeVideo =
+            [...videoTracks].reverse().find((t) => !t.muted) ||
+            videoTracks[videoTracks.length - 1];
+
         const newStream = new MediaStream();
-
-        tracks.forEach((t) => {
-            if (t && t.readyState === 'live') {
-                newStream.addTrack(t);
-            }
-        });
-
-        // اعمال deafen
-        newStream.getAudioTracks().forEach((t) => {
+        audioTracks.forEach((t) => {
             t.enabled = !isDeafenedRef.current;
+            newStream.addTrack(t);
         });
+        if (activeVideo) newStream.addTrack(activeVideo);
 
+        remoteStreamRef.current = newStream;
         setRemoteStream(newStream);
         setRemoteStreamVersion((v) => v + 1);
     }, []);
 
+    const attachVideoTrack = async (peer, track, stream) => {
+        const reusable = peer
+            .getTransceivers()
+            .find(
+                (t) =>
+                    t.receiver?.track?.kind === 'video' &&
+                    t.currentDirection !== 'stopped' &&
+                    !t.sender.track
+            );
+        if (reusable) {
+            await reusable.sender.replaceTrack(track);
+            reusable.direction = 'sendrecv';
+            return reusable.sender;
+        }
+        return peer.addTrack(track, stream);
+    };
+
+    const syncFromPeer = useCallback(() => {
+        if (!peerRef.current) return;
+        const tracks = peerRef.current
+            .getReceivers()
+            .map((r) => r.track)
+            .filter((t) => t && t.readyState !== 'ended');
+        syncRemoteStream(tracks);
+    }, [syncRemoteStream]);
+
+    // Attach lifecycle handlers to every receiver track exactly once.
+    const attachTrackHandlers = useCallback(() => {
+        if (!peerRef.current) return;
+        peerRef.current.getReceivers().forEach((receiver) => {
+            const track = receiver.track;
+            if (!track || track._callHandlersAttached) return;
+            track._callHandlersAttached = true;
+            track.onunmute = () => syncFromPeer();
+            track.onended = () => setTimeout(syncFromPeer, 100);
+        });
+    }, [syncFromPeer]);
+
     // ============================================================
-    // ۱) endCall
+    // 1) endCall
     // ============================================================
     const endCall = useCallback(() => {
         console.log('[WebRTC] Ending call');
@@ -113,6 +180,7 @@ export function useWebRTC(currentUser) {
         }
 
         pendingCandidatesRef.current = [];
+        pendingRenegotiationRef.current = false;
         targetUserIdRef.current = null;
         isInitiatorRef.current = false;
         isScreenSharingDuringCallRef.current = false;
@@ -139,7 +207,7 @@ export function useWebRTC(currentUser) {
     }, [endCall]);
 
     // ============================================================
-    // ۲) createPeer
+    // 2) createPeer
     // ============================================================
     const createPeer = useCallback(
         (targetUserId) => {
@@ -159,25 +227,19 @@ export function useWebRTC(currentUser) {
                 }
             };
 
-            //  هر ترک جدید را به استریم دائمی اضافه کن، نه جایگزین
             peer.ontrack = (event) => {
                 const track = event.track;
-
-                // اضافه کردن شنونده برای زمانی که ترک واقعاً فعال می‌شود
+                // Keep muted-but-live tracks; only ended tracks are dropped,
+                // and those are handled by syncFromPeer filtering.
                 track.onunmute = () => {
                     console.log('[WebRTC] Remote track unmuted:', track.kind);
-                    const receivers = peerRef.current.getReceivers();
-                    const tracks = receivers.map((r) => r.track).filter(Boolean);
-                    syncRemoteStream(tracks);
+                    syncFromPeer();
                 };
-
                 if (track.kind === 'audio') {
                     track.enabled = !isDeafenedRef.current;
                 }
-
-                const receivers = peerRef.current.getReceivers();
-                const tracks = receivers.map((r) => r.track).filter(Boolean);
-                syncRemoteStream(tracks);
+                attachTrackHandlers();
+                syncFromPeer();
             };
 
             peer.onconnectionstatechange = () => {
@@ -204,51 +266,17 @@ export function useWebRTC(currentUser) {
 
             return peer;
         },
-        [endCall, syncRemoteStream]
+        [endCall, syncFromPeer, attachTrackHandlers]
     );
 
     // ============================================================
-    // ۳) توابع کمکی
+    // 3) Helpers
     // ============================================================
     const addLocalTracks = useCallback((stream, peer) => {
         stream.getTracks().forEach((track) => {
             peer.addTrack(track, stream);
         });
     }, []);
-
-    const setupRemoteTrackEndHandlers = useCallback(() => {
-        if (!peerRef.current) return;
-        const receivers = peerRef.current.getReceivers();
-        receivers.forEach((receiver) => {
-            const track = receiver.track;
-            if (track && !track._handlersAttached) {
-                track._handlersAttached = true;
-
-                track.onended = () => {
-                    console.log('[WebRTC] Remote track ended:', track.kind);
-                    setTimeout(() => {
-                        if (peerRef.current) {
-                            const currentReceivers = peerRef.current.getReceivers();
-                            const liveTracks = currentReceivers
-                                .map((r) => r.track)
-                                .filter((t) => t && t.readyState === 'live');
-                            syncRemoteStream(liveTracks);
-                        }
-                    }, 100);
-                };
-
-                // ✅ اضافه کردن onunmute برای زمانی که replaceTrack استفاده می‌شود
-                track.onunmute = () => {
-                    console.log('[WebRTC] Remote track unmuted:', track.kind);
-                    const currentReceivers = peerRef.current.getReceivers();
-                    const liveTracks = currentReceivers
-                        .map((r) => r.track)
-                        .filter((t) => t && t.readyState === 'live');
-                    syncRemoteStream(liveTracks);
-                };
-            }
-        });
-    }, [syncRemoteStream]);
 
     const processPendingCandidates = useCallback((peer) => {
         pendingCandidatesRef.current.forEach((candidate) => {
@@ -258,7 +286,7 @@ export function useWebRTC(currentUser) {
     }, []);
 
     // ============================================================
-    // Renegotiation helper — فقط وقتی signalingState پایدار است
+    // Renegotiation helper — defers (never drops) when unstable
     // ============================================================
     const renegotiate = useCallback(async () => {
         const peer = peerRef.current;
@@ -269,6 +297,7 @@ export function useWebRTC(currentUser) {
             return;
         }
 
+        pendingRenegotiationRef.current = false;
         try {
             const offer = await peer.createOffer();
             await peer.setLocalDescription(offer);
@@ -283,7 +312,7 @@ export function useWebRTC(currentUser) {
     }, []);
 
     // ============================================================
-    // ۴) startCall
+    // 4) startCall
     // ============================================================
     const startCall = useCallback(
         async (targetUserId, targetUsername, type = 'audio') => {
@@ -295,14 +324,19 @@ export function useWebRTC(currentUser) {
                 targetUserIdRef.current = targetUserId;
                 setRemoteUser({ id: targetUserId, username: targetUsername });
 
-                // استریم ریموت تازه برای تماس جدید
                 remoteStreamRef.current = new MediaStream();
                 setRemoteStream(remoteStreamRef.current);
 
-                const constraints =
-                    type === 'video'
-                        ? { video: true, audio: true }
-                        : { video: false, audio: true };
+                const constraints = type === 'video'
+                    ? {
+                        video: {
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 },
+                            frameRate: { ideal: 30, max: 30 }
+                        },
+                        audio: true
+                    }
+                    : { video: false, audio: true };
 
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraStreamRef.current = stream;
@@ -337,7 +371,7 @@ export function useWebRTC(currentUser) {
                 const peer = createPeer(targetUserId);
                 peerRef.current = peer;
                 addLocalTracks(stream, peer);
-                setupRemoteTrackEndHandlers();
+                attachTrackHandlers();
 
                 const offer = await peer.createOffer();
                 await peer.setLocalDescription(offer);
@@ -347,11 +381,11 @@ export function useWebRTC(currentUser) {
                 endCall();
             }
         },
-        [createPeer, addLocalTracks, currentUser, endCall, setupRemoteTrackEndHandlers]
+        [createPeer, addLocalTracks, attachTrackHandlers, currentUser, endCall]
     );
 
     // ============================================================
-    // ۵) answerCall
+    // 5) answerCall
     // ============================================================
     const answerCall = useCallback(
         async (type = 'audio') => {
@@ -366,14 +400,19 @@ export function useWebRTC(currentUser) {
                 isInitiatorRef.current = false;
                 targetUserIdRef.current = fromUserId;
 
-                //  استریم ریموت تازه
                 remoteStreamRef.current = new MediaStream();
                 setRemoteStream(remoteStreamRef.current);
 
-                const constraints =
-                    type === 'video'
-                        ? { video: true, audio: true }
-                        : { video: false, audio: true };
+                const constraints = type === 'video'
+                    ? {
+                        video: {
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 },
+                            frameRate: { ideal: 30, max: 30 }
+                        },
+                        audio: true
+                    }
+                    : { video: false, audio: true };
 
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraStreamRef.current = stream;
@@ -408,16 +447,15 @@ export function useWebRTC(currentUser) {
                 const peer = createPeer(fromUserId);
                 peerRef.current = peer;
                 addLocalTracks(stream, peer);
-                setupRemoteTrackEndHandlers();
 
                 await peer.setRemoteDescription(new RTCSessionDescription(offer));
                 processPendingCandidates(peer);
+                attachTrackHandlers();
 
                 const answer = await peer.createAnswer();
                 await peer.setLocalDescription(answer);
                 socket.emit('webrtc-answer', { targetUserId: fromUserId, answer });
                 setIncomingCall(null);
-                //  connected را onconnectionstatechange ست می‌کند
             } catch (err) {
                 console.error('Error answering call:', err);
                 endCall();
@@ -428,14 +466,14 @@ export function useWebRTC(currentUser) {
             createPeer,
             addLocalTracks,
             processPendingCandidates,
+            attachTrackHandlers,
             currentUser,
             endCall,
-            setupRemoteTrackEndHandlers,
         ]
     );
 
     // ============================================================
-    // ۶) کنترل‌ها
+    // 6) Controls
     // ============================================================
     const toggleMute = useCallback(() => {
         if (localStreamRef.current) {
@@ -452,11 +490,11 @@ export function useWebRTC(currentUser) {
         }
     }, []);
 
-    // deafen روی ref اعمال می‌شود تا با تعویض استریم از بین نرود
     const toggleDeafen = useCallback(() => {
         setIsDeafened((prev) => {
             const next = !prev;
             isDeafenedRef.current = next;
+            // remoteStreamRef is kept current by syncRemoteStream
             const stream = remoteStreamRef.current;
             if (stream) {
                 stream.getAudioTracks().forEach((track) => {
@@ -468,7 +506,6 @@ export function useWebRTC(currentUser) {
     }, []);
 
     const toggleVideo = useCallback(async () => {
-        // حین screen share، sender ویدیو متعلق به اسکرین است؛ نزن
         if (isScreenSharingDuringCallRef.current) {
             console.warn('[WebRTC] Cannot toggle camera while screen sharing');
             return;
@@ -477,14 +514,16 @@ export function useWebRTC(currentUser) {
         if (!isVideoOnRef.current) {
             try {
                 const videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
+                    video: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 30, max: 30 }
+                    },
                     audio: false,
                 });
                 const videoTrack = videoStream.getVideoTracks()[0];
-
                 let needsRenegotiation = false;
 
-                //  ابتدا استریم ترکیبی را بساز، بعد addTrack با همان استریم
                 const combined = new MediaStream(localStreamRef.current.getTracks());
                 combined.addTrack(videoTrack);
                 localStreamRef.current = combined;
@@ -494,13 +533,19 @@ export function useWebRTC(currentUser) {
                     const sender = peerRef.current
                         .getSenders()
                         .find((s) => s.track?.kind === 'video');
+
                     if (sender) {
                         await sender.replaceTrack(videoTrack);
+                        // بعد از replaceTrack، پارامترها را تنظیم کن
+                        await setVideoSenderParameters(sender, 8_000_000);
                     } else {
-                        peerRef.current.addTrack(videoTrack, combined);
+                        const newSender = await attachVideoTrack(peerRef.current, videoTrack, combined);
+                        // بعد از ساخت sender جدید، پارامترها را تنظیم کن
+                        await setVideoSenderParameters(newSender, 8_000_000);
                         needsRenegotiation = true;
                     }
                 }
+
 
                 if (targetUserIdRef.current) {
                     socket.emit('webrtc-stream-updated', {
@@ -552,7 +597,7 @@ export function useWebRTC(currentUser) {
     }, [renegotiate]);
 
     // ============================================================
-    // توقف شیر اسکرین
+    // Stop screen share
     // ============================================================
     const stopScreenShareInternal = useCallback(async () => {
         isScreenSharingDuringCallRef.current = false;
@@ -568,30 +613,24 @@ export function useWebRTC(currentUser) {
         let needsRenegotiation = false;
 
         if (peerRef.current) {
-            // --- ویدیوی اسکرین ---
             if (screenVideoSenderRef.current) {
                 const sender = screenVideoSenderRef.current;
                 const cameraVideoTrack = cameraStreamRef.current?.getVideoTracks()[0];
                 if (cameraVideoTrack && isVideoOnRef.current) {
-                    // دوربین روشن بوده → دوربین را برگردان
-                    // اطمینان از اینکه تراک دوربین فعال و زنده است
                     cameraVideoTrack.enabled = true;
                     if (cameraVideoTrack.readyState === 'live') {
                         await sender.replaceTrack(cameraVideoTrack);
                     } else {
-                        console.warn('[WebRTC] Camera track not live, removing sender and renegotiating');
                         peerRef.current.removeTrack(sender);
                         needsRenegotiation = true;
                     }
                 } else {
-                    // در تماس صوتی اضافه شده بود → حذف و renegotiate
                     peerRef.current.removeTrack(sender);
                     needsRenegotiation = true;
                 }
                 screenVideoSenderRef.current = null;
             }
 
-            // --- صدای اسکرین ---
             if (screenAudioSenderRef.current) {
                 try {
                     peerRef.current.removeTrack(screenAudioSenderRef.current);
@@ -605,12 +644,10 @@ export function useWebRTC(currentUser) {
 
         if (needsRenegotiation) {
             await renegotiate();
-        } else {
-            if (targetUserIdRef.current) {
-                socket.emit('webrtc-stream-updated', {
-                    targetUserId: targetUserIdRef.current,
-                });
-            }
+        } else if (targetUserIdRef.current) {
+            socket.emit('webrtc-stream-updated', {
+                targetUserId: targetUserIdRef.current,
+            });
         }
 
         if (targetUserIdRef.current) {
@@ -619,7 +656,6 @@ export function useWebRTC(currentUser) {
             });
         }
 
-        // بازگردانی پیش‌نمایش محلی به دوربین + میکروفون
         if (cameraStreamRef.current) {
             localStreamRef.current = cameraStreamRef.current;
             setLocalStream(cameraStreamRef.current);
@@ -636,7 +672,7 @@ export function useWebRTC(currentUser) {
     }, [renegotiate]);
 
     // ============================================================
-    // ۷) toggleScreenShare
+    // 7) toggleScreenShare
     // ============================================================
     const toggleScreenShare = useCallback(async () => {
         if (isScreenSharingDuringCallRef.current) {
@@ -648,11 +684,13 @@ export function useWebRTC(currentUser) {
 
         try {
             const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: { cursor: 'always' },
+                video: {
+                    cursor: 'always',
+                    frameRate: { ideal: 30, max: 60 } // فقط فریم‌ریت را محدود کن
+                },
                 audio: false,
             });
             const screenTrack = screenStream.getVideoTracks()[0];
-            const screenAudioTrack = screenStream.getAudioTracks()[0];
 
             if (!screenTrack) {
                 screenStream.getTracks().forEach((t) => t.stop());
@@ -662,41 +700,25 @@ export function useWebRTC(currentUser) {
             screenStreamRef.current = screenStream;
             let needsRenegotiation = false;
 
-            // --- ویدیو ---
             const videoSender = peerRef.current
                 .getSenders()
                 .find((s) => s.track?.kind === 'video' && s.track.readyState === 'live');
 
             if (videoSender) {
+                // Camera was on → swap the track
                 await videoSender.replaceTrack(screenTrack);
+                // بعد از replaceTrack، پارامترها را تنظیم کن
+                await setVideoSenderParameters(videoSender, 8_000_000);
                 screenVideoSenderRef.current = videoSender;
             } else {
-                screenVideoSenderRef.current = peerRef.current.addTrack(
-                    screenTrack,
-                    screenStream
-                );
+                // No live video sender
+                const newSender = await attachVideoTrack(peerRef.current, screenTrack, screenStream);
+                // بعد از ساخت sender جدید
+                await setVideoSenderParameters(newSender, 8_000_000);
+                screenVideoSenderRef.current = newSender;
                 needsRenegotiation = true;
             }
 
-            // --- صدای اسکرین: همیشه ترک جداگانه ---
-            if (screenAudioTrack) {
-                // حذف هر sender صوتی قبلیِ اسکرین (برای جلوگیری از انباشت)
-                if (screenAudioSenderRef.current) {
-                    try {
-                        peerRef.current.removeTrack(screenAudioSenderRef.current);
-                    } catch (e) {
-                        screenAudioSenderRef.current = null;
-                        console.log(e);
-                    }
-                }
-                screenAudioSenderRef.current = peerRef.current.addTrack(
-                    screenAudioTrack,
-                    screenStream
-                );
-                needsRenegotiation = true;
-            }
-
-            // پیش‌نمایش محلی
             const micTrack = cameraStreamRef.current?.getAudioTracks()[0];
             const previewTracks = micTrack ? [screenTrack, micTrack] : [screenTrack];
             const local = new MediaStream(previewTracks);
@@ -705,13 +727,10 @@ export function useWebRTC(currentUser) {
 
             if (needsRenegotiation) {
                 await renegotiate();
-            } else {
-                // اگر از replaceTrack استفاده شده (بدون نیاز به renegotiation)، فوراً اطلاع بده
-                if (targetUserIdRef.current) {
-                    socket.emit('webrtc-stream-updated', {
-                        targetUserId: targetUserIdRef.current,
-                    });
-                }
+            } else if (targetUserIdRef.current) {
+                socket.emit('webrtc-stream-updated', {
+                    targetUserId: targetUserIdRef.current,
+                });
             }
 
             if (targetUserIdRef.current) {
@@ -737,8 +756,9 @@ export function useWebRTC(currentUser) {
             console.error('Cannot share screen:', err);
         }
     }, [renegotiate, stopScreenShareInternal]);
+
     // ============================================================
-    // ۸) declineCall
+    // 8) declineCall
     // ============================================================
     const declineCall = useCallback(() => {
         if (incomingCall) {
@@ -751,24 +771,42 @@ export function useWebRTC(currentUser) {
     }, [incomingCall]);
 
     // ============================================================
-    // ۹) listenerهای سوکت
+    // 9) Socket listeners
     // ============================================================
     useEffect(() => {
-        const handleOffer = async ({ fromUserId, fromUsername, offer, renegotiate: isRenegotiation }) => {
+        const handleOffer = async ({
+            fromUserId,
+            fromUsername,
+            offer,
+            renegotiate: isRenegotiation,
+        }) => {
+            // ---------- Renegotiation offers (mid-call track changes) ----------
             if (
                 isRenegotiation &&
                 callStateRef.current === 'connected' &&
                 fromUserId === targetUserIdRef.current
             ) {
+                const peer = peerRef.current;
+                if (!peer) return;
                 try {
-                    const peer = peerRef.current;
-                    if (!peer) return;
-                    if (peer.signalingState !== 'stable') {
-                        await Promise.all([
-                            peer.setLocalDescription({ type: 'rollback' }),
-                            peer.setRemoteDescription(new RTCSessionDescription(offer)),
-                        ]);
+                    if (peer.signalingState === 'have-local-offer') {
+                        // GLARE: both peers offered simultaneously.
+                        // Perfect negotiation: deterministic politeness.
+                        const amPolite = !currentUser || String(currentUser.id) < String(fromUserId);
+                        if (amPolite) {
+                            // CRITICAL FIX #1: rollback and setRemoteDescription
+                            // MUST run sequentially. Never Promise.all them.
+                            await peer.setLocalDescription({ type: 'rollback' });
+                            await peer.setRemoteDescription(new RTCSessionDescription(offer));
+                            // Our local changes were rolled back — re-signal them
+                            // after this exchange completes (handleAnswer retries).
+                            pendingRenegotiationRef.current = true;
+                        } else {
+                            console.log('[WebRTC] Glare: impolite side ignores remote offer');
+                            return;
+                        }
                     } else {
+                        // stable OR have-remote-offer (accept newer offer replacing pending)
                         await peer.setRemoteDescription(new RTCSessionDescription(offer));
                     }
 
@@ -776,27 +814,22 @@ export function useWebRTC(currentUser) {
                     await peer.setLocalDescription(answer);
                     socket.emit('webrtc-answer', { targetUserId: fromUserId, answer });
 
-                    // سینک اولیه
-                    const receivers = peer.getReceivers();
-                    const tracks = receivers.map((r) => r.track).filter(Boolean);
-                    syncRemoteStream(tracks);
-                    setupRemoteTrackEndHandlers();
-
-                    // ✅ سینک دوباره با تاخیر برای رفع مشکل بار دوم
+                    attachTrackHandlers();
+                    syncFromPeer();
+                    // One delayed re-sync covers tracks that attach a beat later
                     setTimeout(() => {
                         if (peerRef.current) {
-                            const currentReceivers = peerRef.current.getReceivers();
-                            const liveTracks = currentReceivers.map((r) => r.track).filter((t) => t && t.readyState === 'live');
-                            syncRemoteStream(liveTracks);
+                            attachTrackHandlers();
+                            syncFromPeer();
                         }
-                    }, 500);
-
+                    }, 400);
                 } catch (err) {
                     console.error('Renegotiation answer failed:', err);
                 }
                 return;
             }
-            // ...
+
+            // ---------- Initial call offers ----------
             if (callStateRef.current !== 'idle' && callStateRef.current !== 'ended') {
                 return;
             }
@@ -806,15 +839,14 @@ export function useWebRTC(currentUser) {
 
         const handleAnswer = async ({ fromUserId, answer }) => {
             if (peerRef.current && fromUserId === targetUserIdRef.current) {
-                await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+                await peerRef.current.setRemoteDescription(
+                    new RTCSessionDescription(answer)
+                );
                 processPendingCandidates(peerRef.current);
-                setupRemoteTrackEndHandlers();
+                attachTrackHandlers();
+                syncFromPeer();
 
-                //  سینک کردن پس از تکمیل مذاکره
-                const receivers = peerRef.current.getReceivers();
-                const tracks = receivers.map((r) => r.track).filter(Boolean);
-                syncRemoteStream(tracks);
-
+                // Retry a deferred renegotiation (unstable state or glare rollback)
                 if (pendingRenegotiationRef.current) {
                     pendingRenegotiationRef.current = false;
                     setTimeout(() => renegotiate(), 0);
@@ -836,33 +868,21 @@ export function useWebRTC(currentUser) {
             if (callStateRef.current !== 'idle' && callStateRef.current !== 'ended') {
                 if (!targetUserIdRef.current || fromUserId === targetUserIdRef.current) {
                     console.log('[WebRTC] Remote hangup received, ending call');
-                    if (endCallRef.current) {
-                        endCallRef.current();
-                    }
+                    if (endCallRef.current) endCallRef.current();
                 }
             }
         };
 
-        // همگام‌سازی استریم دائمی با receiverهای فعلی
-        // همگام‌سازی استریم دائمی با receiverهای فعلی
         const handleStreamUpdated = () => {
             if (!peerRef.current) return;
-
-            const doSync = () => {
-                if (!peerRef.current) return;
-                const receivers = peerRef.current.getReceivers();
-                const tracks = receivers
-                    .map((r) => r.track)
-                    .filter((t) => t && t.readyState === 'live');
-                syncRemoteStream(tracks);
-                setupRemoteTrackEndHandlers();
-            };
-
-            // یک بار فوری
-            doSync();
-            // چند بار با تاخیر برای اطمینان از دریافت فریم‌های اولیه و رفع Mute شدن ترک
-            setTimeout(doSync, 500);
-            setTimeout(doSync, 1500);
+            attachTrackHandlers();
+            syncFromPeer();
+            setTimeout(() => {
+                if (peerRef.current) {
+                    attachTrackHandlers();
+                    syncFromPeer();
+                }
+            }, 400);
         };
 
         const handleScreenLock = () => {
@@ -871,14 +891,10 @@ export function useWebRTC(currentUser) {
 
         const handleScreenUnlock = () => {
             setRemoteScreenSharing(false);
-            // Force sync after screen share stops
             setTimeout(() => {
                 if (peerRef.current) {
-                    const receivers = peerRef.current.getReceivers();
-                    const tracks = receivers
-                        .map((r) => r.track)
-                        .filter((t) => t && t.readyState === 'live');
-                    syncRemoteStream(tracks);
+                    attachTrackHandlers();
+                    syncFromPeer();
                 }
             }, 200);
         };
@@ -909,7 +925,14 @@ export function useWebRTC(currentUser) {
             socket.off('webrtc-screen-unlock', handleScreenUnlock);
             socket.off('disconnect', handleSocketDisconnect);
         };
-    }, [processPendingCandidates, endCall, syncRemoteStream, renegotiate, setupRemoteTrackEndHandlers]);
+    }, [
+        processPendingCandidates,
+        endCall,
+        renegotiate,
+        syncFromPeer,
+        attachTrackHandlers,
+        currentUser,
+    ]);
 
     return {
         isCalling,
