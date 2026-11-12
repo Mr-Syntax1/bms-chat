@@ -16,7 +16,7 @@ function App() {
 
   // بررسی احراز هویت هنگام بارگذاری صفحه
   useEffect(() => {
-    fetch('/auth/me', { credentials: 'include' })
+    fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/me', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user) {
@@ -34,7 +34,7 @@ function App() {
   };
 
   const handleLogout = async () => {
-    await fetch('/auth/logout', {
+    await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/logout', {
       method: 'POST',
       credentials: 'include',
     });

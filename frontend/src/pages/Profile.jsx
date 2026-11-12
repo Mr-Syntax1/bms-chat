@@ -170,7 +170,7 @@ export default function Profile({ onClose, currentUser }) {
 
   // fetchProfile دیگر setState ندارد — فقط داده برمی‌گرداند
   const fetchProfile = useCallback(async () => {
-    const url = isMyProfile ? '/auth/profile' : `/auth/profile/${targetUsername}`;
+    const url = isMyProfile ? 'https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/profile' : `https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/profile/${targetUsername}`;
     const res = await fetch(url, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok || !data.success) {

@@ -30,8 +30,8 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
-app.use('/auth', authRouter)
-app.use('/upload', uploadRouter);
+app.use('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth', authRouter)
+app.use('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/upload', uploadRouter);
 // app.use('/api/rooms', roomsRouter);
 
 // Serve static files from frontend/dist

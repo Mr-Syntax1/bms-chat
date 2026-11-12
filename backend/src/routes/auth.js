@@ -44,7 +44,7 @@ function authMiddleware(req, res, next) {
 }
 
 // ثبت‌نام
-authRouter.post('/register', async (req, res) => {
+authRouter.post('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/register', async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -67,7 +67,7 @@ authRouter.post('/register', async (req, res) => {
 });
 
 // ورود
-authRouter.post('/login', async (req, res) => {
+authRouter.post('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username: username?.trim() });
@@ -86,13 +86,13 @@ authRouter.post('/login', async (req, res) => {
 
 
 // خروج
-authRouter.post('/logout', (req, res) => {
+authRouter.post('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/logout', (req, res) => {
   clearTokenCookie(res);
   res.json({ success: true });
 });
 
 // بررسی احراز هویت (برای persistence login)
-authRouter.get('/me', async (req, res) => {
+authRouter.get('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/me', async (req, res) => {
   try {
     // console.log('[Auth/me] cookies:', req.cookies);
     // console.log('[Auth/me] headers.cookie:', req.headers.cookie);
@@ -126,7 +126,7 @@ authRouter.get('/me', async (req, res) => {
 // پروفایل کاربر - GET /auth/profile
 
 //  این روت برای پروفایل خودِ کاربر است
-authRouter.get('/profile', authMiddleware, async (req, res) => {
+authRouter.get('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/profile', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('username createdAt').lean();
     if (!user) {
@@ -152,7 +152,7 @@ authRouter.get('/profile', authMiddleware, async (req, res) => {
 });
 
 // برای دیدن پروفایل دیگران
-authRouter.get('/profile/:username', async (req, res) => {
+authRouter.get('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/profile/:username', async (req, res) => {
   try {
     const user = await User.findOne({ username: req.params.username }).select('-password');
     if (!user) {
@@ -177,7 +177,7 @@ authRouter.get('/profile/:username', async (req, res) => {
 });
 
 // دریافت توکن برای تماس
-authRouter.get('/call-token', authMiddleware, (req, res) => {
+authRouter.get('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/call-token', authMiddleware, (req, res) => {
   const token = req.cookies?.token;
   if (!token) {
     return res.status(401).json({ error: 'توکن یافت نشد' });

@@ -39,7 +39,7 @@ export default function Register({ onAuth }) {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await fetch('/auth/register', {
+      const res = await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

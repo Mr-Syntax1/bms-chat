@@ -106,7 +106,7 @@ export default function ChatInput({ onSend, onTyping }) {
     if (!file) return;
     setIsUploading(true);
     try {
-      const presignRes = await fetch('/upload/presign', {
+      const presignRes = await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName: file.name, fileType: file.type }),
@@ -200,7 +200,7 @@ export default function ChatInput({ onSend, onTyping }) {
       const fileName = `voice-${Date.now()}.webm`;
       const fileType = 'audio/webm';
 
-      const presignRes = await fetch('/upload/presign', {
+      const presignRes = await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/upload/presign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileName, fileType }),

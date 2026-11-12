@@ -36,7 +36,7 @@ export default function Login({ onAuth }) {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await fetch('/auth/login', {
+      const res = await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
