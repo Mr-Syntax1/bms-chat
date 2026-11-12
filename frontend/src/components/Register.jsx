@@ -67,7 +67,7 @@ export default function Register({ onAuth }) {
 
   return (
     // 👈 پس‌زمینه کاملاً مشابه Login
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       
       {/* Animated Background Blobs */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">

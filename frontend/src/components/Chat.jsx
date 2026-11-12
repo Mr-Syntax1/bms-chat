@@ -158,7 +158,7 @@ export default function Chat({ chat, user, onLogout }) {
           </aside>
 
           {/* ناحیه پیام‌ها با لودینگ اختصاصی */}
-          <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 backdrop-blur-sm relative">
+          <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 relative">
             
             {/* لودینگ فقط داخل ناحیه پیام‌ها */}
             {isPending && (
