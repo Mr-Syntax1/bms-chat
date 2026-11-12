@@ -40,26 +40,10 @@ export default defineConfig({
       }
     })
   ],
+  
   server: {
     port: 5001,
     host: '0.0.0.0',
-    proxy: {
-      '/auth': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/upload': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
   },
   preview: {
     port: 5000,
