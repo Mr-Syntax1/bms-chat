@@ -7,6 +7,7 @@ import Chat from './components/Chat';
 import Profile from './pages/Profile';
 import { useChat } from './hooks/useChat';
 import ToastProvider from './providers/ToastProvider';
+import HalloweenBackground from './components/HalloweenBackground';
 
 function App() {
   const [authUser, setAuthUser] = useState(null);
@@ -45,6 +46,7 @@ function App() {
     return (
       <ToastProvider>
         <div className="min-h-screen flex items-center justify-center bg-aurora text-white relative overflow-hidden">
+          <HalloweenBackground />
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-1/4 left-1/4 w-72 h-72 rounded-full bg-gradient-to-br from-primary-500/20 to-accent-500/20 blur-3xl animate-blob" />
             <div className="absolute bottom-1/4 right-1/4 w-60 h-60 rounded-full bg-gradient-to-br from-cyan-500/15 to-primary-500/15 blur-3xl animate-blob animation-delay-2000" />
@@ -63,56 +65,59 @@ function App() {
   }
 
   return (
-    <ToastProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              authUser ? <Navigate to="/chat" replace /> : <Login onAuth={handleAuth} />
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              authUser ? <Navigate to="/chat" replace /> : <Register onAuth={handleAuth} />
-            }
-          />
-          <Route
-            path="/chat"
-            element={
-              authUser ? (
-                <Chat chat={chat} user={authUser} onLogout={handleLogout} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              authUser ? (
-                <Profile currentUser={authUser} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route path="/profile/:username"
-            element={
-              authUser ? (<Profile currentUser={authUser} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route
-            path="/"
-            element={<Navigate to={authUser ? '/chat' : '/login'} replace />}
-          />
-        </Routes>
-      </BrowserRouter>
-    </ToastProvider>
+    <div className="">
+      <HalloweenBackground />
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                authUser ? <Navigate to="/chat" replace /> : <Login onAuth={handleAuth} />
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                authUser ? <Navigate to="/chat" replace /> : <Register onAuth={handleAuth} />
+              }
+            />
+            <Route
+              path="/chat"
+              element={
+                authUser ? (
+                  <Chat chat={chat} user={authUser} onLogout={handleLogout} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                authUser ? (
+                  <Profile currentUser={authUser} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route path="/profile/:username"
+              element={
+                authUser ? (<Profile currentUser={authUser} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/"
+              element={<Navigate to={authUser ? '/chat' : '/login'} replace />}
+            />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
+    </div>
   );
 }
 

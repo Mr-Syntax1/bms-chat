@@ -14,6 +14,7 @@ export default function RoomList({
   onSearchRooms,
   onOpenProfile,
   currentUser,
+  onClose
 }) {
   const [newRoom, setNewRoom] = useState('');
   const [creating, setCreating] = useState(false);
@@ -92,11 +93,11 @@ export default function RoomList({
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
   }, []);
 
-  const handleRoomClick = useCallback(async (roomName) => {
-    const res = await onSwitch(roomName);
-    clearSearch();   // بدون شرط
-    return res;
-  }, [onSwitch, clearSearch]);
+  const handleRoomClick = useCallback((roomName) => {
+    onSwitch(roomName);
+    clearSearch();
+    onClose?.(); //  بستن سایدبار بعد از کلیک
+  }, [onSwitch, clearSearch, onClose]);
 
   const handleContextMenu = useCallback((e, room) => {
     e.preventDefault();
@@ -250,7 +251,10 @@ export default function RoomList({
                 currentRoom={currentRoom}
                 currentUser={currentUser}
                 onSwitch={handleRoomClick}
-                onAfterClick={clearSearch}
+                onAfterClick={() => {
+                  clearSearch();
+                  onClose?.(); // 👈 برای چت‌های خصوصی
+                }}
                 onlineUsers={onlineUsers}
                 onOpenDM={onOpenDM}
                 onOpenProfile={onOpenProfile}

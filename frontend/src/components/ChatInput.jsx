@@ -112,10 +112,9 @@ export default function ChatInput({ onSend, onTyping }) {
         body: JSON.stringify({ fileName: file.name, fileType: file.type }),
       });
       
-      const { uploadUrl, publicUrl } = await presignRes.json(); // 👈 headers را حذف کردیم
+      const { uploadUrl, publicUrl } = await presignRes.json();
       if (!uploadUrl) throw new Error('خطا در دریافت لینک آپلود');
 
-      // 👈 هدر Content-Type را اینجا دستی تنظیم می‌کنیم
       const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
         body: file,
@@ -141,6 +140,7 @@ export default function ChatInput({ onSend, onTyping }) {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
   // ==================== ضبط صدا ====================
   const startRecording = async () => {
     try {
@@ -379,11 +379,10 @@ export default function ChatInput({ onSend, onTyping }) {
         {/* 👈 دکمه میکروفون / تایمر ضبط */}
         {isRecording ? (
           <div className="flex items-center gap-2 bg-red-500/10 px-3 py-2 rounded-2xl border border-red-500/30 shrink-0">
-            {/* دکمه لغو (ضربدر) در سمت چپ */}
             <button
               type="button"
               onClick={cancelAndStopRecording}
-              className="text-surface-400 hover:text-red-400 p-1 transition-colors"
+              className="text-surface-400 hover:text-red-400 p-1 transition-colors cursor-pointer"
               title="لغو ضبط"
               aria-label="لغو ضبط"
             >
@@ -392,13 +391,11 @@ export default function ChatInput({ onSend, onTyping }) {
               </svg>
             </button>
 
-            {/* تایمر */}
             <span className="text-red-400 text-sm font-mono min-w-[40px] text-center">
               {formatTime(recordingTime)}
             </span>
             <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
 
-            {/* دکمه تایید و ارسال (مربع توپر) در سمت راست */}
             <button
               type="button"
               onClick={stopAndSendRecording}
@@ -412,40 +409,38 @@ export default function ChatInput({ onSend, onTyping }) {
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={startRecording}
-            disabled={isUploading}
-            className="p-3 rounded-2xl shrink-0 text-surface-400 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50 cursor-pointer group"
-            aria-label="ضبط پیام صوتی"
-          >
-            <svg
-              className="w-6 h-6 group-hover:scale-110 transition-transform"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          // 👈 اگر ورودی خالی بود، دکمه میکروفون را نشان بده
+          !value.trim() && (
+            <button
+              type="button"
+              onClick={startRecording}
+              disabled={isUploading}
+              className="p-3 rounded-2xl shrink-0 text-surface-400 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50 cursor-pointer group"
+              aria-label="ضبط پیام صوتی"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-              />
-            </svg>
-          </button>
+              <svg
+                className="w-6 h-6 group-hover:scale-110 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                />
+              </svg>
+            </button>
+          )
         )}
 
-        {!isRecording && (
+        {/* 👈 اگر ورودی متن داشت، دکمه ارسال را نشان بده */}
+        {!isRecording && value.trim() && (
           <button
             type="submit"
-            disabled={!value.trim() || isUploading}
-            className={`
-              p-3 rounded-2xl shrink-0 transition-all duration-200 group
-              ${value.trim() && !isUploading
-                ? 'bg-linear-to-r from-primary-600 via-primary-700 to-accent-600 hover:from-primary-500 hover:to-accent-500 shadow-glow-primary hover:shadow-glow-accent active:scale-95'
-                : 'bg-surface-800 opacity-50 cursor-not-allowed'
-              }
-            `}
+            disabled={isUploading}
+            className="p-3 rounded-2xl shrink-0 transition-all duration-200 group bg-linear-to-r from-primary-600 via-primary-700 to-accent-600 hover:from-primary-500 hover:to-accent-500 shadow-glow-primary hover:shadow-glow-accent active:scale-95 cursor-pointer"
             aria-label="Send message"
           >
             <svg

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
@@ -7,6 +7,7 @@ import TypingIndicator from './TypingIndicator';
 import RoomList from './RoomList';
 import NotificationDropdown from './NotificationDropdown';
 import WelcomeScreen from './WelcomeScreen';
+import LoadingSpinner from './LoadingSpinner';
 import { useWebRTC } from '../hooks/useWebRTC';
 import CallModal from './CallModal';
 
@@ -39,32 +40,33 @@ export default function Chat({ chat, user, onLogout }) {
     setShowNotifications,
   } = chat;
 
+  const [isPending, startTransition] = useTransition();
   const navigate = useNavigate();
-
+  const [sidebar, setSidebar] = useState(null);
+  const closeSidebar = useCallback(() => setSidebar(null), []);
   const rtc = useWebRTC(user);
 
-  // ============================================================
-  // اتصال سوکت — فقط یک بار موقع mount
-  // ============================================================
+  const handleSwitchRoom = useCallback((roomName, isMobile = false) => {
+    // ۱. اگر در موبایل هستیم، ابتدا سایدبار را فوراً ببندیم
+    if (isMobile) {
+      closeSidebar();
+    }
+
+    // ۲. سپس عملیات تغییر اتاق را شروع کنیم
+    startTransition(() => {
+      switchRoom(roomName);
+    });
+  }, [switchRoom, closeSidebar]);
+
   useEffect(() => {
     connectSocket();
     return () => disconnectSocket();
   }, [connectSocket, disconnectSocket]);
 
-  // ============================================================
-  // مدیریت سایدبار (روی موبایل)
-  // ============================================================
-  const [sidebar, setSidebar] = useState(null);
-
   const toggleSidebar = useCallback((panel = 'rooms') => {
     setSidebar((prev) => (prev === panel ? null : panel));
   }, []);
 
-  const closeSidebar = useCallback(() => setSidebar(null), []);
-
-  // ============================================================
-  // بستن نوتیفیکیشن با کلیک بیرون
-  // ============================================================
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -78,26 +80,22 @@ export default function Chat({ chat, user, onLogout }) {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [setShowNotifications]);
 
-  const handleGoHome = () => {
-    switchRoom(null);
-  };
+  const handleGoHome = useCallback(() => {
+    handleSwitchRoom(null);
+  }, [handleSwitchRoom]);
 
-  // ============================================================
-  // باز کردن DM
-  // ============================================================
   const handleOpenDM = useCallback(
     async (targetUserId, targetUsername) => {
-      const res = await openDM(targetUserId, targetUsername);
-      if (res?.success) {
-        closeSidebar();
-      }
+      startTransition(async () => {
+        const res = await openDM(targetUserId, targetUsername);
+        if (res?.success) {
+          closeSidebar();
+        }
+      });
     },
     [openDM, closeSidebar]
   );
 
-  // ============================================================
-  // باز کردن پروفایل
-  // ============================================================
   const handleOpenProfile = useCallback(
     (username) => {
       if (username) {
@@ -109,9 +107,6 @@ export default function Chat({ chat, user, onLogout }) {
     [navigate]
   );
 
-  // ============================================================
-  // باز/بسته کردن نوتیفیکیشن‌ها
-  // ============================================================
   const handleOpenNotifications = useCallback(() => {
     setShowNotifications((prev) => {
       const next = !prev;
@@ -121,7 +116,7 @@ export default function Chat({ chat, user, onLogout }) {
   }, [fetchNotifications, setShowNotifications]);
 
   return (
-    <div className="h-screen flex flex-col bg-aurora overflow-hidden">
+    <div className="h-screen flex flex-col bg-aurora overflow-hidden relative">
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-linear-to-br from-primary-500/20 to-accent-500/20 blur-3xl animate-blob" />
         <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-linear-to-br from-cyan-500/15 to-primary-500/15 blur-3xl animate-blob animation-delay-2000" />
@@ -146,13 +141,12 @@ export default function Chat({ chat, user, onLogout }) {
         />
 
         <div className="flex-1 flex overflow-hidden">
-          {/* سایدبار اتاق‌ها (دسکتاپ) */}
           <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong slide-in-left">
             <RoomList
               rooms={rooms}
               onlineUsers={onlineUsers}
               currentRoom={currentRoom}
-              onSwitch={switchRoom}
+              onSwitch={(name) => handleSwitchRoom(name, false)}
               onCreate={createRoom}
               onDelete={deleteRoom}
               onLeave={leaveRoom}
@@ -163,8 +157,18 @@ export default function Chat({ chat, user, onLogout }) {
             />
           </aside>
 
-          <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 backdrop-blur-sm">
-            <div className="flex-1 overflow-hidden flex flex-col">
+          {/* ناحیه پیام‌ها با لودینگ اختصاصی */}
+          <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 backdrop-blur-sm relative">
+            
+            {/* لودینگ فقط داخل ناحیه پیام‌ها */}
+            {isPending && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-950/40  animate-fade-in">
+                <LoadingSpinner text="در حال ورود به اتاق..." />
+              </div>
+            )}
+
+            {/* محتوای پیام‌ها (در حالت لودینگ، محو می‌شود) */}
+            <div className={`flex-1 overflow-hidden flex flex-col transition-all duration-300 ${isPending ? 'opacity-30' : ''}`}>
               {currentRoom ? (
                 <>
                   <MessageList
@@ -183,7 +187,7 @@ export default function Chat({ chat, user, onLogout }) {
                 <WelcomeScreen
                   user={user}
                   rooms={rooms}
-                  onSelectRoom={switchRoom}
+                  onSelectRoom={handleSwitchRoom}
                   onCreateRoom={createRoom}
                 />
               )}
@@ -192,7 +196,6 @@ export default function Chat({ chat, user, onLogout }) {
         </div>
 
         <CallModal
-
           isCalling={rtc.isCalling}
           remoteScreenSharing={rtc.remoteScreenSharing}
           incomingCall={rtc.incomingCall}
@@ -217,7 +220,6 @@ export default function Chat({ chat, user, onLogout }) {
           user={user}
         />
 
-        {/* پنل‌های موبایل */}
         {sidebar && (
           <>
             <div
@@ -230,10 +232,7 @@ export default function Chat({ chat, user, onLogout }) {
                   rooms={rooms}
                   onlineUsers={onlineUsers}
                   currentRoom={currentRoom}
-                  onSwitch={(name) => {
-                    switchRoom(name);
-                    closeSidebar();
-                  }}
+                  onSwitch={(name) => handleSwitchRoom(name, true)}
                   onCreate={createRoom}
                   onDelete={deleteRoom}
                   onLeave={leaveRoom}
@@ -249,7 +248,6 @@ export default function Chat({ chat, user, onLogout }) {
         )}
       </div>
 
-      {/* Notification dropdown */}
       <div className="notification-dropdown">
         <NotificationDropdown
           notifications={notifications}
@@ -258,7 +256,7 @@ export default function Chat({ chat, user, onLogout }) {
           onClose={() => setShowNotifications(false)}
           onOpenDM={handleOpenDM}
           onSwitchRoom={(name) => {
-            switchRoom(name);
+            handleSwitchRoom(name);
             closeSidebar();
           }}
           clearBadge={() => {

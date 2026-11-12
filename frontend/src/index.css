@@ -84,35 +84,79 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-down {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes bounce {
-  0%, 100% { transform: translateY(-5%); }
-  50% { transform: translateY(0); }
+
+  0%,
+  100% {
+    transform: translateY(-5%);
+  }
+
+  50% {
+    transform: translateY(0);
+  }
 }
 
 @keyframes blob {
-  0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-  100% { transform: translate(0, 0) scale(1); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
 }
 
 /* Custom Utility Classes */
@@ -184,25 +228,29 @@
 
 /* برای مرورگرهای Webkit (Chrome, Edge, Safari) */
 ::-webkit-scrollbar {
-  width: 6px;  /* عرض اسکرول‌بار عمودی */
-  height: 6px; /* ارتفاع اسکرول‌بار افقی */
+  width: 6px;
+  /* عرض اسکرول‌بار عمودی */
+  height: 6px;
+  /* ارتفاع اسکرول‌بار افقی */
 }
 
 /* پس‌زمینه اسکرول‌بار (شیار) */
 ::-webkit-scrollbar-track {
-  background: transparent; 
+  background: transparent;
 }
 
 /* دسته اسکرول‌بار (قسمتی که حرکت می‌کند) */
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1); /* رنگ شیشه‌ای ملایم برای تم تیره */
+  background: rgba(255, 255, 255, 0.1);
+  /* رنگ شیشه‌ای ملایم برای تم تیره */
   border-radius: 10px;
   transition: background 0.3s ease;
 }
 
 /* وقتی ماوس روی دسته اسکرول‌بار می‌رود */
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.5); /* رنگ Primary (بنفش/آبی) هنگام Hover */
+  background: rgba(99, 102, 241, 0.5);
+  /* رنگ Primary (بنفش/آبی) هنگام Hover */
 }
 
 /* =========================================
@@ -211,9 +259,12 @@
 
 /* اگر می‌خواهید اسکرول‌بار را مخفی کنید و فقط هنگام Hover نشان دهید */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -222,10 +273,12 @@
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }
+
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
 }
+
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.6);
 }
@@ -253,7 +306,9 @@ body {
   }
 
   /* Animated aurora background on html/body */
-  html, body, #root {
+  html,
+  body,
+  #root {
     min-height: 100%;
     position: relative;
   }
@@ -262,47 +317,80 @@ body {
     z-index: 1;
   }
 
-  body {
-    background-color: var(--color-surface-950);
-    background-image:
-      radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.18) 0%, transparent 45%),
-      radial-gradient(circle at 80% 10%, rgba(217, 70, 239, 0.16) 0%, transparent 45%),
-      radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.14) 0%, transparent 50%),
-      linear-gradient(135deg, #0a0a1a 0%, #0f0f23 50%, #1a0b2e 100%);
-    background-attachment: fixed;
-    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
-  }
+/* =========================================
+   پس‌زمینه هالووین: روشن، بدون انیمیشن و بهینه
+   ========================================= */
 
-  /* aurora blobs */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.25) 0%, transparent 50%) 0 0 / 60vmax 60vmax no-repeat,
-      radial-gradient(circle at 85% 25%, rgba(217, 70, 239, 0.22) 0%, transparent 50%) 60vmax 0 / 50vmax 50vmax no-repeat,
-      radial-gradient(circle at 70% 80%, rgba(6, 182, 212, 0.2) 0%, transparent 50%) 0 60vmax / 55vmax 55vmax no-repeat,
-      radial-gradient(circle at 25% 75%, rgba(244, 114, 182, 0.18) 0%, transparent 50%) 40vmax 40vmax / 45vmax 45vmax no-repeat;
-    animation: auroraShift 28s ease-in-out infinite;
-    filter: blur(40px);
-    opacity: 0.9;
-  }
+/* =========================================
+   پس‌زمینه هالووین: روشن، بدون انیمیشن و بهینه
+   ========================================= */
 
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image:
-      linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
-    background-size: 60px 60px;
-    mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
-    -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
-  }
+body {
+  background-color: var(--color-surface-950);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.22) 0%, transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(217, 70, 239, 0.20) 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.18) 0%, transparent 50%),
+    linear-gradient(135deg, #0a0a1a 0%, #0f0f23 50%, #1a0b2e 100%);
+  background-attachment: fixed;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* 👈 الگوی هالووین (Base64) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.12; /* شفافیت رو کمی بیشتر کردم تا بهتر دیده بشه */
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMjAwJyBoZWlnaHQ9JzIwMCcgdmlld0JveD0nMCAwIDIwMCAyMDAnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zyc+PGcgZmlsbD0nbm9uZScgc3Ryb2tlPScjZmZmZmZmJyBzdHJva2Utd2lkdGg9JzIuNScgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJyBzdHJva2UtbGluZWpvaW49J3JvdW5kJz48cGF0aCBkPSdNNTAgNjBjLTEyIDAtMjIgMTAtMjIgMjJzMTAgMjIgMjIgMjJjMyAwIDYtMSA4LTMgMyAyIDYgMyA5IDNzNi0xIDktM2MyIDIgNSAzIDggMyAxMiAwIDIyLTEwIDIyLTIycy0xMC0yMi0yMi0yMmMtMyAwLTYgMS04IDMtMy0yLTYtMy05LTNzLTYgMS05IDNjLTItMi01LTMtOC0zeicvPjxwYXRoIGQ9J001OCA1OGwtMy04TTY2IDU4bDMtOE03MiA1OGwtMy04Jy8+PHBhdGggZD0nTTU0IDc1bC01IDVNNjYgNzVsNSA1Jy8+PHBhdGggZD0nTTYwIDg1YzMgMyA5IDMgMTIgMCcvPjxwYXRoIGQ9J00xNTAgNDBjLTMtNC04LTQtMTEgMC0zLTMtNy0zLTEwIDAgMCAzIDMgNyA4IDktNSAyLTggNi04IDkgMyAzIDcgMyAxMCAwIDMgNCA4IDQgMTEgMCAzIDMgNyAzIDEwIDAgMC0zLTMtNy04LTkgNS0yIDgtNiA4LTktMy0zLTctMy0xMCAwemcvPjxwYXRoIGQ9J00xNDAgMTYwbDE1LTQwIDUgNDB6Jy8+PHBhdGggZD0nTTEyNSAxNjBoNTAnLz48cGF0aCBkPSdNMTU1IDEyMGwtNSAxMCcvPjxwYXRoIGQ9J00zMCAxNTBsNCAxMCAxMCA0LTEwIDQtNCAxMC00LTEwLTEwLTQgMTAtNHonLz48Y2lyY2xlIGN4PScxNzAnIGN5PSc5MCcgcj0nOCcvPjxwYXRoIGQ9J00xNzAgOTh2MTInLz48L2c+PC9zdmc+');
+  background-size: 250px 250px;
+  background-repeat: repeat;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.1));
+}
+
+/* 
+  گرید بسیار ظریف (مثل قبل) برای بافت دادن
+*/
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
+}
+
+/* =========================================
+   کلاس bg-aurora (برای هدر و سایدبار)
+   ========================================= */
+.bg-aurora {
+  position: relative;
+  overflow: hidden;
+}
+
+/* 
+  گرادیانت‌های نرم بدون انیمیشن
+  (با حفظ رنگ‌های اصلی، اما بدون تغییر مداوم)
+*/
+.bg-aurora::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 10%, rgba(217, 70, 239, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.10) 0%, transparent 50%);
+  filter: blur(40px);
+}
 
   * {
     border-color: var(--color-surface-700);
@@ -348,6 +436,7 @@ body {
   }
 
   @media (prefers-reduced-motion: reduce) {
+
     *,
     *::before,
     *::after {
@@ -662,43 +751,93 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes pulseSoft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes bounceSoft {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin {
@@ -706,37 +845,71 @@ body {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  33% { transform: translateY(-20px) rotate(2deg); }
-  66% { transform: translateY(10px) rotate(-1deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  33% {
+    transform: translateY(-20px) rotate(2deg);
+  }
+
+  66% {
+    transform: translateY(10px) rotate(-1deg);
+  }
 }
 
 @keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 @keyframes blob {
-  0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-  100% { transform: translate(0, 0) scale(1); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
 }
 
 @keyframes auroraShift {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1);
     opacity: 0.85;
   }
+
   25% {
     transform: translate(5vw, -3vh) scale(1.08);
     opacity: 1;
   }
+
   50% {
     transform: translate(-4vw, 4vh) scale(0.96);
     opacity: 0.9;
   }
+
   75% {
     transform: translate(6vw, 2vh) scale(1.05);
     opacity: 1;
@@ -766,31 +939,31 @@ body {
 
 .bg-mesh-gradient {
   background: linear-gradient(135deg,
-    #6366f1 0%,
-    #8b5cf6 25%,
-    #d946ef 50%,
-    #ec4899 75%,
-    #f472b6 100%);
+      #6366f1 0%,
+      #8b5cf6 25%,
+      #d946ef 50%,
+      #ec4899 75%,
+      #f472b6 100%);
   background-size: 400% 400%;
 }
 
 .bg-mesh-gradient-warm {
   background: linear-gradient(135deg,
-    #f59e0b 0%,
-    #f97316 25%,
-    #ef4444 50%,
-    #ec4899 75%,
-    #f472b6 100%);
+      #f59e0b 0%,
+      #f97316 25%,
+      #ef4444 50%,
+      #ec4899 75%,
+      #f472b6 100%);
   background-size: 400% 400%;
 }
 
 .bg-mesh-gradient-cool {
   background: linear-gradient(135deg,
-    #06b6d4 0%,
-    #3b82f6 25%,
-    #6366f1 50%,
-    #8b5cf6 75%,
-    #a855f7 100%);
+      #06b6d4 0%,
+      #3b82f6 25%,
+      #6366f1 50%,
+      #8b5cf6 75%,
+      #a855f7 100%);
   background-size: 400% 400%;
 }
 
@@ -849,7 +1022,7 @@ body {
   background: linear-gradient(135deg, #581aeb, #d212f0);
 }
 
-.btn-gradient-primary > * {
+.btn-gradient-primary>* {
   position: relative;
   z-index: 1;
 }
@@ -873,7 +1046,7 @@ body {
   opacity: 1;
 }
 
-.btn-gradient-warm > * {
+.btn-gradient-warm>* {
   position: relative;
   z-index: 1;
 }
@@ -918,56 +1091,69 @@ body {
 }
 
 @keyframes messageAppear {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .typing-indicator span {
   animation: typingBounce 1.4s infinite ease-in-out;
 }
 
-.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 @keyframes typingBounce {
-  0%, 60%, 100% { transform: translateY(0); }
-  30% { transform: translateY(-4px); }
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+
+  30% {
+    transform: translateY(-4px);
+  }
 }
 
 @media (max-width: 640px) {
-  .avatar-lg { width: 2.5rem; height: 2.5rem; font-size: 0.875rem; }
-  .avatar-xl { width: 3rem; height: 3rem; font-size: 1rem; }
+  .avatar-lg {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 0.875rem;
+  }
+
+  .avatar-xl {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .animate-float,
   .animate-gradient-shift,
   .animate-blob,
   .animate-pulse-soft,
   .animate-bounce-soft,
   .animate-shimmer,
-  .animate-aurora { animation: none !important; }
+  .animate-aurora {
+    animation: none !important;
+  }
 }
 
-/* aurora background utility */
-.bg-aurora {
-  position: relative;
-  overflow: hidden;
-}
-
-.bg-aurora::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.2) 0%, transparent 50%),
-    radial-gradient(circle at 80% 10%, rgba(217, 70, 239, 0.18) 0%, transparent 50%),
-    radial-gradient(circle at 50% 90%, rgba(6, 182, 212, 0.16) 0%, transparent 50%);
-  animation: auroraShift 28s ease-in-out infinite;
-  filter: blur(40px);
-}
 
 /* glass panel utility */
 .glass-panel {
@@ -1027,8 +1213,15 @@ body {
 }
 
 @keyframes messageAppear {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* slide in from panel side */
@@ -1037,8 +1230,15 @@ body {
 }
 
 @keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .slide-in-right {
@@ -1046,8 +1246,15 @@ body {
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* hamburger toggle */
@@ -1102,13 +1309,27 @@ body {
 }
 
 @keyframes staggerIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .animate-scale-in {
@@ -1116,9 +1337,12 @@ body {
 }
 
 @keyframes speak-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0px rgba(35, 165, 89, 0.4);
   }
+
   50% {
     box-shadow: 0 0 0 8px rgba(35, 165, 89, 0), 0 0 20px rgba(35, 165, 89, 0.3);
   }
@@ -1134,10 +1358,13 @@ body {
 }
 
 @keyframes speak-pulse-dot {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
+
   50% {
     transform: scale(1.3);
     opacity: 0.7;

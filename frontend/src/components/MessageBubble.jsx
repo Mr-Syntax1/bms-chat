@@ -332,21 +332,50 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
 `}
         >
           {editing ? (
-            <div className="flex gap-2">
-              <input
+            <div className="flex flex-col gap-2 min-w-[250px] sm:min-w-[300px] animate-fade-in">
+              <textarea
                 ref={editInputRef}
-                type="text"
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveEdit();
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSaveEdit();
+                  }
                   if (e.key === 'Escape') handleCancelEdit();
                 }}
-                className="flex-1 bg-surface-700 text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full bg-surface-700/80 text-white rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none outline-none border border-white/5 transition-all"
+                rows={2}
                 autoFocus
+                placeholder="پیام خود را ویرایش کنید..."
               />
-              <button onClick={handleSaveEdit} className="px-3 py-2 text-sm text-primary-400 hover:text-primary-300">ذخیره</button>
-              <button onClick={handleCancelEdit} className="px-3 py-2 text-sm text-surface-400 hover:text-surface-300">انصراف</button>
+
+              <div className="flex items-center justify-center">
+
+                <div className="flex gap-2">
+                  {/* دکمه انصراف */}
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-3 py-1.5 text-xs font-medium text-surface-300 bg-surface-800/50 hover:bg-surface-700 rounded-lg transition-colors flex items-center gap-1.5"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    انصراف
+                  </button>
+
+                  {/* دکمه ذخیره */}
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-4 py-1.5 text-xs font-bold text-white bg-primary-600 hover:bg-primary-500 rounded-lg shadow-sm shadow-primary-500/20 transition-all flex items-center gap-1.5 active:scale-95"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    ذخیره
+                  </button>
+                </div>
+              </div>
             </div>
           ) : isFile ? (
             //  پاس دادن handleImageClick به FilePreview

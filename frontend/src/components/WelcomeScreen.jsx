@@ -1,6 +1,9 @@
 import Avatar from './Avatar';
+import { useNavigate } from 'react-router-dom';
 
 export default function WelcomeScreen({ user, rooms, onSelectRoom, onCreateRoom }) {
+  const navigate = useNavigate()
+
   // پیدا کردن اتاق‌های پیشنهادی
   const bmsRooms = rooms.filter(r => !r.isPrivate && r.name.toLowerCase().includes('bms'));
   const otherPublicRooms = rooms.filter(r => !r.isPrivate && !r.name.toLowerCase().includes('bms'));
@@ -31,7 +34,7 @@ export default function WelcomeScreen({ user, rooms, onSelectRoom, onCreateRoom 
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-      
+
       {/* دکوراسیون پس‌زمینه */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl animate-blob" />
@@ -39,10 +42,10 @@ export default function WelcomeScreen({ user, rooms, onSelectRoom, onCreateRoom 
       </div>
 
       <div className="relative z-10 max-w-md">
-        
-        {/*  لوگوی درخشان با استایل هدر */}
+
+        {/* لوگوی درخشان */}
         <div className="mb-6 flex justify-center animate-float">
-          <div 
+          <div
             className="group relative p-3 rounded-2xl bg-surface-900 ring-2 ring-primary-500/50 shadow-[0_0_20px_-4px] shadow-primary-500/60 hover:ring-primary-600 hover:shadow-primary-400/80 transition-all duration-200 cursor-default"
           >
             <img
@@ -50,19 +53,34 @@ export default function WelcomeScreen({ user, rooms, onSelectRoom, onCreateRoom 
               src="/pwa-192x192.png"
               alt="لوگو"
             />
-            {/* درخشش ملایم */}
             <span className="pointer-events-none absolute inset-0 rounded-2xl bg-white/5 opacity-0 group-hover:opacity-80 transition-opacity duration-200" />
           </div>
         </div>
 
-        {/* خوش آمدگویی */}
+        {/*  خوش آمدگویی و آواتار با انیمیشن */}
         <div className="flex items-center justify-center flex-col md:flex-row gap-3 mb-2">
           <h1 className="text-3xl font-bold text-surface-50">
-            خوش آمدی، {user?.username} 👋
+            خوش آمدی، {user?.username}
           </h1>
-          <Avatar username={user?.username} size="sm" status="online" />
+
+          {/* گروه هاور برای آواتار و ایموجی */}
+          <div
+            className="relative group cursor-pointer"
+            onClick={() => navigate('/profile')}
+            title="مشاهده پروفایل"
+          >
+            {/* آواتار با انیمیشن بزرگ شدن و رینگ */}
+            <div className="transition-all duration-300 group-hover:scale-110 group-hover:ring-2 group-hover:ring-primary-500/50 rounded-full">
+              <Avatar username={user?.username} size="sm" status="online" />
+            </div>
+
+            {/*  ایموجی که با هاور از بالا-راست ظاهر می‌شود */}
+            <span className="absolute -top-4 -right-4 text-2xl opacity-0 scale-0 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 origin-bottom-left z-20 pointer-events-none">
+              👋
+            </span>
+          </div>
         </div>
-        
+
         <p className="text-surface-400 mb-8 leading-relaxed">
           به چت مدرن BMS خوش آمدی. برای شروع، یک اتاق از منوی سمت راست انتخاب کن یا یک اتاق جدید بساز.
         </p>

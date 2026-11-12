@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export default function ContextMenu({ 
@@ -10,43 +10,27 @@ export default function ContextMenu({
   className = ''
 }) {
   const menuRef = useRef(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
-  const closeMenu = useCallback(() => {
-    const el = menuRef.current;
-    if (el) {
-      el.classList.remove('animate-scale-in');
-      el.classList.add('animate-scale-out');
-      setTimeout(() => {
-        setIsOpen(false);
-        onClose?.();
-      }, 100);
-    } else {
-      setIsOpen(false);
-      onClose?.();
-    }
-  }, [onClose]);
-
+  // 👈 فقط برای انیمیشن ورود (بدون setState در useEffect)
   useEffect(() => {
     if (x !== null && y !== null && items?.length > 0) {
-      setTimeout(() => setIsOpen(true), 0);
-      requestAnimationFrame(() => {
-        menuRef.current?.classList.add('animate-scale-in');
-      });
-    } else {
-      setTimeout(() => setIsOpen(false), 0);
+      // یک فریم صبر می‌کنیم تا مرورگر المان را رندر کند، بعد انیمیشن را فعال می‌کنیم
+      const timer = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(timer);
     }
   }, [x, y, items]);
 
+  // بستن با کلیک بیرون یا دکمه Escape
   useEffect(() => {
-    function handleClickOutside(e) {
+    const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
-        closeMenu();
+        onClose?.();
       }
-    }
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') closeMenu();
-    }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
@@ -54,15 +38,17 @@ export default function ContextMenu({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [closeMenu]);
+  }, [onClose]);
 
-  if (!isOpen || !items?.length) return null;
+  // اگر آیتمی وجود نداشت، منو را رندر نکن
+  if (!items?.length || x === null || y === null) return null;
 
   const menuWidth = 180;
   const menuHeight = items.length * 36 + 8;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
+  // محاسبه موقعیت برای اینکه منو از صفحه بیرون نزند
   const posX = Math.max(10, Math.min(x, viewportWidth - menuWidth - 10));
   const posY = Math.max(10, Math.min(y, viewportHeight - menuHeight - 10));
 
@@ -74,17 +60,23 @@ export default function ContextMenu({
       role="menu"
       aria-orientation="vertical"
     >
-      <div className="bg-surface-800/95 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl p-1 min-w-[180px] animate-scale-in">
+      <div 
+        className={`
+          bg-surface-800/95 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl p-1 min-w-[180px]
+          transition-all duration-200 ease-out origin-top
+          ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2'}
+        `}
+      >
         {items.map((item, index) => (
           <button
             key={`${item.label}-${index}`}
             onClick={() => {
               item.onClick?.();
-              closeMenu();
+              onClose?.();
             }}
             disabled={item.disabled}
             className={`
-              w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-all duration-150
+              w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-colors duration-150
               ${item.danger 
                 ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300' 
                 : 'text-surface-300 hover:bg-white/5 hover:text-white'
@@ -113,12 +105,13 @@ export default function ContextMenu({
   );
 }
 
+// (MenuItem و MenuDivider بدون تغییر)
 export const MenuItem = ({ label, onClick, icon, danger, disabled, shortcut }) => (
   <button
     onClick={onClick}
     disabled={disabled}
     className={`
-      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-all duration-150
+      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left transition-colors duration-150
       ${danger 
         ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300' 
         : 'text-surface-300 hover:bg-white/5 hover:text-white'

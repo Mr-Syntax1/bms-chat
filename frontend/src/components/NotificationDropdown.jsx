@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+
 export default function NotificationDropdown({
   notifications,
   unreadCount,
@@ -7,7 +9,34 @@ export default function NotificationDropdown({
   onSwitchRoom,
   clearBadge,
 }) {
-  if (!showNotifications) return null;
+  // استیت برای کنترل انیمیشن (با تاخیر مقداردهی اولیه می‌شود)
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    // فقط یک تایمر ساده برای اجرای انیمیشن باز شدن
+    if (showNotifications) {
+      const timer = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => setIsVisible(false), 10);
+      return () => clearTimeout(timer);
+    }
+  }, [showNotifications]);
+
+  // کلاس‌های ظاهری: اگر showNotifications false باشد، کامپوننت نامرئی می‌شود
+  const containerClasses = `
+    fixed left-4 top-20 w-[min(24rem,calc(100vw-2rem))] 
+    bg-surface-900 border border-white/10 rounded-2xl shadow-2xl z-50 
+    overflow-hidden origin-top-left
+    transition-all duration-200 ease-out
+    ${showNotifications && isVisible 
+      ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' 
+      : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
+    }
+  `;
+
+  // اگر منو بسته است، هنوز در DOM هست اما با کلاس‌های مخفی، پس کاربر نمی‌بیند
+  // (این کار باعث می‌شود انیمیشن بسته شدن هم به نرمی اجرا شود)
 
   const groupedNotifications = notifications.reduce((acc, notif) => {
     const date = new Date(notif.createdAt);
@@ -42,12 +71,12 @@ export default function NotificationDropdown({
   };
 
   return (
-    <div className="fixed left-4 top-20 w-[min(24rem,calc(100vw-2rem))] bg-surface-900 border border-white/10 rounded-2xl shadow-2xl z-50 animate-scale-in overflow-hidden">
+    <div className={containerClasses}>
       <div className="p-3.5 border-b border-white/10 flex items-center justify-between bg-surface-800/50 backdrop-blur-sm">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
             <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
           </div>
           <div>
