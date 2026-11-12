@@ -51,7 +51,7 @@ function getSocketToken(socket) {
 export function initSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: true,
+      origin: 'https://bms-chat.vercel.app',
       methods: ['GET', 'POST'],
       credentials: true,
     },
