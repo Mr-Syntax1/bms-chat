@@ -1,123 +1,129 @@
-# BMS Real-time Chat
+<!-- ─────────────────────────  LANGUAGE SWITCHER  ───────────────────────── -->
+<div align="center">
 
-> A fully Persian, right-to-left, real-time chat application built with **Node.js + Express + Socket.IO + MongoDB** on the backend and **React 19 + Vite + Tailwind CSS 4** on the frontend. Beyond text messaging, it supports **direct messages (DM)**, **file uploads to S3**, **unread notifications**, **WebRTC audio/video calls**, **screen sharing**, and **installable PWA** support.
+## 🌐 Language / زبان
 
----
+[![English](https://img.shields.io/badge/🇬🇧%20English-Read%20now-6366f1?style=for-the-badge)](./readme.md)
+[![فارسی](https://img.shields.io/badge/🇮🇷%20فارسی-مطالعه-8b5cf6?style=for-the-badge)](./readmefa.md)
 
-## Table of Contents
+</div>
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [High-Level Architecture](#high-level-architecture)
-- [Project Structure](#project-structure)
-- [Backend](#backend)
-  - [Entry Point & Startup](#entry-point--startup)
-  - [Configuration](#configuration)
-  - [Data Models](#data-models)
-  - [REST API](#rest-api)
-  - [Socket.IO Layer](#socketio-layer)
-  - [Socket Events](#socket-events)
-  - [Authentication](#authentication)
-  - [File Upload via S3](#file-upload-via-s3)
-  - [Notification System](#notification-system)
-  - [WebRTC Signaling](#webrtc-signaling)
-- [Frontend](#frontend)
-  - [Routing & Auth](#routing--auth)
-  - [State Management & Hooks](#state-management--hooks)
-  - [Components](#components)
-  - [Styling & Theme](#styling--theme)
-  - [PWA](#pwa)
-- [Core Flows](#core-flows)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Scripts](#scripts)
-- [Ports & Proxy](#ports--proxy)
-- [Deployment](#deployment)
-- [Security Notes & Known Limitations](#security-notes--known-limitations)
-- [Future Roadmap](#future-roadmap)
+<!-- ─────────────────────────────  HERO  ───────────────────────────── -->
+<div align="center">
 
----
+# 💬 BMS Real-time Chat
 
-## Overview
+### A modern, real-time chat platform with WebRTC calls, DMs & file sharing
 
-This project is a **dedicated real-time chat system** that started as a Socket.IO learning exercise and grew into a full application with the following capabilities:
+<p>
+  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white">
+  <img alt="Express" src="https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white">
+  <img alt="Socket.IO" src="https://img.shields.io/badge/Socket.IO-010101?style=flat-square&logo=socketdotio&logoColor=white">
+  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React%2019-61DAFB?style=flat-square&logo=react&logoColor=black">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white">
+  <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white">
+  <img alt="PWA" src="https://img.shields.io/badge/PWA-5A0FC8?style=flat-square&logo=pwa&logoColor=white">
+</p>
 
-- Authentication with **JWT** (an `httpOnly` cookie + socket authentication)
-- Public/group rooms + **two-person direct messages (DM)**
-- Text, **file**, and **system** messages
-- Message editing and deletion (for me / for everyone)
-- **Typing indicator** and **online users list**
-- **Per-room unread notifications**
-- **1:1 audio/video calls** via WebRTC + **high-quality screen sharing**
-- **PWA** installable on mobile and desktop
-- A modern, **Persian, RTL** UI with the Vazir font, glassmorphism effects, and a Halloween background
+<p>
+  <a href="#-overview">Overview</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-tech-stack">Tech Stack</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-getting-started">Getting Started</a> •
+  <a href="#-security-notes--known-limitations">Security</a>
+</p>
+
+</div>
 
 ---
 
-## Features
+## 🚀 Overview
 
-### Messaging
-- Real-time send/receive of messages in rooms
-- Message history loading (up to the last 100 messages on room join; pagination with `before` and `limit`)
-- Message types `message` / `file` / `system`
-- Editing restricted to the sender
-- Deletion: "delete for me" or "delete for everyone" (sender only)
-- Persian time formatting (`fa-IR`)
-- All messages persisted in MongoDB
+**BMS Real-time Chat** is a full-stack, real-time messaging application with a fully Persian, RTL interface on top of a modern JavaScript stack:
 
-### Rooms
-- Create rooms (2–30 characters, unique name)
-- Join / leave rooms
-- Delete a room only by its creator (also removes all its messages)
-- Search public rooms and users (by username or ID)
-- Private rooms for DMs named deterministically as `dm_<smallId>_<largeId>`
+- **Backend:** Node.js · Express · Socket.IO · MongoDB · JWT · AWS S3
+- **Frontend:** React 19 · Vite · Tailwind CSS 4 · React Router 7 · PWA
 
-### Direct Messages (DM)
-- Open a DM with an online user (via socket id) or an offline user (via database id)
-- Automatically creates the private room if it doesn't exist
-- Prevents messaging yourself
-- Displays the other party's online/offline status
+It goes far beyond plain text chat — it ships with **direct messages**, **file uploads**, **unread notifications**, **1:1 audio/video calls**, **screen sharing**, and an **installable PWA** experience.
 
-### Calls (WebRTC)
-- 1:1 audio and video calls
-- 1080p / 30fps target quality and `maxBitrate` up to 8 Mbps
-- **Screen sharing** with smart video-track replacement (`replaceTrack`)
-- Mute microphone and Deafen
-- **Perfect Negotiation** and glare handling for mid-call track changes
-- ICE candidate handling and deferred renegotiation (`pendingRenegotiation`)
-
-### User Experience
-- Glassmorphism design and animated gradients
-- **Dark/Light** mode and a Halloween background
-- Self-contained, reusable components
-- Installable as a PWA with a Service Worker (build/preview only)
-- Toast notifications via `sileo`
+> 🎯 **Design goal:** a clean, modern, glassmorphism UI with a production-grade real-time architecture that is easy to read, extend, and learn from.
 
 ---
 
-## Tech Stack
+## ✨ Features
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js (ES Modules) |
-| Backend | Express 4, Socket.IO 4 |
-| Database | MongoDB + Mongoose 9 |
-| Auth | JWT (`jsonwebtoken`) + `bcryptjs` + `cookie-parser` |
-| File Storage | AWS SDK v3 for S3 (compatible with Iranian providers) |
-| Frontend | React 19, Vite 8, React Router 7 |
-| Styling | Tailwind CSS 4 + custom CSS, Vazir font |
-| Forms / Validation | react-hook-form + yup |
-| Realtime | socket.io-client |
-| PWA | vite-plugin-pwa |
-| Notifications | sileo |
-| Dev Tools | nodemon, ESLint, concurrently |
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 💬 Messaging
+- ⚡ Real-time send / receive
+- 🕘 Message history (last 100 on join)
+- 📎 Text, file & system messages
+- ✏️ Edit your own messages
+- 🗑️ Delete for me / for everyone
+- 🕒 Persian time formatting
+
+### 🏠 Rooms
+- ➕ Create rooms (2–30 chars)
+- 🚪 Join / leave rooms
+- 👑 Creator-only room deletion
+- 🔍 Search rooms & users
+- 🔒 Private DM rooms
+
+</td>
+<td width="50%" valign="top">
+
+### 👥 Direct Messages
+- 💌 Online & offline DMs
+- 🧠 Auto-created private rooms
+- 🚫 Self-DM protection
+- 🟢 Live online status
+
+### 📞 WebRTC Calls
+- 🎙️ Audio & video (1:1)
+- 🖥️ High-quality screen share
+- 🔇 Mute & deafen
+- 🧩 Perfect Negotiation + glare handling
+- 🧊 ICE candidate buffering
+
+</td>
+</tr>
+</table>
+
+### 🎨 Experience & Platform
+- 🧊 Glassmorphism + animated gradient UI
+- 🌗 Dark / Light theme + 🎃 Halloween background
+- 📲 Installable **PWA** with auto-update Service Worker
+- 🔔 Toast notifications via **sileo**
+- 🈯 Full **Persian / RTL** layout with Vazir font
 
 ---
 
-## High-Level Architecture
+## 🧰 Tech Stack
 
-```
+| Layer | Technology | Notes |
+|:------|:-----------|:------|
+| **Runtime** | Node.js | ES Modules |
+| **Backend** | Express 4 + Socket.IO 4 | REST + realtime |
+| **Database** | MongoDB + Mongoose 9 | Users, rooms, messages, notifications |
+| **Auth** | JWT + bcryptjs + cookie-parser | `httpOnly` cookie + socket handshake |
+| **Storage** | AWS SDK v3 (S3-compatible) | Presigned upload URLs |
+| **Frontend** | React 19 + Vite 8 + React Router 7 | SPA |
+| **Styling** | Tailwind CSS 4 + custom CSS | Vazir font, RTL |
+| **Forms** | react-hook-form + yup | Client validation |
+| **Realtime** | socket.io-client | Singleton socket |
+| **PWA** | vite-plugin-pwa | Auto-update SW |
+| **Toasts** | sileo | Notification UI |
+| **Dev** | nodemon · ESLint · concurrently | Local workflow |
+
+---
+
+## 🏗️ Architecture
+
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │                        Browser (Client)                       │
 │  React 19 + Vite + Tailwind + React Router + PWA             │
@@ -132,33 +138,34 @@ This project is a **dedicated real-time chat system** that started as a Socket.I
                ▼                                   ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                     Backend (Node/Express)                    │
-│  Express  ──▶ routes: auth / upload / (rooms-commented)       │
-│                                                                 │
-│  http.Server ──▶ Socket.IO                                     │
-│      ├─ Auth middleware (JWT from cookie or auth.token)        │
-│      ├─ handlers: users, chat, rooms, direct, typing,          │
-│      │            notification, webrtc                         │
-│      └─ UsersStore (in-memory Map for online users)            │
-│                                                                 │
-│  Mongoose ──▶ MongoDB   (User, Room, Message, Notification)    │
-│  AWS SDK   ──▶ Object Storage (S3 compatible, presigned URLs)  │
+│  Express  ──▶ routes: auth / upload / (rooms — disabled)      │
+│                                                               │
+│  http.Server ──▶ Socket.IO                                    │
+│      ├─ Auth middleware (JWT from cookie or auth.token)       │
+│      ├─ handlers: users · chat · rooms · direct · typing      │
+│      │            notification · webrtc                       │
+│      └─ UsersStore (in-memory Map for online users)           │
+│                                                               │
+│  Mongoose ──▶ MongoDB   (User, Room, Message, Notification)   │
+│  AWS SDK   ──▶ Object Storage (S3-compatible, presigned URLs) │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-> **Note:** All room logic is handled through **Socket.IO events**. `routes/rooms.js` is merely a commented-out, disabled early version.
+> ℹ️ All room logic is handled through **Socket.IO events**. `routes/rooms.js` is a commented-out, disabled early version.
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
-```
+```text
 learning SOCKET.IO/
-├── README.md                    ← this file (repository root)
+├── readme.md                    ← English README (you are here)
+├── readmefa.md                  ← Persian README
 ├── backend/
-│   ├── .env                     ← environment variables (must NOT be in Git)
+│   ├── .env                     ← environment variables (never commit)
 │   ├── package.json
 │   └── src/
-│       ├── server.js            ← Express + HTTP + Socket.IO entry point
+│       ├── server.js            ← Express + HTTP + Socket.IO entry
 │       ├── config/
 │       │   ├── db.js            ← Mongoose connection
 │       │   └── s3.js            ← S3 client (forcePathStyle)
@@ -168,17 +175,17 @@ learning SOCKET.IO/
 │       │   ├── Message.js
 │       │   └── Notification.js
 │       ├── routes/
-│       │   ├── auth.js          ← register/login/logout/me/profile
+│       │   ├── auth.js          ← register / login / logout / me / profile
 │       │   ├── upload.js        ← S3 presigned upload
-│       │   └── rooms.js         ← legacy version, commented out
+│       │   └── rooms.js         ← legacy commented version
 │       ├── socket/
-│       │   ├── index.js         ← initSocket + registers all events
+│       │   ├── index.js         ← initSocket + event registration
 │       │   ├── call.js          ← @nhanaka/call skeleton (inactive)
 │       │   └── handlers/
-│       │       ├── users.js     ← join and room-list building
-│       │       ├── chat.js      ← message, delete, edit, history, notify
+│       │       ├── users.js     ← join + room list
+│       │       ├── chat.js      ← message CRUD + history + notify
 │       │       ├── rooms.js     ← create/join/leave/delete/search/info
-│       │       ├── direct.js    ← opening a DM
+│       │       ├── direct.js    ← open DM
 │       │       ├── typing.js    ← typing status
 │       │       ├── notification.js
 │       │       └── webrtc.js    ← call signaling
@@ -191,18 +198,18 @@ learning SOCKET.IO/
     ├── vite.config.js           ← port 5001 + proxy + PWA
     ├── eslint.config.js
     ├── package.json
-    ├── public/                  ← PWA icons and logo
+    ├── public/                  ← PWA icons & logo
     └── src/
         ├── main.jsx
         ├── App.jsx              ← Router + auth check (/auth/me)
         ├── socket.js            ← socket singleton
         ├── index.css            ← Tailwind + custom styles
         ├── assets/
-        ├── fonts/               ← Vazir (Light/Medium)
+        ├── fonts/               ← Vazir (Light / Medium)
         ├── hooks/
-        │   ├── useChat.js       ← core chat and room logic
+        │   ├── useChat.js       ← core chat & room logic
         │   ├── useSocket.js
-        │   └── useWebRTC.js     ← all call and screen-share logic
+        │   └── useWebRTC.js     ← call & screen-share engine
         ├── providers/
         │   └── ToastProvider.jsx
         ├── pages/
@@ -214,126 +221,119 @@ learning SOCKET.IO/
             ├── RoomList.jsx / WelcomeScreen.jsx
             ├── OnlineUsersList.jsx / TypingIndicator.jsx
             ├── NotificationDropdown.jsx
-            ├── CallModal.jsx            ← call UI
+            ├── CallModal.jsx
             ├── Avatar.jsx / ContextMenu.jsx
             ├── EmojiPickerPanel.jsx
             ├── ThemeToggle.jsx
             ├── HalloweenBackground.jsx
-            ├── InstallButton.jsx        ← PWA install
+            ├── InstallButton.jsx
             └── LoadingSpinner.jsx
 ```
 
 ---
 
-## Backend
+## 🖥️ Backend
 
-### Entry Point & Startup
+### ⚙️ Entry Point & Startup
 
-`src/server.js`:
+`src/server.js` performs the following:
 
-1. Creates an **Express** app and an **HTTP server** (via `node:http`).
-2. Enables `express.json()`, `cookieParser()`, and **CORS** (origin: `http://localhost:5001` with `credentials: true`).
-3. Mounts `/auth` and `/upload` routes (the `/api/rooms` route is commented out).
-4. Serves the `frontend/dist` folder statically and provides an SPA **fallback** to `index.html` for non-API routes.
-5. In `start()` it first connects to MongoDB, then initializes Socket.IO, and listens on `PORT` (default 3000).
+1. Creates an **Express** app and an **HTTP server** (`node:http`).
+2. Enables `express.json()`, `cookieParser()`, and **CORS** (origin `http://localhost:5001`, `credentials: true`).
+3. Mounts `/auth` and `/upload` (the `/api/rooms` route is commented out).
+4. Serves `frontend/dist` statically and provides an SPA fallback to `index.html`.
+5. On `start()`: connects to MongoDB → initializes Socket.IO → listens on `PORT` (default `3000`).
 
-### Configuration
+### 🧩 Configuration
 
-- **`config/db.js`**: Connects to MongoDB via `MONGODB_URI`; calls `process.exit(1)` on failure.
-- **`config/s3.js`**: Creates an `S3Client` with `region`, `endpoint`, credentials, and `forcePathStyle: true` (required for S3-compatible services).
-- **`utils/users.js`**: The `UsersStore` class keeps a `socket.id → { id, userId, username }` mapping in a `Map`. It is **in-memory** and is cleared when the server restarts.
+| File | Purpose |
+|:-----|:--------|
+| `config/db.js` | MongoDB connection via `MONGODB_URI`; exits on failure |
+| `config/s3.js` | `S3Client` with endpoint, credentials & `forcePathStyle: true` |
+| `utils/users.js` | `UsersStore` — in-memory `Map<socketId, user>` |
 
-> ⚠️ Keeping online users in memory means running multiple instances without an **Adapter** (e.g., Redis) will cause inconsistencies. This project is designed for single-instance execution.
+> ⚠️ Online users live **in memory**. Running multiple instances without an adapter (e.g. Redis) causes inconsistencies. This project targets a single instance.
 
-### Data Models
+### 🗃️ Data Models
 
-#### User
-| Field | Type | Notes |
-|-------|------|-------|
-| `username` | String | Unique, trimmed, max 30 |
-| `password` | String | bcrypt hash |
-| `createdAt` | Date | |
+<table>
+<tr><th width="25%">Model</th><th>Fields</th></tr>
+<tr>
+<td><b>User</b></td>
+<td>
 
-#### Room
-| Field | Type | Notes |
-|-------|------|-------|
-| `name` | String | Effectively unique, max 100 |
-| `createdBy` | ObjectId → User | Creator |
-| `members` | [ObjectId → User] | Members |
-| `isPrivate` | Boolean | For DMs |
-| `createdAt` | Date | |
+`username` (unique, max 30) · `password` (bcrypt) · `createdAt`
 
-Indexes: `name` (text), `members`, `isPrivate`
+</td>
+</tr>
+<tr>
+<td><b>Room</b></td>
+<td>
 
-#### Message
-| Field | Type | Notes |
-|-------|------|-------|
-| `text` | String | max 500 |
-| `sender` | String | Username |
-| `senderId` | ObjectId → User | |
-| `type` | `message` \| `system` \| `file` | |
-| `fileUrl` / `fileName` / `fileType` / `fileSize` | | For file messages |
-| `room` | String | Room name (indexed) |
-| `deletedFor` | [ObjectId] | Users who deleted it "for me" |
-| `isDeletedForEveryone` | Boolean | |
-| `createdAt` | Date | |
+`name` · `createdBy` → User · `members` → [User] · `isPrivate` · `createdAt`
+<br><sub>Indexes: name (text), members, isPrivate</sub>
 
-Indexes: `createdAt`, `(room, createdAt)`
+</td>
+</tr>
+<tr>
+<td><b>Message</b></td>
+<td>
 
-#### Notification
-| Field | Type | Notes |
-|-------|------|-------|
-| `userId` | ObjectId → User | Recipient |
-| `senderId` | ObjectId → User | Sender |
-| `senderName` | String | |
-| `roomName` | String | |
-| `messagePreview` | String | max 150 |
-| `isRead` | Boolean | Defaults to false |
-| `createdAt` | Date | |
+`text` (max 500) · `sender` · `senderId` → User · `type` (`message` / `system` / `file`) · `fileUrl` · `fileName` · `fileType` · `fileSize` · `room` · `deletedFor` → [User] · `isDeletedForEveryone` · `createdAt`
+<br><sub>Indexes: createdAt, (room + createdAt)</sub>
 
-It also exposes a static method `markAllAsRead(userId, roomName?)`.
+</td>
+</tr>
+<tr>
+<td><b>Notification</b></td>
+<td>
 
-### REST API
+`userId` → User · `senderId` → User · `senderName` · `roomName` · `messagePreview` · `isRead` · `createdAt`
+<br><sub>Static helper: <code>markAllAsRead(userId, roomName?)</code></sub>
+
+</td>
+</tr>
+</table>
+
+### 🌐 REST API
 
 All routes live under `/auth` and `/upload` (no `/api` prefix).
 
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| POST | `/auth/register` | Register; sets the `token` cookie | — |
-| POST | `/auth/login` | Login; sets the `token` cookie | — |
-| POST | `/auth/logout` | Clear the cookie | — |
-| GET | `/auth/me` | Return the current user + token (for persistence) | Cookie |
-| GET | `/auth/profile` | Current user's profile + message count | ✅ |
-| GET | `/auth/profile/:username` | Public profile of a user + message count | — |
-| GET | `/auth/call-token` | Return the token for calls | ✅ |
-| POST | `/upload/presign` | Create a presigned upload URL | — |
+| Method | Endpoint | Description | Auth |
+|:------:|:---------|:------------|:----:|
+| `POST` | `/auth/register` | Register + set `token` cookie | — |
+| `POST` | `/auth/login` | Login + set `token` cookie | — |
+| `POST` | `/auth/logout` | Clear cookie | — |
+| `GET` | `/auth/me` | Current user + token (persistence) | 🍪 |
+| `GET` | `/auth/profile` | Own profile + message count | ✅ |
+| `GET` | `/auth/profile/:username` | Public profile + message count | — |
+| `GET` | `/auth/call-token` | Token for calls | ✅ |
+| `POST` | `/upload/presign` | Presigned S3 upload URL | — |
 
-Responses are in the form `{ ... }` or `{ error }`. Error messages are in Persian.
+> 🍪 **Cookie:** `httpOnly`, `secure` + `sameSite='none'` in production, `lax` in dev, 7-day `maxAge`, `path='/'`.
 
-> **Auth cookie:** `httpOnly: true`, `secure` and `sameSite: 'none'` in production, `lax` in development, `maxAge` of seven days, `path: '/'`.
+### 🔌 Socket.IO Layer
 
-### Socket.IO Layer
-
-- `initSocket(server)` creates a `Server` instance with CORS matching the REST layer.
-- An **auth middleware** reads the token from `socket.handshake.auth.token` or the `token` cookie header and, if valid, sets `socket.userId` and `socket.username`. Connections without a token are rejected.
-- On connection, every socket joins its own personal room (`socket.id`) so it can be pushed to directly.
-- All handlers are written as **factory functions**: `handleX(socket, io, users) → (payload, callback) => {}`, which keeps their registration in `socket/index.js` clean.
+- `initSocket(server)` creates the Socket.IO server with matching CORS.
+- **Auth middleware** reads the token from `handshake.auth.token` or the `token` cookie, then sets `socket.userId` / `socket.username`. Invalid or missing tokens are rejected.
+- Every socket joins its **personal room** (`socket.id`) so it can be targeted directly.
+- Handlers are **factory functions**: `handleX(socket, io, users) → (payload, callback) => {}`.
 - On `disconnect`, the user is removed from `UsersStore` and `online users` is re-emitted.
 
-### Socket Events
+### 📡 Socket Events
 
 #### Client → Server (with callback)
 
 | Event | Payload | Description |
-|-------|---------|-------------|
-| `join` | `{}` | Register the user in UsersStore and receive the room list |
-| `chat message` | `{ text, type, fileUrl, fileName, fileType, fileSize }` | Send a message |
+|:------|:--------|:------------|
+| `join` | `{}` | Register user + receive room list |
+| `chat message` | `{ text, type, fileUrl, fileName, fileType, fileSize }` | Send message |
 | `get messages` | `{ room, before?, limit? }` | Paginated history |
-| `edit message` | `{ messageId, newText }` | Edit by the sender |
+| `edit message` | `{ messageId, newText }` | Sender only |
 | `delete message` | `{ messageId, deleteForEveryone }` | Delete |
 | `typing` | `boolean` | Typing status |
-| `list rooms` | — | Fetch the user's rooms |
-| `search rooms` | `{ query }` or `string` | Search rooms/users |
+| `list rooms` | — | User's rooms |
+| `search rooms` | `{ query }` / `string` | Search rooms & users |
 | `create room` | `{ name }` | |
 | `join room` | `{ roomName }` | |
 | `leave room` | `{ roomName? }` | |
@@ -353,235 +353,230 @@ Responses are in the form `{ ... }` or `{ error }`. Error messages are in Persia
 #### Server → Client
 
 | Event | Payload | Description |
-|-------|---------|-------------|
-| `chat message` | Message object | Emitted to the room |
-| `system message` | `{ text, room }` | Member join/leave |
-| `online users` | Array of users | |
+|:------|:--------|:------------|
+| `chat message` | Message | To room |
+| `system message` | `{ text, room }` | Join / leave |
+| `online users` | User[] | |
 | `typing` | `{ username, isTyping }` | |
-| `room created` | `{ id, name, createdBy }` | To everyone |
+| `room created` | `{ id, name, createdBy }` | Broadcast |
 | `room removed` | `{ roomName }` | |
-| `room deleted` | `{ roomName }` | To room members |
-| `room users` | Array of room users | |
+| `room deleted` | `{ roomName }` | Room members |
+| `room users` | User[] | |
 | `message deleted` | `{ messageId, deleteForEveryone }` | |
-| `message edited` | Message object | |
-| `new notification` | Notification object | Direct to the recipient's personal room |
+| `message edited` | Message | |
+| `new notification` | Notification | Direct to recipient |
 | `notifications updated` | `{ count }` | |
-| `webrtc-offer` / `webrtc-answer` / `webrtc-ice-candidate` | Signals | |
-| `webrtc-hangup` / `webrtc-stream-updated` / `webrtc-screen-lock` / `webrtc-screen-unlock` | | |
+| `webrtc-*` | Signals | Offer, answer, ICE, hangup, stream, screen |
 
-### Authentication
+### 🔐 Authentication
 
-1. The user logs in via `POST /auth/login`; the server verifies the password with `bcrypt.compare` and creates a 7-day JWT (`{ id, username }`) using `signToken`.
-2. The token is set in an `httpOnly` cookie and also returned in the response body.
-3. The frontend stores the token in `socket.auth` via `setSocketToken(token)` so it's sent during the handshake.
-4. On reload, `GET /auth/me` restores the user from the cookie (persistence login).
+1. `POST /auth/login` → verify with `bcrypt.compare` → sign a 7-day JWT `{ id, username }`.
+2. Token is stored in an `httpOnly` cookie **and** returned in the body.
+3. Frontend calls `setSocketToken(token)` → token sent during the socket handshake.
+4. On reload, `GET /auth/me` restores the session from the cookie.
 
-### File Upload via S3
+### ☁️ File Upload via S3
 
-The **Presigned URL** flow:
+```text
+Client ──POST /upload/presign──▶ Server
+                                  ├─ key = uploads/<uuid>.<ext>
+                                  ├─ PutObjectCommand
+                                  └─ getSignedUrl (10 min)
+        ◀── { uploadUrl, publicUrl, key }
+Client ──PUT file──▶ uploadUrl (S3)
+Client ──emit('chat message', { type:'file', fileUrl, ... })
+```
 
-1. The client sends `POST /upload/presign` with `{ fileName, fileType }`.
-2. The server generates a unique key: `uploads/<uuid>.<ext>`.
-3. It builds a `PutObjectCommand` and uses `getSignedUrl` to produce a 10-minute upload URL.
-4. It returns `uploadUrl` (for direct PUT) and `publicUrl` (`S3_ENDPOINT/BUCKET/key`).
-5. The client **PUTs** the file to `uploadUrl` and then sends a `file`-type message with `fileUrl`.
+Security depends on the bucket's CORS & policy. Keys stay in `.env`.
 
-> The security of this flow depends on the S3 bucket's CORS and policy configuration; S3 keys are kept in `.env`.
+### 🔔 Notification System
 
-### Notification System
+- After a message is sent in a room with a `Room` document, a `Notification` is created for every member **not currently in that room**.
+- Presence is detected through the sockets joined to the room and `UsersStore`.
+- The sender never receives their own notification.
+- Online recipients get `new notification` **directly** in their personal socket room.
+- `markAllAsRead` is triggered on room join or when the dropdown opens.
 
-- After a message is sent in a room that has a `Room` document, a `Notification` is created for each member **not present in the room**.
-- "Present in the room" is determined via the sockets joined to the room and the `UsersStore` mapping.
-- No notification is sent to the sender.
-- If the recipient is online, the `new notification` event is emitted directly to their personal room (`targetUser.id`).
-- On room join or when the notifications dropdown is opened, `markAllAsRead` (optionally scoped to `roomName`) is called.
+### 📞 WebRTC Signaling
 
-### WebRTC Signaling
+The server is a **pure relay** — no media flows through it.
 
-The server is only a **relay** and no media passes through it:
+| Event | Direction | Purpose |
+|:------|:----------|:--------|
+| `webrtc-offer` | → target | SDP offer (+ `renegotiate`) |
+| `webrtc-answer` | → target | SDP answer |
+| `webrtc-ice-candidate` | → target | ICE candidate |
+| `webrtc-hangup` | → target | End call |
+| `webrtc-stream-updated` | → target | Track changed |
+| `webrtc-screen-lock` / `unlock` | → target | Screen share start / end |
 
-- `webrtc-offer` → to the target user (with `renegotiate`)
-- `webrtc-answer`, `webrtc-ice-candidate` → two-way relay
-- `webrtc-hangup` → ends the call
-- `webrtc-stream-updated` → notifies of a track change (so the client re-syncs)
-- `webrtc-screen-lock/unlock` → notifies screen-share start/end
-
-The target is located via `users.findByUserId(targetUserId)` (so calls are only possible with **online** users).
+Targets are resolved with `users.findByUserId(targetUserId)` — calls require an **online** user.
 
 ---
 
-## Frontend
+## 🎨 Frontend
 
-### Routing & Auth
+### 🧭 Routing & Auth
 
-`App.jsx` first calls `GET /auth/me`:
+`App.jsx` calls `GET /auth/me` on load. While checking, a Halloween-themed loading screen is shown.
 
-- If a user is returned, `authUser` is set and the socket receives the token.
-- Until the check completes, a loading screen with the Halloween background is shown.
-
-Routes:
-
-| Path | Access | Content |
-|------|--------|---------|
+| Path | Access | Screen |
+|:-----|:-------|:-------|
 | `/login` | Guest | Login |
 | `/register` | Guest | Register |
-| `/chat` | Authenticated | Main chat screen |
-| `/profile` | Authenticated | Own profile |
-| `/profile/:username` | Authenticated | Others' profile |
+| `/chat` | Auth | Main chat |
+| `/profile` | Auth | Own profile |
+| `/profile/:username` | Auth | Public profile |
 | `/` | — | Smart redirect |
 
-Logout uses `POST /auth/logout` + `chat.logout()` (disconnects the socket and clears state).
+Logout = `POST /auth/logout` + `chat.logout()`.
 
-### State Management & Hooks
+### 🧠 State Management & Hooks
 
-#### `useChat.js` — core chat logic
+<table>
+<tr><th width="22%">Hook</th><th>Responsibility</th></tr>
+<tr>
+<td><code>useChat.js</code></td>
+<td>
 
-This hook holds all chat state:
+Holds `messages`, `onlineUsers`, `typingUsers`, `rooms`, `currentRoom`, `notifications`, `unreadCount`, `dmPartnerName`, `connected`, `error`.
+<br>Exposes `connectSocket`, `disconnectSocket`/`logout`, `sendMessage`, `setTyping`, `deleteMessage`, `editMessage`, `createRoom`, `searchRooms`, `switchRoom`, `leaveRoom`, `deleteRoom`, `openDM`, `fetchNotifications`, `markNotificationsAsRead`.
+<br>Registers & cleans up all socket listeners.
 
-- `messages`, `onlineUsers`, `typingUsers`, `rooms`, `currentRoom`
-- `notifications`, `unreadCount`, `showNotifications`, `dmPartnerName`
-- `connected`, `error`
+</td>
+</tr>
+<tr>
+<td><code>useWebRTC.js</code></td>
+<td>
 
-And exports the following functions:
+The call engine: `RTCPeerConnection`, local/remote streams, mute/deafen, video toggle, screen share, **Perfect Negotiation**, glare handling, track filtering, ICE buffering.
 
-- Connection lifecycle: `connectSocket`, `disconnectSocket` / `logout`
-- Messages: `sendMessage`, `setTyping`, `deleteMessage`, `editMessage`
-- Rooms: `createRoom`, `searchRooms`, `switchRoom`, `leaveRoom`, `deleteRoom`, `refreshRooms`
-- DM: `openDM`
-- Notifications: `fetchNotifications`, `markNotificationsAsRead`
+</td>
+</tr>
+<tr>
+<td><code>useSocket.js</code></td>
+<td>Lightweight connection-status hook.</td>
+</tr>
+</table>
 
-This hook registers all socket listeners (messages, system, online users, typing, rooms, delete/edit, notifications) and removes them in cleanup to prevent leaks.
-
-#### `useWebRTC.js` — call engine
-
-The largest and most complex part of the frontend. It is responsible for:
-
-- Creating the `RTCPeerConnection` with Google STUN
-- Managing `localStream` / `remoteStream` / `remoteStreamVersion`
-- Controls `toggleMute`, `toggleDeafen`, `toggleVideo`, `toggleScreenShare`
-- **Perfect Negotiation** to avoid offer conflicts (glare): the "polite" side rolls back and re-offers, while the "impolite" side ignores.
-- Smart remote-track filtering (drop `ended` tracks, keep transient `muted` tracks)
-- Bitrate tuning and deferred ICE candidate storage
-
-#### `useSocket.js`
-A lightweight version for exposing connection status (`isConnected`).
-
-### Components
+### 🧱 Components
 
 | Component | Role |
-|-----------|------|
-| `Login` / `Register` | Auth forms with react-hook-form + yup |
-| `Chat` | Main layout, responsive sidebar, wires `useChat` to the UI |
-| `ChatHeader` | Header, connection status, notification, call, profile, logout buttons |
-| `RoomList` | Room list, create/delete/leave, search, online list, DM |
-| `MessageList` | Scrollable message list rendering `MessageBubble` |
-| `MessageBubble` | Message bubble, context menu, file display, edit/delete |
-| `ChatInput` | Multi-line input, file send, emoji, typing |
+|:----------|:-----|
+| `Login` / `Register` | Auth forms (react-hook-form + yup) |
+| `Chat` | Layout, responsive sidebar, wires `useChat` |
+| `ChatHeader` | Connection, notifications, call, profile, logout |
+| `RoomList` | Rooms, create/delete/leave, search, online list, DM |
+| `MessageList` | Scrollable messages |
+| `MessageBubble` | Bubble, context menu, files, edit/delete |
+| `ChatInput` | Text, file, emoji, typing |
 | `EmojiPickerPanel` | Emoji picker |
 | `TypingIndicator` | "... is typing" |
-| `OnlineUsersList` | Online users and starting DM/call |
-| `NotificationDropdown` | Unread notifications, jump to room/sender |
-| `CallModal` | Full call UI (video, controls, ringing/connected states) |
-| `WelcomeScreen` | Welcome screen when no room is selected |
-| `Avatar` | Avatar generated from username/color |
+| `OnlineUsersList` | Online users → DM / call |
+| `NotificationDropdown` | Unread notifications |
+| `CallModal` | Full call UI |
+| `WelcomeScreen` | Empty-state screen |
+| `Avatar` | Generated avatar |
 | `ThemeToggle` | Theme switcher |
 | `HalloweenBackground` | Decorative background |
-| `InstallButton` | PWA install button |
+| `InstallButton` | PWA install |
 | `LoadingSpinner` | Loader |
-| `ToastProvider` | sileo toast container |
-| `Profile` (page) | Profile with gradient banner, message stats, ID chip |
+| `ToastProvider` | sileo container |
+| `Profile` | Banner, stats, ID chip |
 
-### Styling & Theme
+### 🎨 Styling & Theme
 
 - **Tailwind CSS 4** via `@tailwindcss/vite`.
-- Design uses custom classes such as `glass-morphism-strong`, `btn-primary`, `bg-aurora`, `animate-blob`, `slide-in-left` defined in `index.css`.
-- The **Vazir** font (Light/Medium) is bundled locally in `src/fonts`.
-- The overall direction is `dir="rtl"` with `lang="fa"`.
+- Custom utilities: `glass-morphism-strong`, `btn-primary`, `bg-aurora`, `animate-blob`, `slide-in-left`.
+- **Vazir** font bundled locally (`src/fonts`).
+- Global `dir="rtl"` / `lang="fa"`.
 
-### PWA
+### 📲 PWA
 
-Configured in `vite.config.js` with `vite-plugin-pwa`:
+Configured in `vite.config.js`:
 
 - `registerType: 'autoUpdate'`
-- manifest: name "BMS Real-time Chat", short name "BMS Chat", theme color `#6366f1`, background `#0f172a`, 192 and 512 (maskable) icons
-- The Service Worker is active only in **build/preview** (`devOptions.enabled: false`).
+- Manifest: **BMS Real-time Chat** / **BMS Chat**, theme `#6366f1`, background `#0f172a`, 192 & 512 maskable icons
+- Service Worker active in **build / preview only** (`devOptions.enabled: false`)
 
 ---
 
-## Core Flows
+## 🔄 Core Flows
 
-### 1) Login & Connection
-```
+### 1️⃣ Login & Connection
+
+```text
 Login ──POST /auth/login──▶ (Set-Cookie token, JSON {user, token})
-   │
    ├─ setAuthUser(user)
    ├─ setSocketToken(token)
    └─ navigate('/chat') ─▶ connectSocket()
-                              │
-                              └─ socket.connect()
-                                    ├─ handshake auth (token/cookie)
-                                    └─ emit('join') → { user, rooms, history:[], currentRoom:null }
+        └─ socket.connect()
+             ├─ handshake auth
+             └─ emit('join') → { user, rooms, history:[], currentRoom:null }
 ```
 
-### 2) Joining a Room
-```
+### 2️⃣ Joining a Room
+
+```text
 switchRoom(name) ──emit('join room')──▶
-    server: check membership / persist Room → socket.join(name)
-            markAllAsRead(userId, name)
-            load the last 100 messages
-    ◀── { success, room, history }
-    socket.to(room).emit('system message', '... joined the room.')
-    io.to(room).emit('room users', ...)
+   server: membership check → socket.join(name)
+           markAllAsRead(userId, name)
+           load last 100 messages
+   ◀── { success, room, history }
+   socket.to(room).emit('system message', '... joined')
+   io.to(room).emit('room users', ...)
 ```
 
-### 3) Sending a Message
-```
+### 3️⃣ Sending a Message
+
+```text
 sendMessage({text,...}) ──emit('chat message')──▶
-    server: validate (length ≤ 500) → Message.create
-            io.to(room).emit('chat message', message)
-            for absent members → Notification + emit('new notification')
-    ◀── callback({ success, message })
+   server: validate (≤ 500) → Message.create
+           io.to(room).emit('chat message', message)
+           absent members → Notification + emit('new notification')
+   ◀── callback({ success, message })
 ```
 
-### 4) Direct Message
-```
+### 4️⃣ Direct Message
+
+```text
 openDM(targetUserId) ──emit('open dm')──▶
-    if target is online: from UsersStore (socket id → userId)
-    else: User.findById
-    deterministic room name: dm_<minId>_<maxId>  (Room with isPrivate=true)
-    socket leaves the previous room → joins the DM → loads history
-    ◀── { room, history, targetUser:{id, username, isOnline} }
+   online  → resolve via UsersStore
+   offline → User.findById
+   room = dm_<minId>_<maxId>  (isPrivate: true)
+   leave previous room → join DM → load history
+   ◀── { room, history, targetUser }
 ```
 
-### 5) WebRTC Call
-```
-Caller: getUserMedia → createOffer → emit('webrtc-offer', {target, offer})
-Callee: receive offer → getUserMedia → createAnswer → emit('webrtc-answer')
+### 5️⃣ WebRTC Call
+
+```text
+Caller: getUserMedia → createOffer → emit('webrtc-offer')
+Callee: getUserMedia → createAnswer → emit('webrtc-answer')
 Both:   onicecandidate → emit('webrtc-ice-candidate')
         ontrack → syncRemoteStream
-Mid-call change (video/screen): replaceTrack/addTrack
-        → renegotiate if needed (Perfect Negotiation)
-        → emit('webrtc-stream-updated')
+Change: replaceTrack/addTrack → renegotiate (Perfect Negotiation)
 End:    emit('webrtc-hangup')
 ```
 
 ---
 
-## Getting Started
+## ⚡ Getting Started
 
-### Prerequisites
-- **Node.js 18+** (the project uses ES Modules)
-- **MongoDB** (or Atlas)
-- Access to an **S3-compatible** service for file uploads (optional for other features)
-- A WebRTC-capable browser (Chrome/Edge/Firefox/Safari)
+### ✅ Prerequisites
 
-### Installation
+- **Node.js 18+** (ES Modules)
+- **MongoDB** (local or Atlas)
+- **S3-compatible storage** (optional for uploads)
+- A **WebRTC-capable** browser
+
+### 📦 Installation
 
 ```bash
 # 1) Backend
 cd backend
 npm install
-# Create a .env file (see the Environment Variables section)
+# create .env (see below)
 npm run dev
 
 # 2) Frontend (second terminal)
@@ -590,29 +585,22 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:5001` in your browser.
+Open **http://localhost:5001** 🎉
 
-### Running Both Together (optional)
+### ▶️ Run Both Together
 
-From inside `frontend`:
-
-```bash
-npm start        # backend (nodemon) + frontend (vite) via concurrently
-```
-
-Or a local production-like run:
+From `frontend/`:
 
 ```bash
-npm run devi     # build + preview (static serving) + backend
+npm start        # backend (nodemon) + frontend (vite)
+npm run devi     # build + preview + backend (PWA enabled)
 ```
-
-> In `preview` mode, PWA and the Service Worker are also active.
 
 ---
 
-## Environment Variables
+## 🔐 Environment Variables
 
-`backend/.env` should contain the following (sample values — never commit real values to Git):
+Create `backend/.env`:
 
 ```env
 # MongoDB
@@ -622,7 +610,7 @@ MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>/<db>
 PORT=3000
 
 # JWT
-JWT_SECRET=<a-long-secure-random-string>
+JWT_SECRET=<long-secure-random-string>
 
 # Object Storage (S3-compatible)
 S3_BUCKET_NAME=<bucket-name>
@@ -633,106 +621,118 @@ S3_REGION=<region>
 ```
 
 | Variable | Required | Description |
-|----------|----------|-------------|
+|:---------|:--------:|:------------|
 | `MONGODB_URI` | ✅ | MongoDB connection string |
-| `PORT` | — | Defaults to 3000 |
+| `PORT` | — | Default `3000` |
 | `JWT_SECRET` | ✅ | Token signing key |
-| `S3_BUCKET_NAME` | For files | Bucket name |
-| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | For files | Access keys |
-| `S3_ENDPOINT` | For files | S3 service URL |
-| `S3_REGION` | For files | Region (usually `default` for custom services) |
+| `S3_BUCKET_NAME` | 📎 | Bucket name |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | 📎 | Access keys |
+| `S3_ENDPOINT` | 📎 | S3 service URL |
+| `S3_REGION` | 📎 | Region (`default` for custom services) |
+
+> 🔒 Never commit real credentials. Rotate any key that has ever been exposed.
 
 ---
 
-## Scripts
+## 📜 Scripts
 
-### Backend (`backend/package.json`)
+<table>
+<tr><th width="50%">Backend</th><th width="50%">Frontend</th></tr>
+<tr>
+<td>
 
-| Command | What it does |
-|---------|--------------|
-| `npm run dev` | Runs `src/server.js` with nodemon |
-| `npm start` | Normal run without watch |
-| `npm test` | (Not implemented yet) |
+| Command | Action |
+|:--------|:-------|
+| `npm run dev` | nodemon |
+| `npm start` | plain run |
+| `npm test` | not implemented |
 
-### Frontend (`frontend/package.json`)
+</td>
+<td>
 
-| Command | What it does |
-|---------|--------------|
-| `npm run dev` | Runs Vite on port 5001 |
-| `npm run build` | Production build into `frontend/dist` |
-| `npm run preview` | Previews the build on port 5000 |
-| `npm run lint` | Runs ESLint |
-| `npm run backend` | Runs the backend from inside the frontend folder |
-| `npm start` | Backend + frontend simultaneously |
+| Command | Action |
+|:--------|:-------|
+| `npm run dev` | Vite :5001 |
+| `npm run build` | `dist/` |
+| `npm run preview` | Vite :5000 |
+| `npm run lint` | ESLint |
+| `npm run backend` | backend from frontend |
+| `npm start` | backend + frontend |
 | `npm run devi` | build + preview + backend |
 
+</td>
+</tr>
+</table>
+
 ---
 
-## Ports & Proxy
+## 🌐 Ports & Proxy
 
 | Service | Port |
-|---------|------|
+|:--------|:----:|
 | Backend (Express + Socket.IO) | `3000` |
 | Frontend (Vite dev) | `5001` |
 | Frontend (Vite preview) | `5000` |
 
-`vite.config.js` defines a **proxy** for `/auth`, `/upload`, `/api` to `http://localhost:3000`; therefore the frontend's REST requests pass through without CORS issues. The socket connects directly to `http://localhost:3000`.
+`vite.config.js` proxies `/auth`, `/upload`, `/api` → `http://localhost:3000`. The socket connects **directly** to `http://localhost:3000`.
 
-> ⚠️ On the backend, both `cors` origins (Express and Socket.IO) are **hard-coded** to `http://localhost:5001`. This must be updated for a real domain.
-
----
-
-## Deployment
-
-Recommended path (single instance):
-
-1. `cd frontend && npm run build` to produce output in `frontend/dist`.
-2. The backend serves it statically from `../../frontend/dist` and provides SPA fallback.
-3. Run the backend with `npm start` on the server.
-4. Set `NODE_ENV=production` so cookies become `secure` and `sameSite: 'none'`.
-5. Change the CORS origins to the production domain.
-6. Use **HTTPS**; WebRTC and secure cookies don't work well in real environments without it.
-7. For scaling, you'll need a **Socket.IO Redis Adapter** and Redis-backed online-user storage (since `UsersStore` is in-memory).
+> ⚠️ Both Express and Socket.IO CORS origins are **hard-coded** to `http://localhost:5001`.
 
 ---
 
-## Security Notes & Known Limitations
+## ☁️ Deployment
 
-This section honestly describes the current state of the project (without changing code):
-
-- **Sensitive keys live in `.env`.** The backend `.gitignore` ignores `.env*`, but if they were ever committed they must be purged from history and **rotated**.
-- **CORS is hard-coded** to `http://localhost:5001` (both REST and Socket.IO); it must be set to the real domain before production.
-- **`UsersStore` is in-memory:** on server restart and across multiple instances, the online list and calls break.
-- **No rate limiting or comprehensive input validation** on REST/Socket (only basic checks like message length and room name).
-- **`routes/rooms.js` is disabled**; room logic is socket-based only.
-- **`socket/call.js`** imports the `@nhanaka/call` package, which isn't in `package.json` and isn't used in `server.js`; it is effectively **dead/experimental** code.
-- **`Profile.jsx`** references `profile.bio` and the `/settings` route, but the `User` model has no `bio` field and `/settings` isn't defined; thus the "About me" section is effectively empty and the edit-profile button has no destination.
-- **No automated tests**; the backend's `test` script is a placeholder.
-- **No membership validation in `join room` for public rooms:** a user is added to `members` when they join (current intended behavior).
-- **Deleting a room** also deletes all of its messages.
-- **`GET /auth/me` returns the token in the response body** so the socket can use it; from a security standpoint an `httpOnly` cookie is safer, but this project does it because of the socket architecture.
+1. `cd frontend && npm run build` → `frontend/dist`
+2. Backend serves `dist` statically with SPA fallback.
+3. Run with `npm start`.
+4. Set `NODE_ENV=production` (secure cookies, `sameSite='none'`).
+5. Update CORS origins to the production domain.
+6. **Use HTTPS** — required for WebRTC and secure cookies.
+7. For scaling: **Socket.IO Redis Adapter** + Redis-backed online users.
 
 ---
 
-## Future Roadmap
+## 🛡️ Security Notes & Known Limitations
 
-- Add **tests** (Jest/Vitest + Supertest + socket.io tests)
-- **Redis Adapter** for Socket.IO and Redis-backed online users for horizontal scaling
-- **Rate limiting** and **Zod/Joi** validation
-- **Refresh Tokens** and token rotation
-- **Group WebRTC calls (SFU)** instead of 1:1
-- **TURN server** for painful NAT traversal
-- Real **Push** notifications in the PWA
-- Support for **Threads/Replies**, **Reactions**, and **Pinning**
-- In-room message search
-- A `bio` field / custom avatar in the `User` model and a settings page
-- Infinite scrolling of messages in the UI
-- Internationalization (i18n) and multi-language support
+Honest snapshot of the current codebase:
+
+- 🔑 **Secrets in `.env`.** `.gitignore` covers `.env*`; if ever committed, purge history and **rotate**.
+- 🌍 **Hard-coded CORS** to `http://localhost:5001` (REST + Socket.IO).
+- 🧠 **In-memory `UsersStore`** → breaks on restart and across instances.
+- 🚦 **No rate limiting** or comprehensive validation (basic checks only).
+- 🗂️ **`routes/rooms.js` is disabled** — rooms are socket-based only.
+- 🧟 **`socket/call.js`** imports `@nhanaka/call`, which is not in `package.json` and not used → dead/experimental.
+- 👤 **`Profile.jsx`** references `profile.bio` and `/settings`, but the `User` model has no `bio` and `/settings` isn't defined → "About me" stays empty.
+- 🧪 **No automated tests** (`test` is a placeholder).
+- 🚪 **`join room` for public rooms** simply adds the user to `members`.
+- 🧨 **Deleting a room** also deletes all its messages.
+- 🍪 **`GET /auth/me` returns the token in the body** so the socket can use it; an `httpOnly`-only design would be stricter.
+
+---
+
+## 🗺️ Future Roadmap
+
+- 🧪 Tests — Vitest / Jest + Supertest + socket tests
+- 🧱 **Redis Adapter** + Redis online users
+- 🚦 Rate limiting + **Zod / Joi**
+- 🔁 Refresh tokens & rotation
+- 👥 **Group calls (SFU)** instead of 1:1
+- ❄️ **TURN server** for tough NATs
+- 🔔 Real **push notifications**
+- 🧵 Threads, reactions, pinning
+- 🔎 In-room message search
+- 👤 `bio` / custom avatar + settings page
+- ♾️ Infinite scroll for history
+- 🌍 i18n / multi-language
 
 ---
 
 <div align="center">
 
-**BMS Real-time Chat** — built to learn and experience building a complete real-time chat with Node.js and Socket.IO
+### ⭐ If this project helped you, give it a star!
+
+**Built with ❤️ using Node.js, Socket.IO & React**
+
+[⬆ Back to top](#-bms-real-time-chat) · [🇮🇷 Read in Persian](./readmefa.md)
 
 </div>

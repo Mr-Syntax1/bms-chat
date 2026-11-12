@@ -24,7 +24,7 @@ const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, '../../frontend/dist');
 
 app.use(cors({
-  origin: 'http://localhost:5001',
+  origin: true,
   credentials: true
 }));
 

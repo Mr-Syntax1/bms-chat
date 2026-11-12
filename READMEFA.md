@@ -1,123 +1,129 @@
-# BMS Real-time Chat
+<!-- ─────────────────────────  انتخاب زبان  ───────────────────────── -->
+<div align="center">
 
-> یک اپلیکیشن چت بلادرنگ (Real-time) کاملاً فارسی و راست‌به‌چپ، ساخته‌شده با **Node.js + Express + Socket.IO + MongoDB** در بک‌اند و **React 19 + Vite + Tailwind CSS 4** در فرانت‌اند، که علاوه بر پیام‌رسانی متنی از **چت خصوصی (DM)**، **آپلود فایل روی S3**، **نوتیفیکیشن خوانده‌نشده**، **تماس صوتی/تصویری WebRTC**، **اشتراک‌گذاری صفحه** و **قابلیت نصب به‌عنوان PWA** پشتیبانی می‌کند.
+## 🌐 زبان / Language
 
----
+[![English](https://img.shields.io/badge/🇬🇧%20English-Read%20now-6366f1?style=for-the-badge)](./readme.md)
+[![فارسی](https://img.shields.io/badge/🇮🇷%20فارسی-مطالعه-8b5cf6?style=for-the-badge)](./readmefa.md)
 
-## فهرست مطالب
+</div>
 
-- [نمای کلی](#نمای-کلی)
-- [ویژگی‌ها](#ویژگیها)
-- [پشته فناوری](#پشته-فناوری)
-- [معماری کلی](#معماری-کلی)
-- [ساختار پروژه](#ساختار-پروژه)
-- [بک‌اند (Backend)](#بکاند-backend)
-  - [نقطه ورود و راه‌اندازی](#نقطه-ورود-و-راهاندازی)
-  - [پیکربندی](#پیکربندی)
-  - [مدل‌های داده](#مدلهای-داده)
-  - [REST API](#rest-api)
-  - [لایه Socket.IO](#لایه-socketio)
-  - [رویدادهای Socket](#رویدادهای-socket)
-  - [احراز هویت](#احراز-هویت)
-  - [آپلود فایل با S3](#آپلود-فایل-با-s3)
-  - [سیستم نوتیفیکیشن](#سیستم-نوتیفیکیشن)
-  - [سیگنالینگ WebRTC](#سیگنالینگ-webrtc)
-- [فرانت‌اند (Frontend)](#فرانتاند-frontend)
-  - [مسیریابی و احراز هویت](#مسیریابی-و-احراز-هویت)
-  - [مدیریت وضعیت و هوک‌ها](#مدیریت-وضعیت-و-هوکها)
-  - [کامپوننت‌ها](#کامپوننتها)
-  - [استایل و تم](#استایل-و-تم)
-  - [PWA](#pwa)
-- [جریان‌های اصلی](#جریانهای-اصلی)
-- [شروع به کار](#شروع-به-کار)
-- [متغیرهای محیطی](#متغیرهای-محیطی)
-- [اسکریپت‌ها](#اسکریپتها)
-- [پورت‌ها و Proxy](#پورتها-و-proxy)
-- [استقرار (Deployment)](#استقرار-deployment)
-- [نکات امنیتی و محدودیت‌های شناخته‌شده](#نکات-امنیتی-و-محدودیتهای-شناختهشده)
-- [ایده‌های توسعه آینده](#ایدههای-توسعه-آینده)
+<!-- ─────────────────────────────  هدر  ───────────────────────────── -->
+<div align="center">
 
----
+# 💬 BMS Real-time Chat
 
-## نمای کلی
+### یک پلتفرم چت بلادرنگ مدرن با تماس WebRTC، چت خصوصی و ارسال فایل
 
-این پروژه یک **سیستم چت بلادرنگ اختصاصی** است که با هدف یادگیری و پیاده‌سازی عملی Socket.IO شروع شده و به یک اپلیکیشن کامل با قابلیت‌های زیر رسیده است:
+<p>
+  <img alt="Node.js" src="https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white">
+  <img alt="Express" src="https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white">
+  <img alt="Socket.IO" src="https://img.shields.io/badge/Socket.IO-010101?style=flat-square&logo=socketdotio&logoColor=white">
+  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React%2019-61DAFB?style=flat-square&logo=react&logoColor=black">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white">
+  <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white">
+  <img alt="PWA" src="https://img.shields.io/badge/PWA-5A0FC8?style=flat-square&logo=pwa&logoColor=white">
+</p>
 
-- احراز هویت با **JWT** (کوکی `httpOnly` + احراز هویت سوکت)
-- اتاق‌های عمومی و گروهی + **چت خصوصی دو‌نفره (DM)**
-- پیام‌های متنی، **فایل** و **سیستمی**
-- ویرایش و حذف پیام (برای خودم / برای همه)
-- **نشانگر در حال تایپ** و **لیست کاربران آنلاین**
-- **نوتیفیکیشن** پیام‌های خوانده‌نشده به‌ازای هر اتاق
-- تماس **صوتی و تصویری ۱:۱** با WebRTC + **اشتراک صفحه با کیفیت بالا**
-- **PWA** قابل نصب روی موبایل و دسکتاپ
-- رابط کاربری مدرن، **فارسی، RTL**، با فونت وزیر، افکت‌های شیشه‌ای و پس‌زمینه هالووین
+<p>
+  <a href="#-نمای-کلی">نمای کلی</a> •
+  <a href="#-ویژگیها">ویژگی‌ها</a> •
+  <a href="#-پشته-فناوری">پشته فناوری</a> •
+  <a href="#-معماری">معماری</a> •
+  <a href="#-شروع-به-کار">شروع به کار</a> •
+  <a href="#-نکات-امنیتی-و-محدودیتهای-شناختهشده">امنیت</a>
+</p>
+
+</div>
 
 ---
 
-## ویژگی‌ها
+## 🚀 نمای کلی
 
-### پیام‌رسانی
-- ارسال/دریافت پیام بلادرنگ در اتاق‌ها
-- بارگذاری تاریخچه پیام‌ها (تا ۱۰۰ پیام اخیر هنگام ورود به اتاق، صفحه‌بندی با `before` و `limit`)
-- پیام‌های نوع `message` / `file` / `system`
-- ویرایش پیام فقط توسط فرستنده
-- حذف پیام: «حذف برای من» یا «حذف برای همه» (فقط فرستنده)
-- نمایش زمان به صورت فارسی (`fa-IR`)
-- ذخیره‌سازی همه پیام‌ها در MongoDB
+**BMS Real-time Chat** یک اپلیکیشن پیام‌رسان بلادرنگ فول‌استک با رابط کاربری کاملاً فارسی و راست‌به‌چپ است که روی یک استک مدرن جاوااسکریپت بنا شده:
 
-### اتاق‌ها
-- ساخت اتاق (۲ تا ۳۰ کاراکتر، نام یکتا)
-- پیوستن / ترک اتاق
-- حذف اتاق فقط توسط سازنده (همراه با حذف تمام پیام‌های آن)
-- جستجوی اتاق‌های عمومی و کاربران (بر اساس یوزرنیم یا شناسه)
-- اتاق‌های خصوصی برای DM با نام‌گذاری قطعی `dm_<idSmall>_<idLarge>`
+- **بک‌اند:** Node.js · Express · Socket.IO · MongoDB · JWT · AWS S3
+- **فرانت‌اند:** React 19 · Vite · Tailwind CSS 4 · React Router 7 · PWA
 
-### چت خصوصی (DM)
-- باز کردن DM با کاربر آنلاین (از طریق socket id) یا آفلاین (از طریق شناسه دیتابیس)
-- ساخت خودکار اتاق خصوصی در صورت نبود
-- جلوگیری از چت با خود
-- نمایش وضعیت آنلاین/آفلاین طرف مقابل
+این پروژه فراتر از چت متنی ساده است — شامل **چت خصوصی (DM)**، **آپلود فایل**، **نوتیفیکیشن خوانده‌نشده**، **تماس صوتی/تصویری ۱:۱**، **اشتراک‌گذاری صفحه** و تجربه **PWA قابل نصب** می‌شود.
 
-### تماس (WebRTC)
-- تماس صوتی و تصویری ۱:۱
-- کیفیت هدف 1080p / 30fps و تنظیم `maxBitrate` تا ۸ مگابیت
-- **اشتراک صفحه** و جایگزینی هوشمند ترک ویدیو (`replaceTrack`)
-- قطع/وصل میکروفون (Mute) و ناشنوا شدن (Deafen)
-- **Perfect Negotiation** و glare handling برای تغییر ترک وسط تماس
-- مدیریت کاندیدهای ICE و renegotiation معلق (`pendingRenegotiation`)
-
-### تجربه کاربری
-- طراحی Glassmorphism و گرادیان‌های متحرک
-- حالت **Dark/Light** و پس‌زمینه هالووین
-- کامپوننت‌های مستقل و قابل استفاده مجدد
-- نصب به‌صورت PWA با Service Worker (فقط در حالت build/preview)
-- نوتیفیکیشن‌های Toast با کتابخانه `sileo`
+> 🎯 **هدف طراحی:** رابط کاربری مدرن و شیشه‌ای (Glassmorphism) همراه با معماری بلادرنگ در سطح تولید که خواندن، توسعه و یادگیری آن آسان باشد.
 
 ---
 
-## پشته فناوری
+## ✨ ویژگی‌ها
 
-| لایه | فناوری |
-|------|---------|
-| Runtime | Node.js (ES Modules) |
-| بک‌اند | Express 4، Socket.IO 4 |
-| دیتابیس | MongoDB + Mongoose 9 |
-| احراز هویت | JWT (`jsonwebtoken`) + `bcryptjs` + `cookie-parser` |
-| ذخیره فایل | AWS SDK v3 برای S3 (سازگار با ارائه‌دهنده ایرانی) |
-| فرانت‌اند | React 19، Vite 8، React Router 7 |
-| استایل | Tailwind CSS 4 + CSS سفارشی، فونت Vazir |
-| فرم / اعتبارسنجی | react-hook-form + yup |
-| چت بلادرنگ | socket.io-client |
-| PWA | vite-plugin-pwa |
-| اعلان‌ها | sileo |
-| ابزار توسعه | nodemon، ESLint، concurrently |
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 💬 پیام‌رسانی
+- ⚡ ارسال و دریافت بلادرنگ
+- 🕘 تاریخچه پیام (۱۰۰ پیام آخر هنگام ورود)
+- 📎 پیام متنی، فایل و سیستمی
+- ✏️ ویرایش پیام‌های خود
+- 🗑️ حذف برای من / برای همه
+- 🕒 نمایش زمان به فارسی
+
+### 🏠 اتاق‌ها
+- ➕ ساخت اتاق (۲ تا ۳۰ کاراکتر)
+- 🚪 ورود / خروج از اتاق
+- 👑 حذف اتاق فقط توسط سازنده
+- 🔍 جستجوی اتاق و کاربر
+- 🔒 اتاق خصوصی برای DM
+
+</td>
+<td width="50%" valign="top">
+
+### 👥 چت خصوصی
+- 💌 DM با کاربر آنلاین و آفلاین
+- 🧠 ساخت خودکار اتاق خصوصی
+- 🚫 جلوگیری از چت با خود
+- 🟢 نمایش زنده وضعیت آنلاین
+
+### 📞 تماس WebRTC
+- 🎙️ تماس صوتی و تصویری (۱:۱)
+- 🖥️ اشتراک صفحه با کیفیت بالا
+- 🔇 قطع صدا و ناشنوا شدن
+- 🧩 Perfect Negotiation و مدیریت Glare
+- 🧊 بافر کردن کاندیدهای ICE
+
+</td>
+</tr>
+</table>
+
+### 🎨 تجربه و پلتفرم
+- 🧊 رابط شیشه‌ای با گرادیان‌های متحرک
+- 🌗 تم روشن / تیره + 🎃 پس‌زمینه هالووین
+- 📲 **PWA** قابل نصب با Service Worker به‌روزرسانی خودکار
+- 🔔 اعلان‌های Toast با **sileo**
+- 🈯 چیدمان کامل **فارسی / RTL** با فونت وزیر
 
 ---
 
-## معماری کلی
+## 🧰 پشته فناوری
 
-```
+| لایه | فناوری | توضیح |
+|:-----|:-------|:------|
+| **Runtime** | Node.js | ES Modules |
+| **بک‌اند** | Express 4 + Socket.IO 4 | REST + بلادرنگ |
+| **دیتابیس** | MongoDB + Mongoose 9 | کاربر، اتاق، پیام، نوتیف |
+| **احراز هویت** | JWT + bcryptjs + cookie-parser | کوکی `httpOnly` + handshake سوکت |
+| **ذخیره‌سازی** | AWS SDK v3 (سازگار با S3) | URL آپلود امضاشده |
+| **فرانت‌اند** | React 19 + Vite 8 + React Router 7 | SPA |
+| **استایل** | Tailwind CSS 4 + CSS سفارشی | فونت وزیر، RTL |
+| **فرم‌ها** | react-hook-form + yup | اعتبارسنجی سمت کلاینت |
+| **بلادرنگ** | socket.io-client | سوکت singleton |
+| **PWA** | vite-plugin-pwa | SW به‌روزرسانی خودکار |
+| **اعلان** | sileo | رابط نوتیفیکیشن |
+| **توسعه** | nodemon · ESLint · concurrently | گردش‌کار محلی |
+
+---
+
+## 🏗️ معماری
+
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │                        Browser (Client)                       │
 │  React 19 + Vite + Tailwind + React Router + PWA             │
@@ -132,30 +138,31 @@
                ▼                                   ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                     Backend (Node/Express)                    │
-│  Express  ──▶ routes: auth / upload / (rooms-commented)       │
-│                                                                 │
-│  http.Server ──▶ Socket.IO                                     │
-│      ├─ Auth middleware (JWT از cookie یا auth.token)          │
-│      ├─ handlers: users, chat, rooms, direct, typing,          │
-│      │            notification, webrtc                         │
-│      └─ UsersStore (Map ساده در حافظه برای آنلاین‌ها)          │
-│                                                                 │
-│  Mongoose ──▶ MongoDB   (User, Room, Message, Notification)    │
-│  AWS SDK   ──▶ Object Storage (S3 compatible, presigned URLs)  │
+│  Express  ──▶ routes: auth / upload / (rooms — disabled)      │
+│                                                               │
+│  http.Server ──▶ Socket.IO                                    │
+│      ├─ Auth middleware (JWT from cookie or auth.token)       │
+│      ├─ handlers: users · chat · rooms · direct · typing      │
+│      │            notification · webrtc                       │
+│      └─ UsersStore (in-memory Map for online users)           │
+│                                                               │
+│  Mongoose ──▶ MongoDB   (User, Room, Message, Notification)   │
+│  AWS SDK   ──▶ Object Storage (S3-compatible, presigned URLs) │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-> **نکته:** تمام منطق اتاق‌ها از طریق **Socket.IO events** انجام می‌شود و فایل `routes/rooms.js` صرفاً نسخه‌ی اولیه‌ی کامنت‌شده و غیرفعال است.
+> ℹ️ تمام منطق اتاق‌ها از طریق **رویدادهای Socket.IO** انجام می‌شود. فایل `routes/rooms.js` نسخه‌ی اولیه و کامنت‌شده است.
 
 ---
 
-## ساختار پروژه
+## 📁 ساختار پروژه
 
-```
+```text
 learning SOCKET.IO/
-├── README.md                    ← همین فایل (سطح ریشه)
+├── readme.md                    ← نسخه انگلیسی
+├── readmefa.md                  ← نسخه فارسی (اینجا هستید)
 ├── backend/
-│   ├── .env                     ← متغیرهای محیطی (نباید در Git باشد)
+│   ├── .env                     ← متغیرهای محیطی (هرگز commit نشود)
 │   ├── package.json
 │   └── src/
 │       ├── server.js            ← نقطه ورود Express + HTTP + Socket.IO
@@ -168,15 +175,15 @@ learning SOCKET.IO/
 │       │   ├── Message.js
 │       │   └── Notification.js
 │       ├── routes/
-│       │   ├── auth.js          ← register/login/logout/me/profile
-│       │   ├── upload.js        ← presign آپلود S3
-│       │   └── rooms.js         ← نسخه قدیمی، کامنت‌شده
+│       │   ├── auth.js          ← register / login / logout / me / profile
+│       │   ├── upload.js        ← آپلود امضاشده S3
+│       │   └── rooms.js         ← نسخه قدیمی کامنت‌شده
 │       ├── socket/
-│       │   ├── index.js         ← initSocket + ثبت همه رویدادها
-│       │   ├── call.js          ← اسکلت استفاده از @nhanaka/call (غیرفعال)
+│       │   ├── index.js         ← initSocket + ثبت رویدادها
+│       │   ├── call.js          ← اسکلت @nhanaka/call (غیرفعال)
 │       │   └── handlers/
-│       │       ├── users.js     ← join و ساخت لیست اتاق‌ها
-│       │       ├── chat.js      ← پیام، حذف، ویرایش، تاریخچه، نوتیف
+│       │       ├── users.js     ← join + لیست اتاق‌ها
+│       │       ├── chat.js      ← CRUD پیام + تاریخچه + نوتیف
 │       │       ├── rooms.js     ← ساخت/ورود/خروج/حذف/جستجو/اطلاعات
 │       │       ├── direct.js    ← باز کردن DM
 │       │       ├── typing.js    ← وضعیت تایپ
@@ -195,14 +202,14 @@ learning SOCKET.IO/
     └── src/
         ├── main.jsx
         ├── App.jsx              ← Router + بررسی auth (/auth/me)
-        ├── socket.js            ← نمونه singleton سوکت
-        ├── index.css            ← Tailwind + استایل‌های سفارشی
+        ├── socket.js            ← سوکت singleton
+        ├── index.css            ← Tailwind + استایل سفارشی
         ├── assets/
-        ├── fonts/               ← Vazir (Light/Medium)
+        ├── fonts/               ← وزیر (Light / Medium)
         ├── hooks/
-        │   ├── useChat.js       ← هسته منطق چت و اتاق‌ها
+        │   ├── useChat.js       ← منطق اصلی چت و اتاق
         │   ├── useSocket.js
-        │   └── useWebRTC.js     ← کل منطق تماس و اشتراک صفحه
+        │   └── useWebRTC.js     ← موتور تماس و اشتراک صفحه
         ├── providers/
         │   └── ToastProvider.jsx
         ├── pages/
@@ -214,126 +221,119 @@ learning SOCKET.IO/
             ├── RoomList.jsx / WelcomeScreen.jsx
             ├── OnlineUsersList.jsx / TypingIndicator.jsx
             ├── NotificationDropdown.jsx
-            ├── CallModal.jsx            ← UI تماس
+            ├── CallModal.jsx
             ├── Avatar.jsx / ContextMenu.jsx
             ├── EmojiPickerPanel.jsx
             ├── ThemeToggle.jsx
             ├── HalloweenBackground.jsx
-            ├── InstallButton.jsx        ← نصب PWA
+            ├── InstallButton.jsx
             └── LoadingSpinner.jsx
 ```
 
 ---
 
-## بک‌اند (Backend)
+## 🖥️ بک‌اند
 
-### نقطه ورود و راه‌اندازی
+### ⚙️ نقطه ورود و راه‌اندازی
 
-فایل `src/server.js`:
+فایل `src/server.js` موارد زیر را انجام می‌دهد:
 
-1. یک اپ **Express** و یک **HTTP Server** (با `node:http`) می‌سازد.
-2. `express.json()`، `cookieParser()` و **CORS** (origin: `http://localhost:5001` با `credentials: true`) را فعال می‌کند.
+1. یک اپ **Express** و یک **HTTP Server** (`node:http`) می‌سازد.
+2. `express.json()`، `cookieParser()` و **CORS** (origin `http://localhost:5001` با `credentials: true`) را فعال می‌کند.
 3. روت‌های `/auth` و `/upload` را mount می‌کند (روت `/api/rooms` کامنت شده است).
-4. پوشه `frontend/dist` را به‌صورت استاتیک سرو می‌کند و برای SPA یک **fallback** به `index.html` دارد (به‌جز مسیرهای API).
-5. در `start()` ابتدا به MongoDB وصل می‌شود، سپس Socket.IO را راه‌اندازی می‌کند و روی `PORT` (پیش‌فرض ۳۰۰۰) گوش می‌دهد.
+4. پوشه `frontend/dist` را استاتیک سرو می‌کند و برای SPA به `index.html` fallback دارد.
+5. در `start()`: اتصال به MongoDB → راه‌اندازی Socket.IO → گوش دادن روی `PORT` (پیش‌فرض `3000`).
 
-### پیکربندی
+### 🧩 پیکربندی
 
-- **`config/db.js`**: اتصال به MongoDB از طریق `MONGODB_URI`؛ در صورت خطا `process.exit(1)`.
-- **`config/s3.js`**: ساخت `S3Client` با `region`، `endpoint`، credentials و `forcePathStyle: true` (برای سرویس‌های S3 سازگار ضروری است).
-- **`utils/users.js`**: کلاس `UsersStore` که نگاشت `socket.id → { id, userId, username }` را در یک `Map` نگه می‌دارد. **در حافظه است** و با ری‌استارت سرور پاک می‌شود.
+| فایل | هدف |
+|:-----|:----|
+| `config/db.js` | اتصال MongoDB با `MONGODB_URI`؛ خروج در صورت خطا |
+| `config/s3.js` | `S3Client` با endpoint، credentials و `forcePathStyle: true` |
+| `utils/users.js` | `UsersStore` — `Map<socketId, user>` در حافظه |
 
-> ⚠️ نگه‌داشتن لیست آنلاین‌ها در حافظه یعنی راه‌اندازی چند instance بدون **Adapter** (مثلاً Redis) باعث ناسازگاری می‌شود؛ این پروژه برای اجرای تک‌نمونه طراحی شده است.
+> ⚠️ کاربران آنلاین **در حافظه** نگه‌داری می‌شوند. اجرای چند instance بدون Adapter (مثلاً Redis) باعث ناسازگاری می‌شود. این پروژه برای اجرای تک‌نمونه طراحی شده است.
 
-### مدل‌های داده
+### 🗃️ مدل‌های داده
 
-#### User
-| فیلد | نوع | توضیح |
-|------|-----|-------|
-| `username` | String | یکتا، trim، حداکثر ۳۰ |
-| `password` | String | هش‌شده با bcrypt |
-| `createdAt` | Date | |
+<table>
+<tr><th width="25%">مدل</th><th>فیلدها</th></tr>
+<tr>
+<td><b>User</b></td>
+<td>
 
-#### Room
-| فیلد | نوع | توضیح |
-|------|-----|-------|
-| `name` | String | یکتا در عمل، حداکثر ۱۰۰ |
-| `createdBy` | ObjectId → User | سازنده |
-| `members` | [ObjectId → User] | اعضا |
-| `isPrivate` | Boolean | برای DM |
-| `createdAt` | Date | |
+`username` (یکتا، حداکثر ۳۰) · `password` (bcrypt) · `createdAt`
 
-ایندکس‌ها: `name` (text)، `members`، `isPrivate`
+</td>
+</tr>
+<tr>
+<td><b>Room</b></td>
+<td>
 
-#### Message
-| فیلد | نوع | توضیح |
-|------|-----|-------|
-| `text` | String | حداکثر ۵۰۰ |
-| `sender` | String | نام کاربری |
-| `senderId` | ObjectId → User | |
-| `type` | `message` \| `system` \| `file` | |
-| `fileUrl` / `fileName` / `fileType` / `fileSize` | | برای پیام‌های فایل |
-| `room` | String | نام اتاق (index دارد) |
-| `deletedFor` | [ObjectId] | کاربرانی که پیام را «برای خودم» حذف کرده‌اند |
-| `isDeletedForEveryone` | Boolean | |
-| `createdAt` | Date | |
+`name` · `createdBy` → User · `members` → [User] · `isPrivate` · `createdAt`
+<br><sub>ایندکس: name (text)، members، isPrivate</sub>
 
-ایندکس‌ها: `createdAt`، `(room, createdAt)`
+</td>
+</tr>
+<tr>
+<td><b>Message</b></td>
+<td>
 
-#### Notification
-| فیلد | نوع | توضیح |
-|------|-----|-------|
-| `userId` | ObjectId → User | گیرنده |
-| `senderId` | ObjectId → User | فرستنده |
-| `senderName` | String | |
-| `roomName` | String | |
-| `messagePreview` | String | حداکثر ۱۵۰ |
-| `isRead` | Boolean | پیش‌فرض false |
-| `createdAt` | Date | |
+`text` (حداکثر ۵۰۰) · `sender` · `senderId` → User · `type` (`message` / `system` / `file`) · `fileUrl` · `fileName` · `fileType` · `fileSize` · `room` · `deletedFor` → [User] · `isDeletedForEveryone` · `createdAt`
+<br><sub>ایندکس: createdAt، (room + createdAt)</sub>
 
-متد استاتیک `markAllAsRead(userId, roomName?)` نیز دارد.
+</td>
+</tr>
+<tr>
+<td><b>Notification</b></td>
+<td>
 
-### REST API
+`userId` → User · `senderId` → User · `senderName` · `roomName` · `messagePreview` · `isRead` · `createdAt`
+<br><sub>متد استاتیک: <code>markAllAsRead(userId, roomName?)</code></sub>
+
+</td>
+</tr>
+</table>
+
+### 🌐 REST API
 
 همه مسیرها زیر `/auth` و `/upload` هستند (بدون پیشوند `/api`).
 
 | متد | مسیر | توضیح | احراز هویت |
-|-----|------|-------|-----------|
-| POST | `/auth/register` | ثبت‌نام؛ کوکی `token` ست می‌کند | — |
-| POST | `/auth/login` | ورود؛ کوکی `token` ست می‌کند | — |
-| POST | `/auth/logout` | پاک کردن کوکی | — |
-| GET | `/auth/me` | بازگرداندن کاربر جاری + توکن (برای persistence) | کوکی |
-| GET | `/auth/profile` | پروفایل کاربر جاری + تعداد پیام‌ها | ✅ |
-| GET | `/auth/profile/:username` | پروفایل عمومی کاربر + تعداد پیام‌ها | — |
-| GET | `/auth/call-token` | برگرداندن توکن برای تماس | ✅ |
-| POST | `/upload/presign` | ساخت URL امضاشده برای آپلود | — |
+|:---:|:-----|:------|:----------:|
+| `POST` | `/auth/register` | ثبت‌نام + ست کردن کوکی `token` | — |
+| `POST` | `/auth/login` | ورود + ست کردن کوکی `token` | — |
+| `POST` | `/auth/logout` | پاک کردن کوکی | — |
+| `GET` | `/auth/me` | کاربر جاری + توکن (persistence) | 🍪 |
+| `GET` | `/auth/profile` | پروفایل خود + تعداد پیام | ✅ |
+| `GET` | `/auth/profile/:username` | پروفایل عمومی + تعداد پیام | — |
+| `GET` | `/auth/call-token` | توکن برای تماس | ✅ |
+| `POST` | `/upload/presign` | URL آپلود امضاشده S3 | — |
 
-پاسخ‌ها در قالب `{ ... }` یا `{ error }` برمی‌گردند. پیام‌های خطا فارسی هستند.
+> 🍪 **کوکی:** `httpOnly`، در production `secure` + `sameSite='none'`، در توسعه `lax`، `maxAge` هفت روز، `path='/'`.
 
-> **کوکی احراز هویت:** `httpOnly: true`، در production `secure` و `sameSite: 'none'`، در توسعه `lax`، با `maxAge` هفت روز و `path: '/'`.
+### 🔌 لایه Socket.IO
 
-### لایه Socket.IO
+- `initSocket(server)` سرور Socket.IO را با CORS مشابه می‌سازد.
+- **Middleware احراز هویت** توکن را از `handshake.auth.token` یا کوکی `token` می‌خواند و `socket.userId` / `socket.username` را ست می‌کند. توکن نامعتبر یا غایب رد می‌شود.
+- هر سوکت به **اتاق شخصی** خودش (`socket.id`) join می‌شود تا بتوان مستقیم به آن push کرد.
+- هندلرها به شکل **factory function** هستند: `handleX(socket, io, users) → (payload, callback) => {}`.
+- در `disconnect`، کاربر از `UsersStore` حذف و `online users` دوباره emit می‌شود.
 
-- `initSocket(server)` نمونه `Server` را با CORS مشابه REST می‌سازد.
-- یک **middleware احراز هویت** توکن را از `socket.handshake.auth.token` یا هدر کوکی `token` می‌خواند و در صورت معتبر بودن `socket.userId` و `socket.username` را ست می‌کند. بدون توکن، اتصال رد می‌شود.
-- پس از اتصال، هر سوکت به اتاق شخصی خودش (`socket.id`) join می‌شود تا بتوان مستقیم به آن push کرد.
-- تمام هندلرها به شکل **factory function** نوشته شده‌اند: `handleX(socket, io, users) → (payload, callback) => {}` که ثبت آن‌ها را در `socket/index.js` تمیز می‌کند.
-- در `disconnect`، کاربر از `UsersStore` حذف و `online users` مجدداً emit می‌شود.
-
-### رویدادهای Socket
+### 📡 رویدادهای Socket
 
 #### کلاینت → سرور (با callback)
 
 | رویداد | Payload | توضیح |
-|--------|---------|-------|
-| `join` | `{}` | ثبت کاربر در UsersStore و دریافت لیست اتاق‌ها |
+|:-------|:--------|:------|
+| `join` | `{}` | ثبت کاربر + دریافت لیست اتاق‌ها |
 | `chat message` | `{ text, type, fileUrl, fileName, fileType, fileSize }` | ارسال پیام |
 | `get messages` | `{ room, before?, limit? }` | تاریخچه صفحه‌بندی‌شده |
-| `edit message` | `{ messageId, newText }` | ویرایش توسط فرستنده |
+| `edit message` | `{ messageId, newText }` | فقط فرستنده |
 | `delete message` | `{ messageId, deleteForEveryone }` | حذف |
 | `typing` | `boolean` | وضعیت تایپ |
-| `list rooms` | — | دریافت اتاق‌های کاربر |
-| `search rooms` | `{ query }` یا `string` | جستجوی اتاق/کاربر |
+| `list rooms` | — | اتاق‌های کاربر |
+| `search rooms` | `{ query }` / `string` | جستجوی اتاق و کاربر |
 | `create room` | `{ name }` | |
 | `join room` | `{ roomName }` | |
 | `leave room` | `{ roomName? }` | |
@@ -353,266 +353,254 @@ learning SOCKET.IO/
 #### سرور → کلاینت
 
 | رویداد | Payload | توضیح |
-|--------|---------|-------|
-| `chat message` | آبجکت پیام | در اتاق emit می‌شود |
-| `system message` | `{ text, room }` | ورود/خروج اعضا |
-| `online users` | آرایه کاربران | |
+|:-------|:--------|:------|
+| `chat message` | پیام | به اتاق |
+| `system message` | `{ text, room }` | ورود / خروج |
+| `online users` | User[] | |
 | `typing` | `{ username, isTyping }` | |
-| `room created` | `{ id, name, createdBy }` | به همه |
+| `room created` | `{ id, name, createdBy }` | Broadcast |
 | `room removed` | `{ roomName }` | |
-| `room deleted` | `{ roomName }` | برای اعضای اتاق |
-| `room users` | آرایه کاربران اتاق | |
+| `room deleted` | `{ roomName }` | اعضای اتاق |
+| `room users` | User[] | |
 | `message deleted` | `{ messageId, deleteForEveryone }` | |
-| `message edited` | آبجکت پیام | |
-| `new notification` | آبجکت نوتیف | مستقیم به اتاق شخصی گیرنده |
+| `message edited` | پیام | |
+| `new notification` | نوتیف | مستقیم به گیرنده |
 | `notifications updated` | `{ count }` | |
-| `webrtc-offer` / `webrtc-answer` / `webrtc-ice-candidate` | سیگنال‌ها | |
-| `webrtc-hangup` / `webrtc-stream-updated` / `webrtc-screen-lock` / `webrtc-screen-unlock` | | |
+| `webrtc-*` | سیگنال‌ها | Offer، Answer، ICE، Hangup، Stream، Screen |
 
-### احراز هویت
+### 🔐 احراز هویت
 
-1. کاربر با `POST /auth/login` وارد می‌شود؛ سرور با `bcrypt.compare` رمز را بررسی و با `signToken` یک JWT هفت‌روزه (`{ id, username }`) می‌سازد.
-2. توکن در کوکی `httpOnly` ست می‌شود و همزمان در بدنه پاسخ برگردانده می‌شود.
-3. فرانت‌اند توکن را با `setSocketToken(token)` در `socket.auth` قرار می‌دهد تا در handshake ارسال شود.
-4. هنگام بارگذاری مجدد، `GET /auth/me` با کوکی، کاربر را بازیابی می‌کند (persistence login).
+1. `POST /auth/login` → بررسی با `bcrypt.compare` → امضای JWT هفت‌روزه `{ id, username }`.
+2. توکن در کوکی `httpOnly` **و** در بدنه پاسخ برگردانده می‌شود.
+3. فرانت‌اند با `setSocketToken(token)` توکن را در handshake سوکت می‌فرستد.
+4. در بارگذاری مجدد، `GET /auth/me` نشست را از کوکی بازیابی می‌کند.
 
-### آپلود فایل با S3
+### ☁️ آپلود فایل با S3
 
-جریان **Presigned URL**:
+```text
+Client ──POST /upload/presign──▶ Server
+                                  ├─ key = uploads/<uuid>.<ext>
+                                  ├─ PutObjectCommand
+                                  └─ getSignedUrl (۱۰ دقیقه)
+        ◀── { uploadUrl, publicUrl, key }
+Client ──PUT file──▶ uploadUrl (S3)
+Client ──emit('chat message', { type:'file', fileUrl, ... })
+```
 
-1. کلاینت `POST /upload/presign` با `{ fileName, fileType }` می‌فرستد.
-2. سرور کلید یکتا می‌سازد: `uploads/<uuid>.<ext>`.
-3. یک `PutObjectCommand` می‌سازد و با `getSignedUrl` لینک آپلود ۱۰ دقیقه‌ای تولید می‌کند.
-4. `uploadUrl` (برای PUT مستقیم) و `publicUrl` (`S3_ENDPOINT/BUCKET/key`) برمی‌گردد.
-5. کلاینت فایل را با **PUT** به `uploadUrl` می‌فرستد و سپس پیام نوع `file` با `fileUrl` ارسال می‌کند.
+امنیت به CORS و policy باکت بستگی دارد. کلیدها در `.env` می‌مانند.
 
-> امنیت این flow به تنظیمات CORS و policy باکت S3 وابسته است؛ کلیدهای S3 در `.env` نگهداری می‌شوند.
+### 🔔 سیستم نوتیفیکیشن
 
-### سیستم نوتیفیکیشن
+- پس از ارسال پیام در اتاقی که سند `Room` دارد، برای هر عضو **حاضر نبودن در اتاق** یک `Notification` ساخته می‌شود.
+- حضور از طریق سوکت‌های join شده به اتاق و `UsersStore` تشخیص داده می‌شود.
+- فرستنده هرگز نوتیف خودش را دریافت نمی‌کند.
+- گیرنده آنلاین، `new notification` را **مستقیم** در اتاق شخصی سوکت خود می‌گیرد.
+- `markAllAsRead` هنگام ورود به اتاق یا باز کردن dropdown فراخوانی می‌شود.
 
-- پس از ارسال پیام در یک اتاق دارای سند `Room`، برای هر عضو **غایب از اتاق** یک `Notification` ساخته می‌شود.
-- «حاضر در اتاق» از طریق سوکت‌های join شده به اتاق و نگاشت `UsersStore` تشخیص داده می‌شود.
-- به فرستنده نوتیف ارسال نمی‌شود.
-- اگر گیرنده آنلاین باشد، رویداد `new notification` مستقیم به اتاق شخصی او (`targetUser.id`) emit می‌شود.
-- هنگام ورود به اتاق یا کلیک روی اعلان‌ها، `markAllAsRead` (اختیاری محدود به `roomName`) صدا زده می‌شود.
+### 📞 سیگنالینگ WebRTC
 
-### سیگنالینگ WebRTC
+سرور فقط یک **relay خالص** است — هیچ مدیایی از آن عبور نمی‌کند.
 
-سرور فقط **relay** است و هیچ مدیایی عبور نمی‌دهد:
+| رویداد | جهت | هدف |
+|:-------|:----|:----|
+| `webrtc-offer` | → مقصد | SDP offer (+ `renegotiate`) |
+| `webrtc-answer` | → مقصد | SDP answer |
+| `webrtc-ice-candidate` | → مقصد | کاندید ICE |
+| `webrtc-hangup` | → مقصد | پایان تماس |
+| `webrtc-stream-updated` | → مقصد | تغییر ترک |
+| `webrtc-screen-lock` / `unlock` | → مقصد | شروع / پایان اشتراک صفحه |
 
-- `webrtc-offer` → برای کاربر مقصد (به همراه `renegotiate`)
-- `webrtc-answer`، `webrtc-ice-candidate` → relay دوطرفه
-- `webrtc-hangup` → پایان تماس
-- `webrtc-stream-updated` → اطلاع تغییر ترک (تا کلاینت دوباره sync کند)
-- `webrtc-screen-lock/unlock` → اطلاع شروع/پایان اشتراک صفحه
-
-مقصد با `users.findByUserId(targetUserId)` پیدا می‌شود (یعنی تماس فقط با کاربر **آنلاین** ممکن است).
+مقصد با `users.findByUserId(targetUserId)` پیدا می‌شود — تماس فقط با کاربر **آنلاین** ممکن است.
 
 ---
 
-## فرانت‌اند (Frontend)
+## 🎨 فرانت‌اند
 
-### مسیریابی و احراز هویت
+### 🧭 مسیریابی و احراز هویت
 
-`App.jsx` در ابتدا `GET /auth/me` می‌زند:
+`App.jsx` در بارگذاری `GET /auth/me` را صدا می‌زند. تا پایان بررسی، صفحه لودینگ با تم هالووین نمایش داده می‌شود.
 
-- اگر کاربر برگشت، `authUser` ست و سوکت توکن‌دار می‌شود.
-- تا پایان بررسی، یک صفحه لودینگ با پس‌زمینه هالووین نمایش داده می‌شود.
-
-مسیرها:
-
-| مسیر | دسترسی | محتوا |
-|------|--------|-------|
+| مسیر | دسترسی | صفحه |
+|:-----|:-------|:-----|
 | `/login` | مهمان | ورود |
 | `/register` | مهمان | ثبت‌نام |
-| `/chat` | کاربر واردشده | صفحه اصلی چت |
-| `/profile` | کاربر واردشده | پروفایل خود |
-| `/profile/:username` | کاربر واردشده | پروفایل دیگران |
+| `/chat` | احراز شده | چت اصلی |
+| `/profile` | احراز شده | پروفایل خود |
+| `/profile/:username` | احراز شده | پروفایل عمومی |
 | `/` | — | redirect هوشمند |
 
-خروج با `POST /auth/logout` + `chat.logout()` (قطع سوکت و پاک‌سازی state).
+خروج = `POST /auth/logout` + `chat.logout()`.
 
-### مدیریت وضعیت و هوک‌ها
+### 🧠 مدیریت وضعیت و هوک‌ها
 
-#### `useChat.js` — هسته منطق چت
+<table>
+<tr><th width="22%">هوک</th><th>مسئولیت</th></tr>
+<tr>
+<td><code>useChat.js</code></td>
+<td>
 
-این هوک تمام state چت را نگه می‌دارد:
+نگه‌داری `messages`، `onlineUsers`، `typingUsers`، `rooms`، `currentRoom`، `notifications`، `unreadCount`، `dmPartnerName`، `connected`، `error`.
+<br>ارائه `connectSocket`، `disconnectSocket`/`logout`، `sendMessage`، `setTyping`، `deleteMessage`، `editMessage`، `createRoom`، `searchRooms`، `switchRoom`، `leaveRoom`، `deleteRoom`، `openDM`، `fetchNotifications`، `markNotificationsAsRead`.
+<br>ثبت و پاک‌سازی همه listenerهای سوکت.
 
-- `messages`, `onlineUsers`, `typingUsers`, `rooms`, `currentRoom`
-- `notifications`, `unreadCount`, `showNotifications`, `dmPartnerName`
-- `connected`, `error`
+</td>
+</tr>
+<tr>
+<td><code>useWebRTC.js</code></td>
+<td>
 
-و توابع زیر را export می‌کند:
+موتور تماس: `RTCPeerConnection`، استریم‌های محلی/ریموت، mute/deafen، تغییر ویدیو، اشتراک صفحه، **Perfect Negotiation**، مدیریت Glare، فیلتر ترک و بافر ICE.
 
-- چرخه اتصال: `connectSocket`, `disconnectSocket` / `logout`
-- پیام: `sendMessage`, `setTyping`, `deleteMessage`, `editMessage`
-- اتاق: `createRoom`, `searchRooms`, `switchRoom`, `leaveRoom`, `deleteRoom`, `refreshRooms`
-- DM: `openDM`
-- اعلان: `fetchNotifications`, `markNotificationsAsRead`
+</td>
+</tr>
+<tr>
+<td><code>useSocket.js</code></td>
+<td>هوک سبک برای وضعیت اتصال.</td>
+</tr>
+</table>
 
-این هوک تمام listenerهای سوکت (پیام، سیستم، آنلاین‌ها، تایپ، اتاق، حذف/ویرایش، نوتیف) را ثبت و در cleanup حذف می‌کند تا از نشتی جلوگیری شود.
-
-#### `useWebRTC.js` — موتور تماس
-
-بزرگ‌ترین و پیچیده‌ترین بخش فرانت‌اند. مسئول:
-
-- ساخت `RTCPeerConnection` با STUN گوگل
-- مدیریت `localStream` / `remoteStream` / `remoteStreamVersion`
-- کنترل‌های `toggleMute`, `toggleDeafen`, `toggleVideo`, `toggleScreenShare`
-- **Perfect Negotiation** برای جلوگیری از تعارض offer (glare): طرف «polite» با `rollback` و تخصیص دوباره، طرف «impolite» نادیده می‌گیرد.
-- فیلتر هوشمند ترک‌های ریموت (ترک‌های `ended` حذف، `muted` موقت حفظ می‌شوند)
-- تنظیم بیتری و نگهداری candidateهای ICE معلق
-
-#### `useSocket.js`
-نسخه سبک برای نمایش وضعیت اتصال (`isConnected`).
-
-### کامپوننت‌ها
+### 🧱 کامپوننت‌ها
 
 | کامپوننت | نقش |
-|----------|-----|
-| `Login` / `Register` | فرم‌های احراز هویت با react-hook-form + yup |
-| `Chat` | چیدمان اصلی، سایدبار واکنش‌گرا، اتصال `useChat` به UI |
-| `ChatHeader` | هدر، وضعیت اتصال، دکمه نوتیف، تماس، پروفایل، خروج |
-| `RoomList` | لیست اتاق‌ها، ساخت/حذف/ترک، جستجو، لیست آنلاین، DM |
-| `MessageList` | لیست پیام‌ها با اسکرول و رندر `MessageBubble` |
-| `MessageBubble` | حباب پیام، منوی context، نمایش فایل، ویرایش/حذف |
-| `ChatInput` | ورودی چندخطی، ارسال فایل، ایموجی، تایپینگ |
+|:---------|:----|
+| `Login` / `Register` | فرم‌های احراز هویت (react-hook-form + yup) |
+| `Chat` | چیدمان، سایدبار واکنش‌گرا، اتصال `useChat` |
+| `ChatHeader` | اتصال، نوتیف، تماس، پروفایل، خروج |
+| `RoomList` | اتاق‌ها، ساخت/حذف/ترک، جستجو، لیست آنلاین، DM |
+| `MessageList` | پیام‌های اسکرول‌شونده |
+| `MessageBubble` | حباب پیام، منوی context، فایل، ویرایش/حذف |
+| `ChatInput` | متن، فایل، ایموجی، تایپ |
 | `EmojiPickerPanel` | انتخابگر ایموجی |
 | `TypingIndicator` | «... در حال تایپ» |
-| `OnlineUsersList` | کاربران آنلاین و شروع DM/تماس |
-| `NotificationDropdown` | اعلان‌های خوانده‌نشده، پرش به اتاق/فرستنده |
-| `CallModal` | UI کامل تماس (ویدیو، کنترل‌ها، وضعیت ringing/connected) |
-| `WelcomeScreen` | صفحه خوش‌آمدگویی وقتی اتاقی انتخاب نشده |
-| `Avatar` | آواتار تولیدشده از نام کاربری/رنگ |
+| `OnlineUsersList` | کاربران آنلاین → DM / تماس |
+| `NotificationDropdown` | نوتیف‌های خوانده‌نشده |
+| `CallModal` | رابط کامل تماس |
+| `WelcomeScreen` | صفحه خالی / خوش‌آمدگویی |
+| `Avatar` | آواتار تولیدشده |
 | `ThemeToggle` | تغییر تم |
 | `HalloweenBackground` | پس‌زمینه تزئینی |
-| `InstallButton` | دکمه نصب PWA |
-| `LoadingSpinner` | لودینگ |
-| `ToastProvider` | کانتینر toast کتابخانه sileo |
-| `Profile` (page) | پروفایل با بنر گرادیانی، آمار پیام، کلید شناسه |
+| `InstallButton` | نصب PWA |
+| `LoadingSpinner` | لودر |
+| `ToastProvider` | کانتینر sileo |
+| `Profile` | بنر، آمار، کلید شناسه |
 
-### استایل و تم
+### 🎨 استایل و تم
 
 - **Tailwind CSS 4** از طریق `@tailwindcss/vite`.
-- طراحی با کلاس‌های سفارشی مانند `glass-morphism-strong`, `btn-primary`, `bg-aurora`, `animate-blob`, `slide-in-left` در `index.css`.
-- فونت **Vazir** (Light/Medium) به‌صورت لوکال در `src/fonts`.
-- جهت کلی `dir="rtl"` و `lang="fa"`.
+- یوتیلیتی‌های سفارشی: `glass-morphism-strong`، `btn-primary`، `bg-aurora`، `animate-blob`، `slide-in-left`.
+- فونت **وزیر** به‌صورت لوکال در `src/fonts` قرار دارد.
+- `dir="rtl"` و `lang="fa"` در کل پروژه.
 
-### PWA
+### 📲 PWA
 
-پیکربندی در `vite.config.js` با `vite-plugin-pwa`:
+تنظیم‌شده در `vite.config.js`:
 
 - `registerType: 'autoUpdate'`
-- manifest: نام «BMS Real-time Chat»، شورت‌نیم «BMS Chat»، رنگ تم `#6366f1`، پس‌زمینه `#0f172a`، آیکون‌های ۱۹۲ و ۵۱۲ (maskable)
-- Service Worker فقط در **build/preview** فعال است (`devOptions.enabled: false`).
+- Manifest: **BMS Real-time Chat** / **BMS Chat**، تم `#6366f1`، پس‌زمینه `#0f172a`، آیکون‌های ۱۹۲ و ۵۱۲ (maskable)
+- Service Worker فقط در **build / preview** فعال است (`devOptions.enabled: false`)
 
 ---
 
-## جریان‌های اصلی
+## 🔄 جریان‌های اصلی
 
-### ۱) ورود و اتصال
-```
+### ۱️⃣ ورود و اتصال
+
+```text
 Login ──POST /auth/login──▶ (Set-Cookie token, JSON {user, token})
-   │
    ├─ setAuthUser(user)
    ├─ setSocketToken(token)
    └─ navigate('/chat') ─▶ connectSocket()
-                              │
-                              └─ socket.connect()
-                                    ├─ handshake auth (token/cookie)
-                                    └─ emit('join') → { user, rooms, history:[], currentRoom:null }
+        └─ socket.connect()
+             ├─ handshake auth
+             └─ emit('join') → { user, rooms, history:[], currentRoom:null }
 ```
 
-### ۲) ورود به اتاق
-```
+### ۲️⃣ ورود به اتاق
+
+```text
 switchRoom(name) ──emit('join room')──▶
-    server: بررسی عضویت/حفظ سند Room → socket.join(name)
-            markAllAsRead(userId, name)
-            بارگذاری ۱۰۰ پیام آخر
-    ◀── { success, room, history }
-    socket.to(room).emit('system message', '... وارد اتاق شد.')
-    io.to(room).emit('room users', ...)
+   server: بررسی عضویت → socket.join(name)
+           markAllAsRead(userId, name)
+           بارگذاری ۱۰۰ پیام آخر
+   ◀── { success, room, history }
+   socket.to(room).emit('system message', '... وارد شد')
+   io.to(room).emit('room users', ...)
 ```
 
-### ۳) ارسال پیام
-```
+### ۳️⃣ ارسال پیام
+
+```text
 sendMessage({text,...}) ──emit('chat message')──▶
-    server: اعتبارسنجی (طول ≤ ۵۰۰) → Message.create
-            io.to(room).emit('chat message', message)
-            برای اعضای غایب → Notification + emit('new notification')
-    ◀── callback({ success, message })
+   server: اعتبارسنجی (≤ ۵۰۰) → Message.create
+           io.to(room).emit('chat message', message)
+           اعضای غایب → Notification + emit('new notification')
+   ◀── callback({ success, message })
 ```
 
-### ۴) چت خصوصی
-```
+### ۴️⃣ چت خصوصی
+
+```text
 openDM(targetUserId) ──emit('open dm')──▶
-    اگر target آنلاین: از UsersStore (socket id → userId)
-    وگرنه: User.findById
-    نام اتاق قطعی: dm_<minId>_<maxId>  (Room با isPrivate=true)
-    socket ترک اتاق قبلی → join به DM → بارگذاری تاریخچه
-    ◀── { room, history, targetUser:{id, username, isOnline} }
+   آنلاین  → حل از UsersStore
+   آفلاین → User.findById
+   room = dm_<minId>_<maxId>  (isPrivate: true)
+   ترک اتاق قبلی → join به DM → بارگذاری تاریخچه
+   ◀── { room, history, targetUser }
 ```
 
-### ۵) تماس WebRTC
-```
-Caller: getUserMedia → createOffer → emit('webrtc-offer', {target, offer})
-Callee: receive offer → getUserMedia → createAnswer → emit('webrtc-answer')
-هر دو: onicecandidate → emit('webrtc-ice-candidate')
-      ontrack → syncRemoteStream
-تغییر وسط تماس (ویدیو/صفحه): replaceTrack/addTrack
-      → در صورت نیاز renegotiate (Perfect Negotiation)
-      → emit('webrtc-stream-updated')
-پایان: emit('webrtc-hangup')
+### ۵️⃣ تماس WebRTC
+
+```text
+Caller: getUserMedia → createOffer → emit('webrtc-offer')
+Callee: getUserMedia → createAnswer → emit('webrtc-answer')
+Both:   onicecandidate → emit('webrtc-ice-candidate')
+        ontrack → syncRemoteStream
+Change: replaceTrack/addTrack → renegotiate (Perfect Negotiation)
+End:    emit('webrtc-hangup')
 ```
 
 ---
 
-## شروع به کار
+## ⚡ شروع به کار
 
-### پیش‌نیازها
-- **Node.js 18+** (پروژه از ES Modules استفاده می‌کند)
-- **MongoDB** (یا Atlas)
-- دسترسی به یک سرویس **S3 سازگار** برای آپلود فایل (اختیاری برای سایر قابلیت‌ها)
-- مرورگری با پشتیبانی WebRTC (Chrome/Edge/Firefox/Safari)
+### ✅ پیش‌نیازها
 
-### نصب
+- **Node.js 18+** (ES Modules)
+- **MongoDB** (لوکال یا Atlas)
+- **ذخیره‌سازی سازگار با S3** (اختیاری برای آپلود)
+- مرورگر دارای پشتیبانی **WebRTC**
+
+### 📦 نصب
 
 ```bash
-# 1) بک‌اند
+# ۱) بک‌اند
 cd backend
 npm install
-# ساخت فایل .env (نمونه در بخش متغیرهای محیطی)
+# ساخت .env (بخش بعدی)
 npm run dev
 
-# 2) فرانت‌اند (در ترمینال دوم)
+# ۲) فرانت‌اند (ترمینال دوم)
 cd frontend
 npm install
 npm run dev
 ```
 
-سپس مرورگر را روی `http://localhost:5001` باز کنید.
+سپس **http://localhost:5001** را باز کنید 🎉
 
-### اجرای هم‌زمان (اختیاری)
+### ▶️ اجرای هم‌زمان
 
-از داخل `frontend`:
-
-```bash
-npm start        # بک‌اند (nodemon) + فرانت (vite) با concurrently
-```
-
-یا اجرای حالت تولیدی محلی:
+از داخل `frontend/`:
 
 ```bash
-npm run devi     # build + preview (سرو استاتیک) + بک‌اند
+npm start        # بک‌اند (nodemon) + فرانت (vite)
+npm run devi     # build + preview + بک‌اند (PWA فعال)
 ```
-
-> در حالت `preview`، PWA و Service Worker نیز فعال می‌شوند.
 
 ---
 
-## متغیرهای محیطی
+## 🔐 متغیرهای محیطی
 
-فایل `backend/.env` باید شامل موارد زیر باشد (مقادیر نمونه — هرگز مقادیر واقعی را در Git قرار ندهید):
+فایل `backend/.env` را بسازید:
 
 ```env
 # MongoDB
@@ -633,106 +621,118 @@ S3_REGION=<region>
 ```
 
 | متغیر | اجباری | توضیح |
-|-------|--------|-------|
+|:------|:------:|:------|
 | `MONGODB_URI` | ✅ | رشته اتصال MongoDB |
-| `PORT` | — | پیش‌فرض ۳۰۰۰ |
+| `PORT` | — | پیش‌فرض `3000` |
 | `JWT_SECRET` | ✅ | کلید امضای توکن |
-| `S3_BUCKET_NAME` | برای فایل | نام باکت |
-| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | برای فایل | کلیدهای دسترسی |
-| `S3_ENDPOINT` | برای فایل | آدرس سرویس S3 |
-| `S3_REGION` | برای فایل | ریجن (برای سرویس‌های سفارشی معمولاً `default`) |
+| `S3_BUCKET_NAME` | 📎 | نام باکت |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | 📎 | کلیدهای دسترسی |
+| `S3_ENDPOINT` | 📎 | آدرس سرویس S3 |
+| `S3_REGION` | 📎 | ریجن (`default` برای سرویس‌های سفارشی) |
+
+> 🔒 هرگز اعتبارنامه واقعی را commit نکنید. هر کلیدی که افشا شده را فوراً rotate کنید.
 
 ---
 
-## اسکریپت‌ها
+## 📜 اسکریپت‌ها
 
-### بک‌اند (`backend/package.json`)
-
-| دستور | کار |
-|-------|-----|
-| `npm run dev` | اجرای `src/server.js` با nodemon |
-| `npm start` | اجرای معمولی بدون watch |
-| `npm test` | (در حال حاضر پیاده‌سازی نشده) |
-
-### فرانت‌اند (`frontend/package.json`)
+<table>
+<tr><th width="50%">بک‌اند</th><th width="50%">فرانت‌اند</th></tr>
+<tr>
+<td>
 
 | دستور | کار |
-|-------|-----|
-| `npm run dev` | اجرای Vite روی پورت ۵۰۰۱ |
-| `npm run build` | بیلد تولیدی در `frontend/dist` |
-| `npm run preview` | پیش‌نمایش بیلد روی پورت ۵۰۰۰ |
-| `npm run lint` | اجرای ESLint |
-| `npm run backend` | اجرای بک‌اند از داخل پوشه فرانت |
-| `npm start` | بک‌اند + فرانت هم‌زمان |
+|:------|:----|
+| `npm run dev` | nodemon |
+| `npm start` | اجرای معمولی |
+| `npm test` | پیاده‌سازی نشده |
+
+</td>
+<td>
+
+| دستور | کار |
+|:------|:----|
+| `npm run dev` | Vite :5001 |
+| `npm run build` | `dist/` |
+| `npm run preview` | Vite :5000 |
+| `npm run lint` | ESLint |
+| `npm run backend` | بک‌اند از داخل فرانت |
+| `npm start` | بک‌اند + فرانت |
 | `npm run devi` | build + preview + بک‌اند |
 
+</td>
+</tr>
+</table>
+
 ---
 
-## پورت‌ها و Proxy
+## 🌐 پورت‌ها و Proxy
 
 | سرویس | پورت |
-|-------|------|
+|:------|:----:|
 | بک‌اند (Express + Socket.IO) | `3000` |
 | فرانت‌اند (Vite dev) | `5001` |
 | فرانت‌اند (Vite preview) | `5000` |
 
-در `vite.config.js` یک **proxy** برای `/auth`, `/upload`, `/api` به `http://localhost:3000` تنظیم شده است؛ بنابراین درخواست‌های REST فرانت بدون مشکل CORS عبور می‌کنند. سوکت مستقیماً به `http://localhost:3000` وصل می‌شود.
+`vite.config.js` مسیرهای `/auth`، `/upload` و `/api` را به `http://localhost:3000` پروکسی می‌کند. سوکت **مستقیماً** به `http://localhost:3000` وصل می‌شود.
 
-> ⚠️ در بک‌اند، origin هر دو `cors` (Express و Socket.IO) روی `http://localhost:5001` **هاردکد** شده است. برای دامنه واقعی باید این مقدار به‌روزرسانی شود.
+> ⚠️ originهای CORS در Express و Socket.IO روی `http://localhost:5001` **هاردکد** شده‌اند.
 
 ---
 
-## استقرار (Deployment)
+## ☁️ استقرار
 
-مسیر پیشنهادی (تک‌نمونه):
-
-1. `cd frontend && npm run build` تا خروجی در `frontend/dist` ساخته شود.
-2. بک‌اند از مسیر `../../frontend/dist` به‌صورت استاتیک سرو می‌کند و برای SPA fallback دارد.
-3. بک‌اند را با `npm start` روی سرور اجرا کنید.
-4. متغیر `NODE_ENV=production` را ست کنید تا کوکی‌ها `secure` و `sameSite: 'none'` شوند.
+1. `cd frontend && npm run build` → `frontend/dist`
+2. بک‌اند `dist` را استاتیک با SPA fallback سرو می‌کند.
+3. اجرا با `npm start`.
+4. `NODE_ENV=production` را ست کنید (کوکی‌های secure، `sameSite='none'`).
 5. originهای CORS را به دامنه تولید تغییر دهید.
-6. از **HTTPS** استفاده کنید؛ WebRTC و کوکی‌های secure بدون HTTPS در محیط واقعی خوب کار نمی‌کنند.
-7. برای مقیاس‌پذیری بیشتر به **Socket.IO Redis Adapter** و ذخیره‌سازی آنلاین‌ها در Redis نیاز دارید (چون `UsersStore` در حافظه است).
+6. **از HTTPS استفاده کنید** — برای WebRTC و کوکی‌های secure ضروری است.
+7. برای مقیاس‌پذیری: **Socket.IO Redis Adapter** + کاربران آنلاین در Redis.
 
 ---
 
-## نکات امنیتی و محدودیت‌های شناخته‌شده
+## 🛡️ نکات امنیتی و محدودیت‌های شناخته‌شده
 
-این بخش صادقانه وضعیت فعلی پروژه را (بدون تغییر در کد) توصیف می‌کند:
+تصویر صادقانه از وضعیت فعلی کد:
 
-- **کلیدهای حساس در `.env` وجود دارند.** `.gitignore` بک‌اند `.env*` را نادیده می‌گیرد، اما اگر قبلاً commit شده باشند باید از تاریخچه پاک و **چرخش (rotate)** شوند.
-- **CORS هاردکد** روی `http://localhost:5001` است (هم REST و هم Socket.IO)؛ قبل از production باید دامنه واقعی تنظیم شود.
-- **`UsersStore` در حافظه** است: با ری‌استارت سرور و در حالت چند instance، لیست آنلاین‌ها و تماس‌ها دچار اختلال می‌شوند.
-- **بدون Rate Limiting و اعتبارسنجی ورودی جامع** روی REST/Socket (فقط چند بررسی پایه مثل طول پیام و نام اتاق).
-- **`routes/rooms.js` غیرفعال** است؛ منطق اتاق فقط socket-based است.
-- **`socket/call.js`** از پکیج `@nhanaka/call` ایمپورت می‌کند که در `package.json` نیست و در `server.js` هم استفاده نمی‌شود؛ به عبارتی **کد مرده/آزمایشی** است.
-- **`Profile.jsx`** به `profile.bio` و مسیر `/settings` ارجاع می‌دهد، اما مدل `User` فیلد `bio` ندارد و روت `/settings` تعریف نشده است؛ بنابراین بخش «درباره من» عملاً خالی می‌ماند و دکمه ویرایش پروفایل مقصد ندارد.
-- **بدون تست خودکار**؛ اسکریپت `test` بک‌اند placeholder است.
-- **نبود اعتبارسنجی عضویت در `join room` برای اتاق‌های عمومی:** کاربر با join شدن به `members` اضافه می‌شود (رفتار مورد انتظار فعلی).
-- **حذف اتاق** تمام پیام‌های آن را نیز حذف می‌کند.
-- **`GET /auth/me` توکن را در بدنه پاسخ برمی‌گرداند** تا سوکت بتواند استفاده کند؛ از منظر امنیتی کوکی `httpOnly` امن‌تر است، اما این پروژه به‌خاطر معماری سوکت این کار را می‌کند.
+- 🔑 **کلیدها در `.env`.** `.gitignore` فایل‌های `.env*` را پوشش می‌دهد؛ اگر قبلاً commit شده‌اند، تاریخچه را پاک و **rotate** کنید.
+- 🌍 **CORS هاردکد** روی `http://localhost:5001` (REST + Socket.IO).
+- 🧠 **`UsersStore` در حافظه** → با ری‌استارت و در چند instance از کار می‌افتد.
+- 🚦 **بدون Rate Limiting** یا اعتبارسنجی جامع (فقط بررسی‌های پایه).
+- 🗂️ **`routes/rooms.js` غیرفعال** — اتاق‌ها فقط socket-based هستند.
+- 🧟 **`socket/call.js`** پکیج `@nhanaka/call` را ایمپورت می‌کند که در `package.json` نیست و استفاده نمی‌شود → کد مرده/آزمایشی.
+- 👤 **`Profile.jsx`** به `profile.bio` و `/settings` ارجاع می‌دهد، اما مدل `User` فیلد `bio` ندارد و `/settings` تعریف نشده → بخش «درباره من» خالی می‌ماند.
+- 🧪 **بدون تست خودکار** (`test` placeholder است).
+- 🚪 **`join room` برای اتاق‌های عمومی** صرفاً کاربر را به `members` اضافه می‌کند.
+- 🧨 **حذف اتاق** تمام پیام‌های آن را نیز حذف می‌کند.
+- 🍪 **`GET /auth/me` توکن را در بدنه برمی‌گرداند** تا سوکت بتواند استفاده کند؛ طراحی فقط `httpOnly` سخت‌گیرانه‌تر بود.
 
 ---
 
-## ایده‌های توسعه آینده
+## 🗺️ مسیر توسعه آینده
 
-- افزودن **تست** (Jest/Vitest + Supertest + تست socket.io)
-- **Redis Adapter** برای Socket.IO و ذخیره آنلاین‌ها برای مقیاس افقی
-- **Rate limiting** و **Zod/Joi** برای اعتبارسنجی
-- **Refresh Token** و چرخش توکن
-- **چت گروهی WebRTC (SFU)** به‌جای ۱:۱
-- **TURN Server** برای عبور از NAT سخت
-- اعلان‌های **Push** واقعی در PWA
-- پشتیبانی از **Thread/Reply**، واکنش (Reaction) و **Pin**
-- جستجوی پیام‌های داخل اتاق
-- فیلد `bio`/آواتار سفارشی در مدل `User` و صفحه تنظیمات
-- صفحه‌بندی نامتناهی پیام‌ها در UI
-- بین‌المللی‌سازی (i18n) و پشتیبانی چندزبانه
+- 🧪 تست — Vitest / Jest + Supertest + تست سوکت
+- 🧱 **Redis Adapter** + کاربران آنلاین در Redis
+- 🚦 Rate limiting + **Zod / Joi**
+- 🔁 Refresh Token و چرخش
+- 👥 **تماس گروهی (SFU)** به‌جای ۱:۱
+- ❄️ **TURN Server** برای NATهای سخت
+- 🔔 **Push Notification** واقعی
+- 🧵 Threads، Reaction، Pin
+- 🔎 جستجوی پیام در اتاق
+- 👤 `bio` / آواتار سفارشی + صفحه تنظیمات
+- ♾️ Infinite Scroll برای تاریخچه
+- 🌍 i18n / چندزبانه
 
 ---
 
 <div align="center">
 
-**BMS Real-time Chat** — ساخته‌شده برای یادگیری و تجربه‌ی ساخت یک چت بلادرنگ کامل با Node.js و Socket.IO
+### ⭐ اگر این پروژه به شما کمک کرد، یک ستاره بدهید!
+
+**ساخته‌شده با ❤️ با Node.js، Socket.IO و React**
+
+[⬆ بازگشت به بالا](#-bms-real-time-chat) · [🇬🇧 Read in English](./readme.md)
 
 </div>
