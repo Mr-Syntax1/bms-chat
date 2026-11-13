@@ -60,7 +60,7 @@ authRouter.post('/register', async (req, res) => {
     const token = signToken(user);
     // console.log('[Auth/register] Token generated:', token?.substring(0, 20) + '...');
     setTokenCookie(res, token);
-    res.json({ user: { id: user._id, username: user.username }, token });
+    res.json({ user: { id: user._id, username: user.username } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطای سرور' });
@@ -78,7 +78,7 @@ authRouter.post('/login', async (req, res) => {
     const token = signToken(user);
     // console.log('[Auth/login] Token generated:', token?.substring(0, 20) + '...');
     setTokenCookie(res, token);
-    res.json({ user: { id: user._id, username: user.username }, token });
+    res.json({ user: { id: user._id, username: user.username } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطای سرور' });
@@ -93,31 +93,13 @@ authRouter.post('/logout', (req, res) => {
 });
 
 // بررسی احراز هویت (برای persistence login)
-authRouter.get('/me', async (req, res) => {
+authRouter.get('/me', authMiddleware, async (req, res) => {
   try {
-    // console.log('[Auth/me] cookies:', req.cookies);
-    // console.log('[Auth/me] headers.cookie:', req.headers.cookie);
-    // console.log('[Auth/me] origin:', req.headers.origin);
-    const token = req.cookies?.token;
-    if (!token) {
-      console.log('[Auth/me] No token in cookies');
-      return res.status(401).json({ error: 'توکن وجود ندارد' });
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      console.log('[Auth/me] Token verification failed');
-      return res.status(401).json({ error: 'توکن نامعتبر است' });
-    }
-
-    const user = await User.findById(decoded.id).select('username');
+    const user = await User.findById(req.userId).select('username');
     if (!user) {
-      console.log('[Auth/me] User not found:', decoded.id);
-      return res.status(401).json({ error: 'کاربر یافت نشد' });
+      return res.status(404).json({ error: 'کاربر یافت نشد' });
     }
-
-    console.log('[Auth/me] Success:', user.username);
-    res.json({ user: { id: user._id, username: user.username }, token });
+    res.json({ user: { id: user._id, username: user.username } });
   } catch (err) {
     console.error('[Auth/me] error:', err);
     res.status(500).json({ error: 'خطای سرور' });
