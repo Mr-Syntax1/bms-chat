@@ -6,8 +6,8 @@ const SOCKET_URL =
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
   withCredentials: true,
-  pingInterval: 25000,       //  هماهنگ با سرور
-  pingTimeout: 60000,        //  هماهنگ با سرور
+  pingInterval: 10000, // //  هماهنگ با سرور
+  pingTimeout: 5000,         //  هماهنگ با سرور
   // اجازه بده Socket.IO خودش:
   // polling → websocket upgrade
   // 'polling', 

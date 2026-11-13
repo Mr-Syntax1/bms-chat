@@ -66,8 +66,8 @@ export function initSocket(server) {
     // 'polling'
     transports: ['websocket'],
 
-    pingInterval: 25000,
-    pingTimeout: 60000,
+    pingInterval: 10000, //  هر ۱۰ ثانیه (خیلی کمتر از ۳۰ ثانیه)
+    pingTimeout: 5000,
   });
 
   io.on('connection', (socket) => {
