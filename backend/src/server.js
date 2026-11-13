@@ -23,15 +23,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.join(__dirname, '../../frontend/dist');
 
+// Trust the reverse proxy (Vercel/Suga) so secure cookies are set correctly
+app.set('trust proxy', 1);
+
+const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5001';
 app.use(cors({
-  origin: 'https://bms-chat.vercel.app',
+  origin: allowedOrigin,
   credentials: true
 }));
 
 app.use(express.json());
 app.use(cookieParser());
-app.use('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth', authRouter)
-app.use('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/upload', uploadRouter);
+app.use('/auth', authRouter);
+app.use('/upload', uploadRouter);
 // app.use('/api/rooms', roomsRouter);
 
 // Serve static files from frontend/dist

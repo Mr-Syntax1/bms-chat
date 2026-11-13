@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 import { sileo } from "sileo";
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 // ----------------------------
 // Helpers
 //  ---------------------------
@@ -170,7 +172,7 @@ export default function Profile({ onClose, currentUser }) {
 
   // fetchProfile دیگر setState ندارد — فقط داده برمی‌گرداند
   const fetchProfile = useCallback(async () => {
-    const url = isMyProfile ? 'https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/profile' : `https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/profile/${targetUsername}`;
+    const url = isMyProfile ? `${API_URL}/auth/profile` : `${API_URL}/auth/profile/${targetUsername}`;
     const res = await fetch(url, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok || !data.success) {

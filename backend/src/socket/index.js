@@ -31,6 +31,8 @@ import {
 } from './handlers/webrtc.js';
 import { verifyToken } from '../utils/jwt.js';
 
+const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5001';
+
 function getSocketToken(socket) {
   if (socket.handshake.auth?.token) return socket.handshake.auth.token;
   const cookieHeader = socket.handshake.headers.cookie;
@@ -51,7 +53,7 @@ function getSocketToken(socket) {
 export function initSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: 'https://bms-chat.vercel.app',
+      origin: allowedOrigin,
       methods: ['GET', 'POST'],
       credentials: true,
     },

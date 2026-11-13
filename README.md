@@ -3,8 +3,8 @@
 
 ## 🌐 Language / زبان
 
-[![English](https://img.shields.io/badge/🇬🇧%20English-Read%20now-6366f1?style=for-the-badge)](./readme.md)
-[![فارسی](https://img.shields.io/badge/🇮🇷%20فارسی-مطالعه-8b5cf6?style=for-the-badge)](./readmefa.md)
+[![English](https://img.shields.io/badge/🇬🇧%20English-Read%20now-6366f1?style=for-the-badge)](./README.md)
+[![فارسی](https://img.shields.io/badge/🇮🇷%20فارسی-مطالعه-8b5cf6?style=for-the-badge)](./READMEFA.md)
 
 </div>
 
@@ -159,8 +159,8 @@ It goes far beyond plain text chat — it ships with **direct messages**, **file
 
 ```text
 learning SOCKET.IO/
-├── readme.md                    ← English README (you are here)
-├── readmefa.md                  ← Persian README
+├── README.md                    ← English README (you are here)
+├── READMEFA.md                  ← Persian README
 ├── backend/
 │   ├── .env                     ← environment variables (never commit)
 │   ├── package.json
@@ -733,6 +733,6 @@ Honest snapshot of the current codebase:
 
 **Built with ❤️ using Node.js, Socket.IO & React**
 
-[⬆ Back to top](#-bms-real-time-chat) · [🇮🇷 Read in Persian](./readmefa.md)
+[⬆ Back to top](#-bms-real-time-chat) · [🇮🇷 Read in Persian](./READMEFA.md)
 
 </div>

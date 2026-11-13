@@ -9,6 +9,8 @@ import { useChat } from './hooks/useChat';
 import ToastProvider from './providers/ToastProvider';
 import HalloweenBackground from './components/HalloweenBackground';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 function App() {
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -16,7 +18,7 @@ function App() {
 
   // بررسی احراز هویت هنگام بارگذاری صفحه
   useEffect(() => {
-    fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/me', { credentials: 'include' })
+    fetch(`${API_URL}/auth/me`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user) {
@@ -34,7 +36,7 @@ function App() {
   };
 
   const handleLogout = async () => {
-    await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/logout', {
+    await fetch(`${API_URL}/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });

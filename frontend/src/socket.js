@@ -1,8 +1,11 @@
 import { io } from 'socket.io-client';
 
-export const socket = io('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run', {
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+
+export const socket = io(SOCKET_URL, {
   autoConnect: false,
-  withCredentials: true,
+  withCredentials: true, // required so the auth cookie is sent
+  transports: ['websocket'], // force websocket in production
 });
 
 export function setSocketToken(token) {

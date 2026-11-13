@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 const EmojiPickerPanel = lazy(() => import('./EmojiPickerPanel'));
 
 function EmojiPickerFallback() {
@@ -106,9 +108,10 @@ export default function ChatInput({ onSend, onTyping }) {
     if (!file) return;
     setIsUploading(true);
     try {
-      const presignRes = await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/upload/presign', {
+      const presignRes = await fetch(`${API_URL}/upload/presign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ fileName: file.name, fileType: file.type }),
       });
       
@@ -200,9 +203,10 @@ export default function ChatInput({ onSend, onTyping }) {
       const fileName = `voice-${Date.now()}.webm`;
       const fileType = 'audio/webm';
 
-      const presignRes = await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/upload/presign', {
+      const presignRes = await fetch(`${API_URL}/upload/presign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ fileName, fileType }),
       });
       const { uploadUrl, headers, publicUrl } = await presignRes.json();

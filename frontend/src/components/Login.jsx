@@ -5,6 +5,8 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { sileo } from 'sileo';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 const loginSchema = yup.object({
   username: yup.string()
     .required('نام کاربری الزامی است')
@@ -36,7 +38,7 @@ export default function Login({ onAuth }) {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await fetch('https://ebxh6cw8k0fy-production-ie00nenq.us-central1.suga.run/auth/login', {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

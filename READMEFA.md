@@ -3,8 +3,8 @@
 
 ## 🌐 زبان / Language
 
-[![English](https://img.shields.io/badge/🇬🇧%20English-Read%20now-6366f1?style=for-the-badge)](./readme.md)
-[![فارسی](https://img.shields.io/badge/🇮🇷%20فارسی-مطالعه-8b5cf6?style=for-the-badge)](./readmefa.md)
+[![English](https://img.shields.io/badge/🇬🇧%20English-Read%20now-6366f1?style=for-the-badge)](./README.md)
+[![فارسی](https://img.shields.io/badge/🇮🇷%20فارسی-مطالعه-8b5cf6?style=for-the-badge)](./READMEFA.md)
 
 </div>
 
@@ -159,8 +159,8 @@
 
 ```text
 learning SOCKET.IO/
-├── readme.md                    ← نسخه انگلیسی
-├── readmefa.md                  ← نسخه فارسی (اینجا هستید)
+├── README.md                    ← نسخه انگلیسی
+├── READMEFA.md                  ← نسخه فارسی (اینجا هستید)
 ├── backend/
 │   ├── .env                     ← متغیرهای محیطی (هرگز commit نشود)
 │   ├── package.json
@@ -733,6 +733,6 @@ S3_REGION=<region>
 
 **ساخته‌شده با ❤️ با Node.js، Socket.IO و React**
 
-[⬆ بازگشت به بالا](#-bms-real-time-chat) · [🇬🇧 Read in English](./readme.md)
+[⬆ بازگشت به بالا](#-bms-real-time-chat) · [🇬🇧 Read in English](./README.md)
 
 </div>
