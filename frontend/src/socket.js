@@ -1,13 +1,16 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 export const socket = io(SOCKET_URL, {
   autoConnect: false,
-  withCredentials: true, // required so the auth cookie is sent
-  transports: ['websocket'],   // force websocket in production
+  withCredentials: true,
   pingInterval: 25000,       //  هماهنگ با سرور
   pingTimeout: 60000,        //  هماهنگ با سرور
+  // اجازه بده Socket.IO خودش:
+  // polling → websocket upgrade
+  transports: ['polling', 'websocket'],
 });
 
 export function setSocketToken(token) {

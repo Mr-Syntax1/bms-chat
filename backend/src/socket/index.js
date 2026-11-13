@@ -50,17 +50,39 @@ function getSocketToken(socket) {
   return cookies.token || null;
 }
 
+const allowedOrigins = [
+  'https://bms-chat.vercel.app',
+  'http://localhost:5001',
+];
+
 export function initSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: allowedOrigin,
+      origin: allowedOrigins,
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    transports: ['websocket'], //  فقط WebSocket (نه polling)
-    pingInterval: 25000, //  هر ۲۵ ثانیه ضربان بفرست (خیلی کمتر از ۵ دقیقه)
-    pingTimeout: 60000,  // اگر ۶۰ ثانیه پاسخ نیامد، قطع کن
+
+    transports: ['polling', 'websocket'],
+
+    pingInterval: 25000,
+    pingTimeout: 60000,
   });
+
+  io.on('connection', (socket) => {
+    console.log(
+      '🟢 Connected:',
+      socket.id,
+      '| Transport:',
+      socket.conn.transport.name
+    );
+
+    socket.conn.on('upgrade', () => {
+      console.log(
+        '🚀 Upgraded to:',
+        socket.conn.transport.name
+      );
+    });
   // احراز هویت
   io.use((socket, next) => {
     const token = getSocketToken(socket);
@@ -73,9 +95,6 @@ export function initSocket(server) {
     socket.username = decoded.username;
     next();
   });
-
-  io.on('connection', (socket) => {
-    console.log('🟢 connected:', socket.id);
 
     // کاربر به اتاق شخصی خودش (socket.id) join می‌شه
     socket.join(socket.id);
