@@ -21,13 +21,13 @@ import {
 } from './handlers/rooms.js';
 import { handleOpenDM } from './handlers/direct.js';
 import {
-  handleWebRTCOffer,        
+  handleWebRTCOffer,
   handleWebRTCAnswer,
   handleWebRTCIceCandidate,
   handleWebRTCHangup,
   handleWebRTCStreamUpdated,
-  handleWebRTCScreenLock,   
-  handleWebRTCScreenUnlock, 
+  handleWebRTCScreenLock,
+  handleWebRTCScreenUnlock,
 } from './handlers/webrtc.js';
 import { verifyToken } from '../utils/jwt.js';
 
@@ -57,9 +57,10 @@ export function initSocket(server) {
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    transports: ['websocket'], 
+    transports: ['websocket'], //  فقط WebSocket (نه polling)
+    pingInterval: 25000, //  هر ۲۵ ثانیه ضربان بفرست (خیلی کمتر از ۵ دقیقه)
+    pingTimeout: 60000,  // اگر ۶۰ ثانیه پاسخ نیامد، قطع کن
   });
-
   // احراز هویت
   io.use((socket, next) => {
     const token = getSocketToken(socket);

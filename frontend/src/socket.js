@@ -6,6 +6,8 @@ export const socket = io(SOCKET_URL, {
   autoConnect: false,
   withCredentials: true, // required so the auth cookie is sent
   transports: ['websocket'],   // force websocket in production
+  pingInterval: 25000,       //  هماهنگ با سرور
+  pingTimeout: 60000,        //  هماهنگ با سرور
 });
 
 export function setSocketToken(token) {
