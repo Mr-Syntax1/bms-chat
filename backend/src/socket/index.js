@@ -63,7 +63,8 @@ export function initSocket(server) {
       credentials: true,
     },
 
-    transports: ['polling','websocket'],
+    // 'polling'
+    transports: ['websocket'],
 
     pingInterval: 25000,
     pingTimeout: 60000,
@@ -83,18 +84,18 @@ export function initSocket(server) {
         socket.conn.transport.name
       );
     });
-  // احراز هویت
-  io.use((socket, next) => {
-    const token = getSocketToken(socket);
-    if (!token) return next(new Error('Authentication error: No token provided'));
+    // احراز هویت
+    io.use((socket, next) => {
+      const token = getSocketToken(socket);
+      if (!token) return next(new Error('Authentication error: No token provided'));
 
-    const decoded = verifyToken(token);
-    if (!decoded) return next(new Error('Authentication error: Invalid token'));
+      const decoded = verifyToken(token);
+      if (!decoded) return next(new Error('Authentication error: Invalid token'));
 
-    socket.userId = decoded.id;
-    socket.username = decoded.username;
-    next();
-  });
+      socket.userId = decoded.id;
+      socket.username = decoded.username;
+      next();
+    });
 
     // کاربر به اتاق شخصی خودش (socket.id) join می‌شه
     socket.join(socket.id);

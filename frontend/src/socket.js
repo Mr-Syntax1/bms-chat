@@ -10,7 +10,8 @@ export const socket = io(SOCKET_URL, {
   pingTimeout: 60000,        //  هماهنگ با سرور
   // اجازه بده Socket.IO خودش:
   // polling → websocket upgrade
-  transports: ['polling', 'websocket'],
+  // 'polling', 
+  transports: ['websocket'],
 });
 
 export function setSocketToken(token) {
