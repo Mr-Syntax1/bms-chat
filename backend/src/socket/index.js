@@ -57,7 +57,7 @@ export function initSocket(server) {
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    transports: ['polling', 'websocket'],
+    transports: ['polling'],
   });
 
   // احراز هویت
