@@ -63,7 +63,7 @@ export function initSocket(server) {
       credentials: true,
     },
 
-    transports: ['polling', 'websocket'],
+    transports: ['polling'],
 
     pingInterval: 25000,
     pingTimeout: 60000,
