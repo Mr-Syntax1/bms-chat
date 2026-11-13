@@ -26,10 +26,16 @@ const distPath = path.join(__dirname, '../../frontend/dist');
 // Trust the reverse proxy (Vercel/Suga) so secure cookies are set correctly
 app.set('trust proxy', 1);
 
-const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5001';
+const allowedOrigins = [
+  'https://bms-chat.vercel.app',
+  'http://localhost:5001',
+  'http://localhost:3000',
+];
 app.use(cors({
-  origin: allowedOrigin,
-  credentials: true
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
