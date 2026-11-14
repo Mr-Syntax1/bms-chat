@@ -101,6 +101,11 @@ export function unsubscribeFromWebRTC(userId1, userId2) {
 }
 
 export function triggerClientEvent(channelName, eventName, data) {
+  const channel = apinator.channel(channelName);
+  if (!channel || channel.subscribed !== true) {
+    console.warn(`[Apinator] Cannot trigger "${eventName}" on channel "${channelName}": channel not subscribed`);
+    return false;
+  }
   return apinator.trigger(channelName, `client-${eventName}`, data);
 }
 

@@ -11,6 +11,7 @@ import {
   subscribeToNotifications,
   unsubscribeFromNotifications,
   getNotificationChannelName,
+  isChannelSubscribed,
 } from '../lib/apinator';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -27,7 +28,7 @@ async function apiRequest(endpoint, options = {}) {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}), // اضافه شدن توکن
+      ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
       ...options.headers,
     },
   });
@@ -89,7 +90,10 @@ export function useChat() {
     const channelName = getRoomChannelName(roomName);
     const channel = apinator.channel(channelName);
 
-    if (!channel) return;
+    if (!channel) {
+      console.warn('[Chat] Presence channel not available for:', roomName);
+      return;
+    }
 
     const onMemberAdded = (member) => {
       setOnlineUsers((prev) => {
@@ -149,7 +153,10 @@ export function useChat() {
     const channelName = getRoomChannelName(roomName);
     const channel = apinator.channel(channelName);
 
-    if (!channel) return;
+    if (!channel) {
+      console.warn('[Chat] Message channel not available for:', roomName);
+      return;
+    }
 
     const onNewMessage = (msg) => {
       if (!msg.room || msg.room === currentRoomRef.current) {
@@ -211,7 +218,10 @@ export function useChat() {
     const channelName = getRoomChannelName(roomName);
     const channel = apinator.channel(channelName);
 
-    if (!channel) return;
+    if (!channel) {
+      console.warn('[Chat] Typing channel not available for:', roomName);
+      return;
+    }
 
     const onTyping = ({ username, isTyping }) => {
       setTypingUsers((prev) => {
@@ -236,7 +246,7 @@ export function useChat() {
     }
   }, []);
 
-  const setupNotificationHandlers = useCallback(() => {
+  const setupNotificationHandlers = useCallback(async () => {
     const userId = currentUserRef.current?.id;
     if (!userId) return;
 
@@ -261,9 +271,10 @@ export function useChat() {
     };
 
     try {
-      subscribeToNotifications(userId);
+      await subscribeToNotifications(userId);
     } catch (err) {
       console.warn('[Chat] Notification subscription error:', err);
+      return;
     }
     const channel = apinator.channel(notificationChannel);
     if (channel) {
@@ -273,14 +284,21 @@ export function useChat() {
     notificationHandlersRef.current = { onNewNotification, channel: notificationChannel };
   }, []);
 
-  const cleanupNotificationHandlers = useCallback(() => {
+  const cleanupNotificationHandlers = useCallback(async () => {
     const handlers = notificationHandlersRef.current;
     if (handlers) {
       const channel = apinator.channel(handlers.channel);
       if (channel) {
         channel.unbind('new-notification', handlers.onNewNotification);
       }
-      unsubscribeFromNotifications(currentUserRef.current?.id).catch(() => { });
+      const userId = currentUserRef.current?.id;
+      if (userId) {
+        try {
+          await unsubscribeFromNotifications(userId);
+        } catch (err) {
+          console.warn('[Chat] Notification unsubscribe error:', err);
+        }
+      }
       notificationHandlersRef.current = {};
     }
   }, []);
@@ -293,7 +311,7 @@ export function useChat() {
       const res = await apiRequest('/auth/me');
       if (res.user) {
         currentUserRef.current = res.user;
-        setupNotificationHandlers();
+        await setupNotificationHandlers();
       }
 
       const roomsRes = await apiRequest('/api/rooms/list');
@@ -310,13 +328,17 @@ export function useChat() {
   }, [setupNotificationHandlers]);
 
   const disconnectSocket = useCallback(async () => {
-    cleanupNotificationHandlers();
+    await cleanupNotificationHandlers();
 
     for (const roomName of Object.keys(presenceHandlersRef.current)) {
       cleanupPresenceHandlers(roomName);
       cleanupMessageHandlers(roomName);
       cleanupTypingHandlers(roomName);
-      await unsubscribeFromRoom(roomName).catch(() => { });
+      try {
+        await unsubscribeFromRoom(roomName);
+      } catch (err) {
+        console.warn('[Chat] Unsubscribe room error:', err);
+      }
     }
 
     apinator.disconnect();
@@ -344,7 +366,11 @@ export function useChat() {
       cleanupPresenceHandlers(prevRoom);
       cleanupMessageHandlers(prevRoom);
       cleanupTypingHandlers(prevRoom);
-      await unsubscribeFromRoom(prevRoom).catch(() => { });
+      try {
+        await unsubscribeFromRoom(prevRoom);
+      } catch (err) {
+        console.warn('[Chat] Unsubscribe prev room error:', err);
+      }
     }
 
     try {
@@ -363,7 +389,13 @@ export function useChat() {
         setDmPartnerName(null);
       }
 
-      await subscribeToRoom(roomName);
+      try {
+        await subscribeToRoom(roomName);
+      } catch (err) {
+        console.error('[Chat] Subscribe room error:', err);
+        return { error: 'Failed to subscribe to room' };
+      }
+      
       setupPresenceHandlers(roomName);
       setupMessageHandlers(roomName);
       setupTypingHandlers(roomName);
@@ -412,10 +444,20 @@ export function useChat() {
         cleanupPresenceHandlers(prevRoom);
         cleanupMessageHandlers(prevRoom);
         cleanupTypingHandlers(prevRoom);
-        await unsubscribeFromRoom(prevRoom).catch(() => { });
+        try {
+          await unsubscribeFromRoom(prevRoom);
+        } catch (err) {
+          console.warn('[Chat] Unsubscribe prev room error:', err);
+        }
       }
 
-      await subscribeToRoom(res.room);
+      try {
+        await subscribeToRoom(res.room);
+      } catch (err) {
+        console.error('[Chat] Subscribe DM room error:', err);
+        return { error: 'Failed to subscribe to DM room' };
+      }
+      
       setupPresenceHandlers(res.room);
       setupMessageHandlers(res.room);
       setupTypingHandlers(res.room);
@@ -493,12 +535,19 @@ export function useChat() {
     if (!room) return;
 
     const channelName = getRoomChannelName(room);
+    
+    // Only trigger if channel is actually subscribed
+    if (!isChannelSubscribed(channelName)) {
+      console.warn('[Chat] Cannot send typing: channel not subscribed');
+      return;
+    }
+
     triggerClientEvent(channelName, 'typing', {
       username: currentUserRef.current?.username,
       isTyping,
     });
 
-    // اصلاح مدیریت تایمر
+    // Clean up existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = null;
@@ -506,10 +555,13 @@ export function useChat() {
 
     if (isTyping) {
       typingTimeoutRef.current = setTimeout(() => {
-        triggerClientEvent(channelName, 'typing', {
-          username: currentUserRef.current?.username,
-          isTyping: false,
-        });
+        // Double-check subscription before sending stop-typing
+        if (isChannelSubscribed(channelName)) {
+          triggerClientEvent(channelName, 'typing', {
+            username: currentUserRef.current?.username,
+            isTyping: false,
+          });
+        }
       }, 2000);
     }
   }, []);
@@ -677,6 +729,6 @@ export function useChat() {
     fetchNotifications,
     markNotificationsAsRead,
     dmPartnerName,
-    handleLoginNotifications, // این را هم اضافه کردم که در App.jsx استفاده کنی
+    handleLoginNotifications,
   };
 }

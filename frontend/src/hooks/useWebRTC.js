@@ -7,6 +7,7 @@ import {
   bindClientEvent,
   unbindClientEvent,
   triggerClientEvent,
+  isChannelSubscribed,
 } from '../lib/apinator';
 
 const setVideoSenderParameters = async (sender, maxBitrate = 8_000_000) => {
@@ -22,6 +23,14 @@ const setVideoSenderParameters = async (sender, maxBitrate = 8_000_000) => {
   } catch (err) {
     console.warn('[WebRTC] Could not set video sender parameters:', err);
   }
+};
+
+const sendWebRTCWithCheck = (channelName, eventName, payload) => {
+  if (!isChannelSubscribed(channelName)) {
+    console.warn(`[WebRTC] Cannot send "${eventName}" on channel "${channelName}": not subscribed`);
+    return false;
+  }
+  return triggerClientEvent(channelName, eventName, payload);
 };
 
 export function useWebRTC(currentUser) {
@@ -59,12 +68,6 @@ export function useWebRTC(currentUser) {
   const endCallRef = useRef(null);
   const webrtcChannelRef = useRef(null);
   const webrtcHandlersRef = useRef({});
-
-  // 👈 ۱. تابع sendWebRTC به داخل هوک منتقل شد تا به useRef ها دسترسی داشته باشد
-  const sendWebRTC = useCallback((eventName, payload) => {
-    if (!webrtcChannelRef.current || !targetUserIdRef.current) return;
-    triggerClientEvent(webrtcChannelRef.current, eventName, payload);
-  }, []);
 
   useEffect(() => {
     callStateRef.current = callState;
@@ -136,21 +139,34 @@ export function useWebRTC(currentUser) {
     });
   }, [syncFromPeer]);
 
+  const sendWebRTC = useCallback((eventName, payload) => {
+    if (!webrtcChannelRef.current || !targetUserIdRef.current) return;
+    sendWebRTCWithCheck(webrtcChannelRef.current, eventName, payload);
+  }, []);
+
   const endCall = useCallback(() => {
     console.log('[WebRTC] Ending call');
 
-    if (peerRef.current && targetUserIdRef.current) {
+    // Send hangup signal BEFORE unsubscribing
+    if (peerRef.current && targetUserIdRef.current && webrtcChannelRef.current) {
       if (isScreenSharingDuringCallRef.current) {
         sendWebRTC('webrtc-screen-unlock', {
           targetUserId: targetUserIdRef.current,
         });
       }
       sendWebRTC('webrtc-hangup', { targetUserId: targetUserIdRef.current });
-    }
 
-    if (webrtcChannelRef.current && targetUserIdRef.current) {
-      unsubscribeFromWebRTC(currentUser?.id, targetUserIdRef.current).catch(() => { });
-      webrtcChannelRef.current = null;
+      // Give a small delay for the message to be sent before unsubscribing
+      setTimeout(() => {
+        if (webrtcChannelRef.current && targetUserIdRef.current) {
+          try {
+            unsubscribeFromWebRTC(currentUser?.id, targetUserIdRef.current);
+          } catch (err) {
+            console.warn('[WebRTC] Unsubscribe error:', err);
+          }
+          webrtcChannelRef.current = null;
+        }
+      }, 200);
     }
 
     if (peerRef.current) {
@@ -198,7 +214,7 @@ export function useWebRTC(currentUser) {
     setIsDeafened(false);
     setParticipants([]);
     setRemoteScreenSharing(false);
-  }, [sendWebRTC, currentUser]);
+  }, [currentUser, sendWebRTC]);
 
   useEffect(() => {
     endCallRef.current = endCall;
@@ -482,7 +498,16 @@ export function useWebRTC(currentUser) {
 
         const channelName = getWebRTCChannelName(currentUser.id, targetUserId);
         webrtcChannelRef.current = channelName;
-        await subscribeToWebRTC(currentUser.id, targetUserId);
+        
+        // Wait for subscription to complete BEFORE setting up listeners
+        try {
+          await subscribeToWebRTC(currentUser.id, targetUserId);
+        } catch (err) {
+          console.error('[WebRTC] Subscribe error:', err);
+          endCall();
+          return;
+        }
+        
         setupWebRTCListeners(channelName);
 
         const peer = createPeer(targetUserId);
@@ -493,7 +518,7 @@ export function useWebRTC(currentUser) {
         const offer = await peer.createOffer();
         await peer.setLocalDescription(offer);
 
-        // 👈 ۲. تأخیر کوچک برای اینکه کانال طرف مقابل آماده شود
+        // Small delay to ensure remote peer is also subscribed
         setTimeout(() => {
           sendWebRTC('webrtc-offer', { targetUserId, offer });
         }, 300);
@@ -545,7 +570,16 @@ export function useWebRTC(currentUser) {
 
         const channelName = getWebRTCChannelName(currentUser.id, fromUserId);
         webrtcChannelRef.current = channelName;
-        await subscribeToWebRTC(currentUser.id, fromUserId);
+        
+        // Wait for subscription to complete BEFORE setting up listeners
+        try {
+          await subscribeToWebRTC(currentUser.id, fromUserId);
+        } catch (err) {
+          console.error('[WebRTC] Subscribe error:', err);
+          endCall();
+          return;
+        }
+        
         setupWebRTCListeners(channelName);
 
         const peer = createPeer(fromUserId);
@@ -811,21 +845,36 @@ export function useWebRTC(currentUser) {
 
   const declineCall = useCallback(() => {
     if (incomingCall) {
-      sendWebRTC('webrtc-hangup', { targetUserId: incomingCall.fromUserId });
-      // این خط را اضافه کنید تا کاربر از کانال خارج شود
-      if (currentUser?.id && incomingCall.fromUserId) {
-        unsubscribeFromWebRTC(currentUser.id, incomingCall.fromUserId).catch(() => { });
+      // Send hangup FIRST
+      if (webrtcChannelRef.current && currentUser?.id) {
+        sendWebRTC('webrtc-hangup', { targetUserId: incomingCall.fromUserId });
+        
+        // Wait a bit then unsubscribe
+        setTimeout(() => {
+          if (currentUser?.id && incomingCall.fromUserId) {
+            try {
+              unsubscribeFromWebRTC(currentUser.id, incomingCall.fromUserId);
+            } catch (err) {
+              console.warn('[WebRTC] Decline unsubscribe error:', err);
+            }
+          }
+        }, 200);
       }
+      
       setIncomingCall(null);
       setCallState('ended');
     }
-  }, [incomingCall, sendWebRTC, currentUser]);
+  }, [incomingCall, currentUser, sendWebRTC]);
 
   useEffect(() => {
     return () => {
       if (webrtcChannelRef.current && targetUserIdRef.current) {
         cleanupWebRTCListeners(webrtcChannelRef.current);
-        unsubscribeFromWebRTC(currentUser?.id, targetUserIdRef.current).catch(() => { });
+        try {
+          unsubscribeFromWebRTC(currentUser?.id, targetUserIdRef.current);
+        } catch (err) {
+          console.warn('[WebRTC] Cleanup unsubscribe error:', err);
+        }
       }
     };
   }, [currentUser, cleanupWebRTCListeners]);
