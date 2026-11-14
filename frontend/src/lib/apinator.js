@@ -11,11 +11,6 @@ export function setApinatorAuthToken(token) {
     : {};
 }
 
-// Use a relative auth endpoint so the browser sends cookies with it.
-// In development, Vite proxies /api/apinator/auth to the backend.
-// In production, a rewriter (vercel.json or similar) forwards /api/apinator/auth
-// to the backend, so the cookie path works there too. The Bearer token header
-// provided above is used as a fallback for cross-origin scenarios.
 const AUTH_ENDPOINT = '/api/apinator/auth';
 
 if (!APINATOR_KEY) {
@@ -38,10 +33,12 @@ apinator.bind('realtime:error', (err) => {
   console.error('[Apinator] realtime error:', err);
 });
 
+
 export function getRoomChannelName(roomName) {
   if (roomName.startsWith('dm_')) {
-    const dmPart = roomName.replace('dm_', '');
-    return `private-dm-${dmPart}`;
+    const idsPart = roomName.replace('dm_', '');
+    
+    return `private-dm-${idsPart.replace('_', '-')}`;
   }
   return `presence-room-${roomName}`;
 }
