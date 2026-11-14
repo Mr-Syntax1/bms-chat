@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  apinator,
   subscribeToWebRTC,
   unsubscribeFromWebRTC,
   getWebRTCChannelName,
@@ -147,24 +146,30 @@ export function useWebRTC(currentUser) {
   const endCall = useCallback(() => {
     console.log('[WebRTC] Ending call');
 
+    const userId = currentUser?.id;
+    const targetId = targetUserIdRef.current;
+    const channelName = webrtcChannelRef.current;
+
     // Send hangup signal BEFORE unsubscribing
-    if (peerRef.current && targetUserIdRef.current && webrtcChannelRef.current) {
-      if (isScreenSharingDuringCallRef.current) {
-        sendWebRTC('webrtc-screen-unlock', {
-          targetUserId: targetUserIdRef.current,
-        });
+    if (channelName && targetId) {
+      if (peerRef.current) {
+        if (isScreenSharingDuringCallRef.current) {
+          sendWebRTC('webrtc-screen-unlock', {
+            targetUserId: targetId,
+          });
+        }
+        sendWebRTC('webrtc-hangup', { targetUserId: targetId });
       }
-      sendWebRTC('webrtc-hangup', { targetUserId: targetUserIdRef.current });
+
+      webrtcChannelRef.current = null;
 
       // Give a small delay for the message to be sent before unsubscribing
       setTimeout(() => {
-        if (webrtcChannelRef.current && targetUserIdRef.current) {
-          try {
-            unsubscribeFromWebRTC(currentUser?.id, targetUserIdRef.current);
-          } catch (err) {
-            console.warn('[WebRTC] Unsubscribe error:', err);
-          }
-          webrtcChannelRef.current = null;
+        if (!userId || !targetId) return;
+        try {
+          unsubscribeFromWebRTC(userId, targetId);
+        } catch (err) {
+          console.warn('[WebRTC] Unsubscribe error:', err);
         }
       }, 200);
     }
@@ -499,11 +504,10 @@ export function useWebRTC(currentUser) {
         const channelName = getWebRTCChannelName(currentUser.id, targetUserId);
         webrtcChannelRef.current = channelName;
         
-        // Wait for subscription to complete BEFORE setting up listeners
         try {
-          await subscribeToWebRTC(currentUser.id, targetUserId);
+          subscribeToWebRTC(currentUser.id, targetUserId);
         } catch (err) {
-          console.error('[WebRTC] Subscribe error:', err);
+          console.warn('[WebRTC] Subscribe error:', err);
           endCall();
           return;
         }
@@ -571,11 +575,10 @@ export function useWebRTC(currentUser) {
         const channelName = getWebRTCChannelName(currentUser.id, fromUserId);
         webrtcChannelRef.current = channelName;
         
-        // Wait for subscription to complete BEFORE setting up listeners
         try {
-          await subscribeToWebRTC(currentUser.id, fromUserId);
+          subscribeToWebRTC(currentUser.id, fromUserId);
         } catch (err) {
-          console.error('[WebRTC] Subscribe error:', err);
+          console.warn('[WebRTC] Subscribe error:', err);
           endCall();
           return;
         }

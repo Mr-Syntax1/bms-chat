@@ -5,8 +5,6 @@ import {
   subscribeToRoom,
   unsubscribeFromRoom,
   getRoomChannelName,
-  bindEvent,
-  unbindEvent,
   triggerClientEvent,
   subscribeToNotifications,
   unsubscribeFromNotifications,
@@ -246,7 +244,7 @@ export function useChat() {
     }
   }, []);
 
-  const setupNotificationHandlers = useCallback(async () => {
+  const setupNotificationHandlers = useCallback(() => {
     const userId = currentUserRef.current?.id;
     if (!userId) return;
 
@@ -271,7 +269,7 @@ export function useChat() {
     };
 
     try {
-      await subscribeToNotifications(userId);
+      subscribeToNotifications(userId);
     } catch (err) {
       console.warn('[Chat] Notification subscription error:', err);
       return;
@@ -284,7 +282,7 @@ export function useChat() {
     notificationHandlersRef.current = { onNewNotification, channel: notificationChannel };
   }, []);
 
-  const cleanupNotificationHandlers = useCallback(async () => {
+  const cleanupNotificationHandlers = useCallback(() => {
     const handlers = notificationHandlersRef.current;
     if (handlers) {
       const channel = apinator.channel(handlers.channel);
@@ -294,7 +292,7 @@ export function useChat() {
       const userId = currentUserRef.current?.id;
       if (userId) {
         try {
-          await unsubscribeFromNotifications(userId);
+          unsubscribeFromNotifications(userId);
         } catch (err) {
           console.warn('[Chat] Notification unsubscribe error:', err);
         }
@@ -311,7 +309,7 @@ export function useChat() {
       const res = await apiRequest('/auth/me');
       if (res.user) {
         currentUserRef.current = res.user;
-        await setupNotificationHandlers();
+        setupNotificationHandlers();
       }
 
       const roomsRes = await apiRequest('/api/rooms/list');
@@ -327,15 +325,15 @@ export function useChat() {
     }
   }, [setupNotificationHandlers]);
 
-  const disconnectSocket = useCallback(async () => {
-    await cleanupNotificationHandlers();
+  const disconnectSocket = useCallback(() => {
+    cleanupNotificationHandlers();
 
     for (const roomName of Object.keys(presenceHandlersRef.current)) {
       cleanupPresenceHandlers(roomName);
       cleanupMessageHandlers(roomName);
       cleanupTypingHandlers(roomName);
       try {
-        await unsubscribeFromRoom(roomName);
+        unsubscribeFromRoom(roomName);
       } catch (err) {
         console.warn('[Chat] Unsubscribe room error:', err);
       }
@@ -367,7 +365,7 @@ export function useChat() {
       cleanupMessageHandlers(prevRoom);
       cleanupTypingHandlers(prevRoom);
       try {
-        await unsubscribeFromRoom(prevRoom);
+        unsubscribeFromRoom(prevRoom);
       } catch (err) {
         console.warn('[Chat] Unsubscribe prev room error:', err);
       }
@@ -390,9 +388,9 @@ export function useChat() {
       }
 
       try {
-        await subscribeToRoom(roomName);
+        subscribeToRoom(roomName);
       } catch (err) {
-        console.error('[Chat] Subscribe room error:', err);
+        console.warn('[Chat] Subscribe room error:', err);
         return { error: 'Failed to subscribe to room' };
       }
       
@@ -434,28 +432,29 @@ export function useChat() {
 
       if (res.error) return { success: false, error: res.error };
 
+      const prevRoom = currentRoomRef.current;
+
       setDmPartnerName(res.targetUser?.username || targetUsername);
       setMessages(res.history || []);
       setCurrentRoom(res.room);
       setTypingUsers([]);
 
-      const prevRoom = currentRoomRef.current;
       if (prevRoom && prevRoom !== res.room) {
         cleanupPresenceHandlers(prevRoom);
         cleanupMessageHandlers(prevRoom);
         cleanupTypingHandlers(prevRoom);
         try {
-          await unsubscribeFromRoom(prevRoom);
+          unsubscribeFromRoom(prevRoom);
         } catch (err) {
           console.warn('[Chat] Unsubscribe prev room error:', err);
         }
       }
 
       try {
-        await subscribeToRoom(res.room);
+        subscribeToRoom(res.room);
       } catch (err) {
-        console.error('[Chat] Subscribe DM room error:', err);
-        return { error: 'Failed to subscribe to DM room' };
+        console.warn('[Chat] Subscribe DM room error:', err);
+        return { success: false, error: 'Failed to subscribe to DM room' };
       }
       
       setupPresenceHandlers(res.room);

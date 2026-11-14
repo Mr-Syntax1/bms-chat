@@ -43,12 +43,23 @@ function App() {
   };
 
   const handleLogout = async () => {
-    await fetch(`${API_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    try {
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.warn('[Auth] Logout request failed:', err);
+    }
+
     setAuthUser(null);
-    chat.logout();
+
+    try {
+      await chat.logout();
+    } catch (err) {
+      console.warn('[Auth] Chat cleanup failed:', err);
+    }
+
     setApiToken(null); // پاک کردن توکن هنگام خروج
     setApinatorAuthToken(null);
   };
