@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
+  apinator, // برای دسترسی مستقیم به کانال جهت تنظیم رویداد subscription_succeeded
   subscribeToWebRTC,
   unsubscribeFromWebRTC,
   getWebRTCChannelName,
@@ -150,7 +151,6 @@ export function useWebRTC(currentUser) {
     const targetId = targetUserIdRef.current;
     const channelName = webrtcChannelRef.current;
 
-    // Send hangup signal BEFORE unsubscribing
     if (channelName && targetId) {
       if (peerRef.current) {
         if (isScreenSharingDuringCallRef.current) {
@@ -163,7 +163,6 @@ export function useWebRTC(currentUser) {
 
       webrtcChannelRef.current = null;
 
-      // Give a small delay for the message to be sent before unsubscribing
       setTimeout(() => {
         if (!userId || !targetId) return;
         try {
@@ -504,6 +503,38 @@ export function useWebRTC(currentUser) {
         const channelName = getWebRTCChannelName(currentUser.id, targetUserId);
         webrtcChannelRef.current = channelName;
         
+        // منتظر می‌مانیم تا کانال سابسکرایب شود
+        const channel = apinator.channel(channelName);
+        
+        // اگر کانال قبلاً سابسکرایب نشده بود، یک لیسنر برای موفقیت در سابسکرایب می‌گذاریم
+        if (channel && !isChannelSubscribed(channelName)) {
+            channel.bind('realtime:subscription_succeeded', async () => {
+                console.log('[WebRTC] Channel subscribed, sending offer');
+                setupWebRTCListeners(channelName);
+                
+                const peer = createPeer(targetUserId);
+                peerRef.current = peer;
+                addLocalTracks(stream, peer);
+                attachTrackHandlers();
+
+                const offer = await peer.createOffer();
+                await peer.setLocalDescription(offer);
+                
+                sendWebRTC('webrtc-offer', { targetUserId, offer });
+            });
+        } else {
+            // اگر از قبل بود (احتمال کم)
+            setupWebRTCListeners(channelName);
+            const peer = createPeer(targetUserId);
+            peerRef.current = peer;
+            addLocalTracks(stream, peer);
+            attachTrackHandlers();
+
+            const offer = await peer.createOffer();
+            await peer.setLocalDescription(offer);
+            sendWebRTC('webrtc-offer', { targetUserId, offer });
+        }
+        
         try {
           subscribeToWebRTC(currentUser.id, targetUserId);
         } catch (err) {
@@ -511,21 +542,6 @@ export function useWebRTC(currentUser) {
           endCall();
           return;
         }
-        
-        setupWebRTCListeners(channelName);
-
-        const peer = createPeer(targetUserId);
-        peerRef.current = peer;
-        addLocalTracks(stream, peer);
-        attachTrackHandlers();
-
-        const offer = await peer.createOffer();
-        await peer.setLocalDescription(offer);
-
-        // Small delay to ensure remote peer is also subscribed
-        setTimeout(() => {
-          sendWebRTC('webrtc-offer', { targetUserId, offer });
-        }, 300);
 
       } catch (err) {
         console.error('Error starting call:', err);
@@ -848,11 +864,9 @@ export function useWebRTC(currentUser) {
 
   const declineCall = useCallback(() => {
     if (incomingCall) {
-      // Send hangup FIRST
       if (webrtcChannelRef.current && currentUser?.id) {
         sendWebRTC('webrtc-hangup', { targetUserId: incomingCall.fromUserId });
         
-        // Wait a bit then unsubscribe
         setTimeout(() => {
           if (currentUser?.id && incomingCall.fromUserId) {
             try {
@@ -876,7 +890,7 @@ export function useWebRTC(currentUser) {
         try {
           unsubscribeFromWebRTC(currentUser?.id, targetUserIdRef.current);
         } catch (err) {
-          console.warn('[WebRTC] Cleanup unsubscribe error:', err);
+          console.warn('[WebRTC] Unsubscribe error:', err);
         }
       }
     };
