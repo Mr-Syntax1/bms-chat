@@ -37,7 +37,11 @@ apinatorRouter.post('/auth', async (req, res) => {
 
     // بررسی نوع کانال
     if (channel_name.startsWith('presence-room-')) {
-      channelData = JSON.stringify(userData);
+      //  حتماً باید user_id و user_info داشته باشد
+      channelData = JSON.stringify({
+        user_id: decoded.id,
+        user_info: { name: decoded.username },
+      });
     }
     else if (channel_name.startsWith('private-dm-')) {
       // در فرانت‌اند از خط تیره استفاده شده است، پس اینجا هم خط تیره چک می‌شود

@@ -85,7 +85,7 @@ export function useChat() {
   }, []);
 
   const setupPresenceHandlers = useCallback((roomName) => {
-    const channelName = getRoomChannelName(roomName);
+    const channelName = getRoomChannelName(roomName); // باید presence-room-... باشد
     const channel = apinator.channel(channelName);
 
     if (!channel) {
@@ -93,39 +93,53 @@ export function useChat() {
       return;
     }
 
+    // پاک کردن لیست قبلی هنگام ورود به اتاق جدید
+    setOnlineUsers([]);
+
     const onMemberAdded = (member) => {
+      console.log('[Presence] Member added:', member);
       setOnlineUsers((prev) => {
+        // جلوگیری از تکراری شدن
         if (prev.some((u) => u.id === member.user_id)) return prev;
         return [
           ...prev,
           {
             id: member.user_id,
-            username: member.user_info?.name,
+            username: member.user_info?.name || 'Unknown',
           },
         ];
       });
     };
 
     const onMemberRemoved = (member) => {
+      console.log('[Presence] Member removed:', member);
       setOnlineUsers((prev) => prev.filter((u) => u.id !== member.user_id));
     };
 
     const onSubscriptionSucceeded = () => {
+      console.log('[Presence] Subscription succeeded for:', roomName);
+      // در Apinator، در این مرحله getMembers() لیست کامل را برمی‌گرداند
       if (typeof channel.getMembers === 'function') {
         const members = channel.getMembers();
+        console.log('[Presence] Initial members:', members);
+
         setOnlineUsers(
           members.map((m) => ({
             id: m.user_id,
-            username: m.user_info?.name,
+            username: m.user_info?.name || 'Unknown',
           }))
         );
+      } else {
+        console.warn('[Presence] getMembers not available on channel');
       }
     };
 
+    // حتماً قبل از subscribe شدن، لیسنرها را bind کن
     channel.bind('realtime:member_added', onMemberAdded);
     channel.bind('realtime:member_removed', onMemberRemoved);
     channel.bind('realtime:subscription_succeeded', onSubscriptionSucceeded);
 
+    // ذخیره در ref برای پاکسازی
     presenceHandlersRef.current[roomName] = {
       onMemberAdded,
       onMemberRemoved,
@@ -393,7 +407,7 @@ export function useChat() {
         console.warn('[Chat] Subscribe room error:', err);
         return { error: 'Failed to subscribe to room' };
       }
-      
+
       setupPresenceHandlers(roomName);
       setupMessageHandlers(roomName);
       setupTypingHandlers(roomName);
@@ -456,7 +470,7 @@ export function useChat() {
         console.warn('[Chat] Subscribe DM room error:', err);
         return { success: false, error: 'Failed to subscribe to DM room' };
       }
-      
+
       setupPresenceHandlers(res.room);
       setupMessageHandlers(res.room);
       setupTypingHandlers(res.room);
@@ -534,7 +548,7 @@ export function useChat() {
     if (!room) return;
 
     const channelName = getRoomChannelName(room);
-    
+
     // Only trigger if channel is actually subscribed
     if (!isChannelSubscribed(channelName)) {
       console.warn('[Chat] Cannot send typing: channel not subscribed');
