@@ -260,7 +260,11 @@ export function useChat() {
       });
     };
 
-    subscribeToNotifications(userId).catch(() => {});
+    try {
+      subscribeToNotifications(userId);
+    } catch (err) {
+      console.warn('[Chat] Notification subscription error:', err);
+    }
     const channel = apinator.channel(notificationChannel);
     if (channel) {
       channel.bind('new-notification', onNewNotification);
@@ -276,7 +280,7 @@ export function useChat() {
       if (channel) {
         channel.unbind('new-notification', handlers.onNewNotification);
       }
-      unsubscribeFromNotifications(currentUserRef.current?.id).catch(() => {});
+      unsubscribeFromNotifications(currentUserRef.current?.id).catch(() => { });
       notificationHandlersRef.current = {};
     }
   }, []);
@@ -312,7 +316,7 @@ export function useChat() {
       cleanupPresenceHandlers(roomName);
       cleanupMessageHandlers(roomName);
       cleanupTypingHandlers(roomName);
-      await unsubscribeFromRoom(roomName).catch(() => {});
+      await unsubscribeFromRoom(roomName).catch(() => { });
     }
 
     apinator.disconnect();
@@ -340,7 +344,7 @@ export function useChat() {
       cleanupPresenceHandlers(prevRoom);
       cleanupMessageHandlers(prevRoom);
       cleanupTypingHandlers(prevRoom);
-      await unsubscribeFromRoom(prevRoom).catch(() => {});
+      await unsubscribeFromRoom(prevRoom).catch(() => { });
     }
 
     try {
@@ -408,7 +412,7 @@ export function useChat() {
         cleanupPresenceHandlers(prevRoom);
         cleanupMessageHandlers(prevRoom);
         cleanupTypingHandlers(prevRoom);
-        await unsubscribeFromRoom(prevRoom).catch(() => {});
+        await unsubscribeFromRoom(prevRoom).catch(() => { });
       }
 
       await subscribeToRoom(res.room);

@@ -43,7 +43,7 @@ apinatorRouter.post('/auth', async (req, res) => {
     } 
     else if (channel_name.startsWith('private-dm-')) {
       const dmPart = channel_name.replace('private-dm-', '');
-      const [id1, id2] = dmPart.split('-');
+      const [id1, id2] = dmPart.split('_')
       
       // اطمینان از اینکه کاربر عضو این کانال دایرکت است
       if (id1 !== decoded.id && id2 !== decoded.id) {
@@ -62,7 +62,7 @@ apinatorRouter.post('/auth', async (req, res) => {
     } 
     else if (channel_name.startsWith('private-webrtc-')) {
       const webrtcPart = channel_name.replace('private-webrtc-', '');
-      const [id1, id2] = webrtcPart.split('-');
+      const [id1, id2] = dmPart.split('_')
       
       // اطمینان از اینکه کاربر یکی از طرفین این تماس است
       if (id1 !== decoded.id && id2 !== decoded.id) {
