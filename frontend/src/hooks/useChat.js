@@ -14,7 +14,6 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// متغیر برای نگهداری توکن در حافظه
 let authToken = null;
 export function setApiToken(token) {
   authToken = token;
@@ -85,7 +84,7 @@ export function useChat() {
   }, []);
 
   const setupPresenceHandlers = useCallback((roomName) => {
-    const channelName = getRoomChannelName(roomName); // باید presence-room-... باشد
+    const channelName = getRoomChannelName(roomName);
     const channel = apinator.channel(channelName);
 
     if (!channel) {
@@ -93,13 +92,11 @@ export function useChat() {
       return;
     }
 
-    // پاک کردن لیست قبلی هنگام ورود به اتاق جدید
     setOnlineUsers([]);
 
     const onMemberAdded = (member) => {
       console.log('[Presence] Member added:', member);
       setOnlineUsers((prev) => {
-        // جلوگیری از تکراری شدن
         if (prev.some((u) => u.id === member.user_id)) return prev;
         return [
           ...prev,
@@ -118,7 +115,6 @@ export function useChat() {
 
     const onSubscriptionSucceeded = () => {
       console.log('[Presence] Subscription succeeded for:', roomName);
-      // در Apinator، در این مرحله getMembers() لیست کامل را برمی‌گرداند
       if (typeof channel.getMembers === 'function') {
         const members = channel.getMembers();
         console.log('[Presence] Initial members:', members);
@@ -134,17 +130,20 @@ export function useChat() {
       }
     };
 
-    // حتماً قبل از subscribe شدن، لیسنرها را bind کن
     channel.bind('realtime:member_added', onMemberAdded);
     channel.bind('realtime:member_removed', onMemberRemoved);
     channel.bind('realtime:subscription_succeeded', onSubscriptionSucceeded);
 
-    // ذخیره در ref برای پاکسازی
     presenceHandlersRef.current[roomName] = {
       onMemberAdded,
       onMemberRemoved,
       onSubscriptionSucceeded,
     };
+
+    if (channel.subscribed === true) {
+      console.log('[Presence] Channel already subscribed, manually fetching members');
+      onSubscriptionSucceeded();
+    }
   }, []);
 
   const cleanupPresenceHandlers = useCallback((roomName) => {
@@ -549,7 +548,6 @@ export function useChat() {
 
     const channelName = getRoomChannelName(room);
 
-    // Only trigger if channel is actually subscribed
     if (!isChannelSubscribed(channelName)) {
       console.warn('[Chat] Cannot send typing: channel not subscribed');
       return;
@@ -560,7 +558,6 @@ export function useChat() {
       isTyping,
     });
 
-    // Clean up existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = null;
@@ -568,7 +565,6 @@ export function useChat() {
 
     if (isTyping) {
       typingTimeoutRef.current = setTimeout(() => {
-        // Double-check subscription before sending stop-typing
         if (isChannelSubscribed(channelName)) {
           triggerClientEvent(channelName, 'typing', {
             username: currentUserRef.current?.username,

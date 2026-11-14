@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  apinator, // برای دسترسی مستقیم به کانال جهت تنظیم رویداد subscription_succeeded
+  apinator,
   subscribeToWebRTC,
   unsubscribeFromWebRTC,
   getWebRTCChannelName,
@@ -68,6 +68,7 @@ export function useWebRTC(currentUser) {
   const endCallRef = useRef(null);
   const webrtcChannelRef = useRef(null);
   const webrtcHandlersRef = useRef({});
+  const subscriptionWaitResolveRef = useRef(null);
 
   useEffect(() => {
     callStateRef.current = callState;
@@ -502,47 +503,38 @@ export function useWebRTC(currentUser) {
 
         const channelName = getWebRTCChannelName(currentUser.id, targetUserId);
         webrtcChannelRef.current = channelName;
-        
-        // منتظر می‌مانیم تا کانال سابسکرایب شود
-        const channel = apinator.channel(channelName);
-        
-        // اگر کانال قبلاً سابسکرایب نشده بود، یک لیسنر برای موفقیت در سابسکرایب می‌گذاریم
-        if (channel && !isChannelSubscribed(channelName)) {
-            channel.bind('realtime:subscription_succeeded', async () => {
-                console.log('[WebRTC] Channel subscribed, sending offer');
-                setupWebRTCListeners(channelName);
-                
-                const peer = createPeer(targetUserId);
-                peerRef.current = peer;
-                addLocalTracks(stream, peer);
-                attachTrackHandlers();
 
-                const offer = await peer.createOffer();
-                await peer.setLocalDescription(offer);
-                
-                sendWebRTC('webrtc-offer', { targetUserId, offer });
+        subscribeToWebRTC(currentUser.id, targetUserId);
+
+        await new Promise((resolve) => {
+          const channel = apinator.channel(channelName);
+          if (channel && channel.subscribed === true) {
+            console.log('[WebRTC] Channel already subscribed');
+            resolve();
+          } else {
+            console.log('[WebRTC] Waiting for channel subscription...');
+            subscriptionWaitResolveRef.current = resolve;
+            channel?.bind('realtime:subscription_succeeded', () => {
+              console.log('[WebRTC] Channel subscribed');
+              if (subscriptionWaitResolveRef.current) {
+                subscriptionWaitResolveRef.current();
+                subscriptionWaitResolveRef.current = null;
+              }
             });
-        } else {
-            // اگر از قبل بود (احتمال کم)
-            setupWebRTCListeners(channelName);
-            const peer = createPeer(targetUserId);
-            peerRef.current = peer;
-            addLocalTracks(stream, peer);
-            attachTrackHandlers();
+          }
+        });
 
-            const offer = await peer.createOffer();
-            await peer.setLocalDescription(offer);
-            sendWebRTC('webrtc-offer', { targetUserId, offer });
-        }
+        setupWebRTCListeners(channelName);
+
+        const peer = createPeer(targetUserId);
+        peerRef.current = peer;
+        addLocalTracks(stream, peer);
+        attachTrackHandlers();
+
+        const offer = await peer.createOffer();
+        await peer.setLocalDescription(offer);
         
-        try {
-          subscribeToWebRTC(currentUser.id, targetUserId);
-        } catch (err) {
-          console.warn('[WebRTC] Subscribe error:', err);
-          endCall();
-          return;
-        }
-
+        sendWebRTC('webrtc-offer', { targetUserId, offer });
       } catch (err) {
         console.error('Error starting call:', err);
         endCall();
@@ -590,7 +582,7 @@ export function useWebRTC(currentUser) {
 
         const channelName = getWebRTCChannelName(currentUser.id, fromUserId);
         webrtcChannelRef.current = channelName;
-        
+
         try {
           subscribeToWebRTC(currentUser.id, fromUserId);
         } catch (err) {
@@ -598,7 +590,25 @@ export function useWebRTC(currentUser) {
           endCall();
           return;
         }
-        
+
+        await new Promise((resolve) => {
+          const channel = apinator.channel(channelName);
+          if (channel && channel.subscribed === true) {
+            console.log('[WebRTC] Channel already subscribed (answer)');
+            resolve();
+          } else {
+            console.log('[WebRTC] Waiting for channel subscription (answer)...');
+            subscriptionWaitResolveRef.current = resolve;
+            channel?.bind('realtime:subscription_succeeded', () => {
+              console.log('[WebRTC] Channel subscribed (answer)');
+              if (subscriptionWaitResolveRef.current) {
+                subscriptionWaitResolveRef.current();
+                subscriptionWaitResolveRef.current = null;
+              }
+            });
+          }
+        });
+
         setupWebRTCListeners(channelName);
 
         const peer = createPeer(fromUserId);

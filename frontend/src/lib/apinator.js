@@ -2,6 +2,7 @@ import { Apinator } from '@apinator/client';
 
 const APINATOR_KEY = import.meta.env.VITE_APINATOR_KEY;
 const APINATOR_CLUSTER = import.meta.env.VITE_APINATOR_CLUSTER || 'us';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const tokenRef = { current: null };
 export function setApinatorAuthToken(token) {
@@ -11,7 +12,7 @@ export function setApinatorAuthToken(token) {
     : {};
 }
 
-const AUTH_ENDPOINT = '/api/apinator/auth';
+const AUTH_ENDPOINT = `${API_BASE}/api/apinator/auth`;
 
 if (!APINATOR_KEY) {
   console.warn('[Apinator] VITE_APINATOR_KEY is not set');
@@ -138,7 +139,7 @@ export function unbindClientEvent(channelName, eventName, callback) {
 
 export function getChannelMembers(channelName) {
   const channel = apinator.channel(channelName);
-  if (channel && channel.getMembers) {
+  if (channel && typeof channel.getMembers === 'function') {
     return channel.getMembers();
   }
   return [];

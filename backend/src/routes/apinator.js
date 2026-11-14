@@ -16,7 +16,6 @@ function verifyTokenFromCookieOrHeader(req) {
   return verifyToken(token);
 }
 
-// مسیر احراز هویت کانال‌ها
 apinatorRouter.post('/auth', async (req, res) => {
   const { socket_id, channel_name } = req.body;
 
@@ -35,16 +34,14 @@ apinatorRouter.post('/auth', async (req, res) => {
 
     let channelData = undefined;
 
-    // بررسی نوع کانال
     if (channel_name.startsWith('presence-room-')) {
-      //  حتماً باید user_id و user_info داشته باشد
       channelData = JSON.stringify({
         user_id: decoded.id,
         user_info: { name: decoded.username },
       });
+      console.log('[Apinator Auth] Presence Channel Data:', channelData);
     }
     else if (channel_name.startsWith('private-dm-')) {
-      // در فرانت‌اند از خط تیره استفاده شده است، پس اینجا هم خط تیره چک می‌شود
       const dmPart = channel_name.replace('private-dm-', '');
       const [id1, id2] = dmPart.split('-');
 
@@ -63,13 +60,11 @@ apinatorRouter.post('/auth', async (req, res) => {
     }
     else if (channel_name.startsWith('private-webrtc-')) {
       const webrtcPart = channel_name.replace('private-webrtc-', '');
-      // آیدی‌ها با خط تیره جدا شده‌اند (هماهنگ با فرانت‌اند)
       const [id1, id2] = webrtcPart.split('-');
 
       if (id1 !== decoded.id && id2 !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال تماس مجاز نیست' });
       }
-      // برای کانال‌های private، channelData نباید ارسال شود
       channelData = undefined;
     }
     else {
