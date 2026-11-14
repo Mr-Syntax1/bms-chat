@@ -37,7 +37,7 @@ apinator.bind('realtime:error', (err) => {
 export function getRoomChannelName(roomName) {
   if (roomName.startsWith('dm_')) {
     const idsPart = roomName.replace('dm_', '');
-    
+
     return `private-dm-${idsPart.replace('_', '-')}`;
   }
   return `presence-room-${roomName}`;

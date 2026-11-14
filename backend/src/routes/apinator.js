@@ -32,41 +32,42 @@ apinatorRouter.post('/auth', async (req, res) => {
         name: decoded.username,
       },
     };
-    
+
     let channelData = null;
 
     // بررسی نوع کانال
     if (channel_name.startsWith('presence-room-')) {
       channelData = JSON.stringify(userData);
-    } 
+    }
     else if (channel_name.startsWith('private-dm-')) {
       // در فرانت‌اند از خط تیره استفاده شده است، پس اینجا هم خط تیره چک می‌شود
       const dmPart = channel_name.replace('private-dm-', '');
       const [id1, id2] = dmPart.split('-');
-      
+
       if (id1 !== decoded.id && id2 !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال دایرکت مجاز نیست' });
       }
       channelData = JSON.stringify(userData);
-    } 
+    }
     else if (channel_name.startsWith('private-notifications-')) {
       const userId = channel_name.replace('private-notifications-', '');
-      
+
       if (userId !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال اعلان‌ها مجاز نیست' });
       }
       channelData = JSON.stringify(userData);
-    } 
+    }
     else if (channel_name.startsWith('private-webrtc-')) {
       const webrtcPart = channel_name.replace('private-webrtc-', '');
-      // اصلاح باگ: استفاده از webrtcPart به جای dmPart و استفاده از خط تیره
+      // آیدی‌ها با خط تیره جدا شده‌اند (هماهنگ با فرانت‌اند)
       const [id1, id2] = webrtcPart.split('-');
-      
+
       if (id1 !== decoded.id && id2 !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال تماس مجاز نیست' });
       }
-      channelData = JSON.stringify(userData);
-    } 
+      // برای کانال‌های private، channelData نباید ارسال شود
+      channelData = undefined;
+    }
     else {
       channelData = JSON.stringify(userData);
     }
