@@ -33,7 +33,7 @@ apinatorRouter.post('/auth', async (req, res) => {
       },
     };
 
-    let channelData = null;
+    let channelData = undefined;
 
     // بررسی نوع کانال
     if (channel_name.startsWith('presence-room-')) {
