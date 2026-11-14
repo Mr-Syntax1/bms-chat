@@ -1,22 +1,22 @@
 import express from 'express';
-import { createServer } from 'node:http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { connectDB } from './config/db.js';
-import { initSocket } from './socket/index.js';
+import { apinatorRouter } from './routes/apinator.js';
 // Routes
 import { authRouter } from './routes/auth.js';
 import { uploadRouter } from './routes/upload.js';
-// import roomsRouter from './routes/rooms.js';
+import { roomsRouter } from './routes/rooms.js';
+import { messagesRouter } from './routes/messages.js';
+import { notificationsRouter } from './routes/notifications.js';
 
 
 dotenv.config();
 
 const app = express();
-const server = createServer(app);
 
 // __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -38,7 +38,10 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/auth', authRouter);
 app.use('/upload', uploadRouter);
-// app.use('/api/rooms', roomsRouter);
+app.use('/api/apinator', apinatorRouter);
+app.use('/api/rooms', roomsRouter);
+app.use('/api/messages', messagesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Serve static files from frontend/dist
 app.use(express.static(distPath));
@@ -53,10 +56,9 @@ app.get('*', (req, res, next) => {
 
 
 async function start() {
-  await connectDB(); // اول دیتابیس
-  initSocket(server); // بعد Socket
+  await connectDB();
   const PORT = process.env.PORT || 3000;
-  server.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 server on http://localhost:${PORT}`);
   });
 }

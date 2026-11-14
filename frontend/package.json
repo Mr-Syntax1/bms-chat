@@ -13,6 +13,7 @@
     "devi": "npm run build && concurrently \"npm run backend\" \"npm run preview\""
   },
   "dependencies": {
+    "@apinator/client": "^2.3.0",
     "@ferrucc-io/emoji-picker": "^0.1.2",
     "@hookform/resolvers": "^6.0.2",
     "@tailwindcss/vite": "^4.3.3",
@@ -21,7 +22,6 @@
     "react-hook-form": "^7.91.0",
     "react-router-dom": "^7.18.4",
     "sileo": "^0.1.6",
-    "socket.io-client": "^4.8.4",
     "tailwindcss": "^4.3.3",
     "yup": "^1.7.1"
   },

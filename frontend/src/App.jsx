@@ -1,6 +1,7 @@
+import { setApinatorAuthToken } from './lib/apinator';
+import { setApiToken } from './hooks/useChat';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { setSocketToken } from './socket';
 import Login from './components/Login';
 import Register from './components/Register';
 import Chat from './components/Chat';
@@ -23,7 +24,10 @@ function App() {
       .then((data) => {
         if (data?.user) {
           setAuthUser(data.user);
-          if (data.token) setSocketToken(data.token);
+          if (data.token) {
+            setApinatorAuthToken(data.token);
+            setApiToken(data.token); // توکن را برای API ذخیره کن
+          }
         }
         setAuthLoading(false);
       })
@@ -32,7 +36,10 @@ function App() {
 
   const handleAuth = (userData, token) => {
     setAuthUser(userData);
-    if (token) setSocketToken(token);
+    if (token) {
+      setApinatorAuthToken(token);
+      setApiToken(token); // توکن را برای API ذخیره کن
+    }
   };
 
   const handleLogout = async () => {
@@ -42,9 +49,12 @@ function App() {
     });
     setAuthUser(null);
     chat.logout();
+    setApiToken(null); // پاک کردن توکن هنگام خروج
+    setApinatorAuthToken(null);
   };
 
   if (authLoading) {
+    // ... کدهای لودینگ بدون تغییر ...
     return (
       <ToastProvider>
         <div className="min-h-screen flex items-center justify-center bg-aurora text-white relative overflow-hidden">

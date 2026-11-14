@@ -15,21 +15,26 @@ const COOKIE_OPTS = {
 };
 
 function setTokenCookie(res, token) {
-  console.log('[Auth] Setting cookie, token length:', token?.length);
   res.cookie('token', token, COOKIE_OPTS);
-  console.log('[Auth] Cookie set');
 }
 
 function clearTokenCookie(res) {
-  console.log('[Auth] Clearing cookie');
-  // Never pass maxAge to clearCookie (it would re-set a future expiry)
   const { maxAge, ...clearOpts } = COOKIE_OPTS;
   res.clearCookie('token', clearOpts);
 }
 
-// Middleware to verify token and attach user
+// میدل‌ور احراز هویت با پشتیبانی از کوکی و هدر Bearer
 function authMiddleware(req, res, next) {
-  const token = req.cookies?.token;
+  let token = req.cookies?.token;
+  
+  // اگر توکن در کوکی نبود، هدر Authorization را بررسی کن
+  if (!token && req.headers.authorization) {
+    const [scheme, ...rest] = req.headers.authorization.split(' ');
+    if (scheme.toLowerCase() === 'bearer' && rest.length === 1) {
+      token = rest[0];
+    }
+  }
+
   if (!token) {
     return res.status(401).json({ error: 'توکن وجود ندارد' });
   }
@@ -39,8 +44,9 @@ function authMiddleware(req, res, next) {
     return res.status(401).json({ error: 'توکن نامعتبر است' });
   }
 
-  req.userId = decoded.id; // user._id
-  req.username = decoded.username; // user.username
+  req.userId = decoded.id;
+  req.username = decoded.username;
+  req.token = token; // ذخیره توکن برای استفاده در روت‌های بعدی
   next();
 }
 
@@ -58,9 +64,8 @@ authRouter.post('/register', async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({ username: username.trim(), password: hashed });
     const token = signToken(user);
-    // console.log('[Auth/register] Token generated:', token?.substring(0, 20) + '...');
     setTokenCookie(res, token);
-    res.json({ user: { id: user._id, username: user.username } });
+    res.json({ user: { id: user._id, username: user.username }, token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطای سرور' });
@@ -76,15 +81,13 @@ authRouter.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(401).json({ error: 'نام کاربری یا رمز اشتباه است.' });
     const token = signToken(user);
-    // console.log('[Auth/login] Token generated:', token?.substring(0, 20) + '...');
     setTokenCookie(res, token);
-    res.json({ user: { id: user._id, username: user.username } });
+    res.json({ user: { id: user._id, username: user.username }, token });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'خطای سرور' });
   }
 });
-
 
 // خروج
 authRouter.post('/logout', (req, res) => {
@@ -99,26 +102,22 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'کاربر یافت نشد' });
     }
-    res.json({ user: { id: user._id, username: user.username } });
+    // توکن فعلی را برمی‌گردانیم، نه یک توکن جدید
+    res.json({ user: { id: user._id, username: user.username }, token: req.token });
   } catch (err) {
     console.error('[Auth/me] error:', err);
     res.status(500).json({ error: 'خطای سرور' });
   }
 });
 
-// پروفایل کاربر - GET /auth/profile
-
-//  این روت برای پروفایل خودِ کاربر است
+// پروفایل کاربر
 authRouter.get('/profile', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).select('username createdAt').lean();
     if (!user) {
       return res.status(404).json({ success: false, error: 'کاربر یافت نشد' });
     }
-
     const messageCount = await Message.countDocuments({ senderId: req.userId });
-    // تعداد اینکه چند تا پیام فرستاده
-
     res.json({
       success: true,
       user: {
@@ -141,9 +140,7 @@ authRouter.get('/profile/:username', async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, error: 'کاربر پیدا نشد.' });
     }
-
     const messageCount = await Message.countDocuments({ senderId: user._id });
-
     res.json({
       success: true,
       user: {
@@ -161,9 +158,8 @@ authRouter.get('/profile/:username', async (req, res) => {
 
 // دریافت توکن برای تماس
 authRouter.get('/call-token', authMiddleware, (req, res) => {
-  const token = req.cookies?.token;
-  if (!token) {
+  if (!req.token) {
     return res.status(401).json({ error: 'توکن یافت نشد' });
   }
-  res.json({ token });
+  res.json({ token: req.token });
 });
