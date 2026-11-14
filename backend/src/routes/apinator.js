@@ -20,14 +20,12 @@ function verifyTokenFromCookieOrHeader(req) {
 apinatorRouter.post('/auth', async (req, res) => {
   const { socket_id, channel_name } = req.body;
 
-  // بررسی لاگین بودن کاربر با کوکی یا Bearer token
   const decoded = verifyTokenFromCookieOrHeader(req);
   if (!decoded) {
     return res.status(401).json({ error: 'کاربر لاگین نیست یا توکن نامعتبر است' });
   }
 
   try {
-    // ساخت یکباره آبجکت اطلاعات کاربر برای جلوگیری از تکرار کد
     const userData = {
       user_id: decoded.id,
       user_info: {
@@ -42,10 +40,10 @@ apinatorRouter.post('/auth', async (req, res) => {
       channelData = JSON.stringify(userData);
     } 
     else if (channel_name.startsWith('private-dm-')) {
+      // در فرانت‌اند از خط تیره استفاده شده است، پس اینجا هم خط تیره چک می‌شود
       const dmPart = channel_name.replace('private-dm-', '');
-      const [id1, id2] = dmPart.split('_')
+      const [id1, id2] = dmPart.split('-');
       
-      // اطمینان از اینکه کاربر عضو این کانال دایرکت است
       if (id1 !== decoded.id && id2 !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال دایرکت مجاز نیست' });
       }
@@ -54,7 +52,6 @@ apinatorRouter.post('/auth', async (req, res) => {
     else if (channel_name.startsWith('private-notifications-')) {
       const userId = channel_name.replace('private-notifications-', '');
       
-      // اطمینان از اینکه کاربر صاحب این کانال اعلان است
       if (userId !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال اعلان‌ها مجاز نیست' });
       }
@@ -62,22 +59,19 @@ apinatorRouter.post('/auth', async (req, res) => {
     } 
     else if (channel_name.startsWith('private-webrtc-')) {
       const webrtcPart = channel_name.replace('private-webrtc-', '');
-      const [id1, id2] = dmPart.split('_')
+      // اصلاح باگ: استفاده از webrtcPart به جای dmPart و استفاده از خط تیره
+      const [id1, id2] = webrtcPart.split('-');
       
-      // اطمینان از اینکه کاربر یکی از طرفین این تماس است
       if (id1 !== decoded.id && id2 !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال تماس مجاز نیست' });
       }
       channelData = JSON.stringify(userData);
     } 
     else {
-      // برای کانال‌های عمومی ساده
       channelData = JSON.stringify(userData);
     }
 
-    // تولید توکن احراز هویت Apinator
     const auth = apinator.authenticateChannel(socket_id, channel_name, channelData);
-    
     res.json(auth);
   } catch (error) {
     console.error('[Apinator Auth] Error:', error);
