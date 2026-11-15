@@ -44,15 +44,17 @@ export default function Chat({ chat, user, onLogout }) {
   const navigate = useNavigate();
   const [sidebar, setSidebar] = useState(null);
   const closeSidebar = useCallback(() => setSidebar(null), []);
-  const rtc = useWebRTC(user);
+
+  // هماهنگ‌سازی با API جدید useWebRTC
+  const rtc = useWebRTC({
+    currentUser: user,
+    connected: connected,
+  });
 
   const handleSwitchRoom = useCallback((roomName, isMobile = false) => {
-    // ۱. اگر در موبایل هستیم، ابتدا سایدبار را فوراً ببندیم
     if (isMobile) {
       closeSidebar();
     }
-
-    // ۲. سپس عملیات تغییر اتاق را شروع کنیم
     startTransition(() => {
       switchRoom(roomName);
     });
@@ -157,17 +159,13 @@ export default function Chat({ chat, user, onLogout }) {
             />
           </aside>
 
-          {/* ناحیه پیام‌ها با لودینگ اختصاصی */}
           <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 relative">
-            
-            {/* لودینگ فقط داخل ناحیه پیام‌ها */}
             {isPending && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-950/40  animate-fade-in">
                 <LoadingSpinner text="در حال ورود به اتاق..." />
               </div>
             )}
 
-            {/* محتوای پیام‌ها (در حالت لودینگ، محو می‌شود) */}
             <div className={`flex-1 overflow-hidden flex flex-col transition-all duration-300 ${isPending ? 'opacity-30' : ''}`}>
               {currentRoom ? (
                 <>
@@ -196,28 +194,30 @@ export default function Chat({ chat, user, onLogout }) {
         </div>
 
         <CallModal
-          isCalling={rtc.isCalling}
-          remoteScreenSharing={rtc.remoteScreenSharing}
+          isCalling={rtc.callState === 'calling' || rtc.callState === 'connecting' || rtc.callState === 'connected'}
           incomingCall={rtc.incomingCall}
-          remoteUser={rtc.remoteUser}
+          remoteUser={rtc.peer}
           localStream={rtc.localStream}
           remoteStream={rtc.remoteStream}
-          remoteStreamVersion={rtc.remoteStreamVersion}
           callState={rtc.callState}
           callType={rtc.callType}
-          participants={rtc.participants}
           isMuted={rtc.isMuted}
-          isVideoOn={rtc.isVideoOn}
-          isScreenSharing={rtc.isScreenSharing}
-          isDeafened={rtc.isDeafened}
-          onAnswer={rtc.answerCall}
-          onDecline={rtc.declineCall}
+          isVideoOn={!rtc.isCameraOff}
+          duration={rtc.duration}
+          error={rtc.error}
+          endReason={rtc.endReason}
+          onAnswer={rtc.acceptCall}
+          onDecline={rtc.rejectCall}
           onEnd={rtc.endCall}
           onToggleMute={rtc.toggleMute}
-          onToggleDeafen={rtc.toggleDeafen}
-          onToggleVideo={rtc.toggleVideo}
-          onToggleScreenShare={rtc.toggleScreenShare}
+          onToggleVideo={rtc.toggleCamera}
           user={user}
+          isScreenSharing={rtc.isScreenSharing || false}
+          isDeafened={rtc.isDeafened || false}
+          onToggleDeafen={rtc.toggleDeafen || (() => { })}
+          onToggleScreenShare={rtc.toggleScreenShare || (() => { })}
+          participants={rtc.participants || []}
+          remoteScreenSharing={rtc.remoteScreenSharing || false}
         />
 
         {sidebar && (

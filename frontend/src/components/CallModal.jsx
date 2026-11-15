@@ -8,8 +8,6 @@ const hasRemoteAudio = (stream) =>
         ? stream.getAudioTracks().some((t) => t.enabled && t.readyState === 'live')
         : false;
 
-// Note: `muted` is used ONLY as a display signal (avatar vs video).
-// It must NEVER be used to detach srcObject — muting is transient.
 const hasLiveVideo = (stream) =>
     !!stream && typeof stream.getVideoTracks === 'function'
         ? stream.getVideoTracks().some(
@@ -41,6 +39,7 @@ const ControlButton = ({ active, activeBg, activeShadow, onClick, title, childre
 // CallModal
 // ============================================================
 export default function CallModal({
+    // پراپ‌های هماهنگ‌شده با API جدید هوک
     isCalling,
     incomingCall,
     remoteUser,
@@ -48,34 +47,34 @@ export default function CallModal({
     remoteStream,
     callState,
     callType,
-    participants = [],
     isMuted,
     isVideoOn,
-    remoteStreamVersion,
-    remoteScreenSharing,
-    isScreenSharing,
-    isDeafened,
+    duration,
+    // error,
+    // endReason,
     onAnswer,
     onDecline,
     onEnd,
     onToggleMute,
-    onToggleDeafen,
     onToggleVideo,
-    onToggleScreenShare,
     user,
+    // پراپ‌های اختیاری (که ممکن است در هوک جدید مقدار نداشته باشند ولی برای UI لازم هستند)
+    participants = [],
+    remoteScreenSharing = false,
+    isScreenSharing = false,
+    isDeafened = false,
+    onToggleDeafen = () => {},
+    onToggleScreenShare = () => {},
+    remoteStreamVersion = 0,
 }) {
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
     const remoteAudioRef = useRef(null);
     const [showParticipants, setShowParticipants] = useState(false);
-    const [callDuration, setCallDuration] = useState(0);
     const [audioBlocked, setAudioBlocked] = useState(false);
-    const durationRef = useRef(null);
-    const startTimeRef = useRef(null);
 
     // ============================================================
-    // Remote AUDIO — the always-mounted hidden element.
-    // srcObject only changes when stream identity changes.
+    // Remote AUDIO
     // ============================================================
     useEffect(() => {
         const audio = remoteAudioRef.current;
@@ -98,7 +97,6 @@ export default function CallModal({
         }
     }, [remoteStream, remoteStreamVersion]);
 
-    // Detach when the call is over
     useEffect(() => {
         if (!isCalling) {
             const audio = remoteAudioRef.current;
@@ -120,12 +118,7 @@ export default function CallModal({
     }, []);
 
     // ============================================================
-    // Remote VIDEO — CRITICAL FIX #3:
-    // No `key` remount. Element stays mounted for the whole call.
-    // srcObject is written ONLY on identity change and NEVER nulled
-    // because of a transient muted state. When the remote track
-    // unmutes, Chrome renders frames into the attached element by
-    // itself — nothing to re-attach, nothing to "recover".
+    // Remote VIDEO
     // ============================================================
     useEffect(() => {
         const video = remoteVideoRef.current;
@@ -169,27 +162,6 @@ export default function CallModal({
             }
         };
     }, []);
-
-    // ============================================================
-    // Call duration timer
-    // ============================================================
-    useEffect(() => {
-        if (callState === 'connected') {
-            startTimeRef.current = Date.now();
-            setCallDuration(0);
-            durationRef.current = setInterval(() => {
-                setCallDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
-            }, 1000);
-        }
-
-        return () => {
-            if (durationRef.current) {
-                clearInterval(durationRef.current);
-                durationRef.current = null;
-            }
-            startTimeRef.current = null;
-        };
-    }, [callState]);
 
     const formatDuration = (seconds) => {
         const hrs = Math.floor(seconds / 3600);
@@ -235,8 +207,8 @@ export default function CallModal({
     };
 
     const renderContent = () => {
-        // ---------- RINGING (Outgoing) ----------
-        if (callState === 'ringing' && !incomingCall) {
+        // ---------- CALLING (Outgoing) ----------
+        if (callState === 'calling' && !incomingCall) {
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
                     <div className="w-full max-w-sm mx-4">
@@ -248,19 +220,16 @@ export default function CallModal({
                                     {getInitials(remoteUser?.username)}
                                 </div>
                             </div>
-
                             <p className="text-[#f2f3f5] text-xl font-bold">{remoteUser?.username}</p>
                             <p className="text-[#b5bac1] text-sm mt-1.5 flex items-center justify-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#5865f2] animate-pulse" />
                                 در حال زنگ زدن...
                             </p>
-
                             <div className="flex items-center justify-center gap-2 mt-4 mb-8">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#5865f2] animate-bounce" style={{ animationDelay: '0ms' }} />
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#5865f2] animate-bounce" style={{ animationDelay: '150ms' }} />
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#5865f2] animate-bounce" style={{ animationDelay: '300ms' }} />
                             </div>
-
                             <button
                                 type="button"
                                 onClick={onEnd}
@@ -278,25 +247,22 @@ export default function CallModal({
         }
 
         // ---------- INCOMING ----------
-        if (incomingCall && callState === 'ringing') {
+        if (incomingCall && callState === 'incoming') {
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
                     <div className="w-full max-w-sm mx-4">
                         <div className="bg-[#1e1f22] rounded-2xl p-8 text-center shadow-2xl border border-white/[0.04]">
                             <p className="text-[#b5bac1] text-xs font-semibold uppercase tracking-widest mb-6">تماس ورودی</p>
-
                             <div className="relative w-28 h-28 mx-auto mb-5">
                                 <div className="absolute inset-0 rounded-full bg-[#23a559]/20 animate-ping" />
-                                <div className={`relative w-28 h-28 rounded-full ${getColorFromName(incomingCall.fromUsername)} flex items-center justify-center text-4xl font-bold text-white shadow-xl`}>
-                                    {getInitials(incomingCall.fromUsername)}
+                                <div className={`relative w-28 h-28 rounded-full ${getColorFromName(incomingCall.peer?.username)} flex items-center justify-center text-4xl font-bold text-white shadow-xl`}>
+                                    {getInitials(incomingCall.peer?.username)}
                                 </div>
                             </div>
-
-                            <p className="text-[#f2f3f5] text-xl font-bold">{incomingCall.fromUsername}</p>
+                            <p className="text-[#f2f3f5] text-xl font-bold">{incomingCall.peer?.username}</p>
                             <p className="text-[#b5bac1] text-sm mt-1.5">
                                 {callType === 'video' ? 'می‌خواهد تماس تصویری برقرار کند' : 'می‌خواهد تماس صوتی برقرار کند'}
                             </p>
-
                             <div className="flex gap-5 justify-center mt-8">
                                 <div className="flex flex-col items-center gap-2">
                                     <button
@@ -312,7 +278,6 @@ export default function CallModal({
                                     </button>
                                     <span className="text-[#b5bac1] text-xs font-medium">رد کردن</span>
                                 </div>
-
                                 <div className="flex flex-col items-center gap-2">
                                     <button
                                         type="button"
@@ -327,7 +292,6 @@ export default function CallModal({
                                     </button>
                                     <span className="text-[#b5bac1] text-xs font-medium">پاسخ صوتی</span>
                                 </div>
-
                                 {callType === 'video' && (
                                     <div className="flex flex-col items-center gap-2">
                                         <button
@@ -362,12 +326,6 @@ export default function CallModal({
                 <div className="fixed inset-0 bg-[#000000] z-50 flex flex-col animate-fade-in">
                     <div className="flex-1 flex relative overflow-hidden">
                         <div className="flex-1 flex items-center justify-center relative bg-[#313338]">
-                            {/* ============================================================
-                                Remote video — ALWAYS mounted, NO key.
-                                Hidden only visually during the transient muted window;
-                                srcObject is never nulled. On unmute, frames render
-                                into this same element automatically.
-                            ============================================================ */}
                             <video
                                 ref={remoteVideoRef}
                                 autoPlay
@@ -377,7 +335,6 @@ export default function CallModal({
                                     showRemoteVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'
                                 }`}
                             />
-
                             {!showRemoteVideo && (
                                 <div className="flex flex-col items-center gap-6 text-center relative z-10">
                                     <div className="relative">
@@ -410,7 +367,6 @@ export default function CallModal({
                                     </div>
                                 </div>
                             )}
-
                             {showRemoteVideo && (
                                 <div className="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-lg text-[#f2f3f5] text-sm font-semibold flex items-center gap-2">
                                     {remoteUser?.username}
@@ -427,7 +383,6 @@ export default function CallModal({
                                     )}
                                 </div>
                             )}
-
                             {audioBlocked && callState === 'connected' && (
                                 <button
                                     type="button"
@@ -440,7 +395,6 @@ export default function CallModal({
                                     برای پخش صدا کلیک کنید
                                 </button>
                             )}
-
                             {showLocalVideo && (
                                 <div className="absolute top-5 right-5 w-52 aspect-video bg-[#1e1f22] rounded-xl overflow-hidden border border-white/10 shadow-2xl z-10 transition-all hover:scale-105 hover:z-20">
                                     <video
@@ -462,11 +416,10 @@ export default function CallModal({
                                     </div>
                                 </div>
                             )}
-
                             {callState === 'connected' && (
                                 <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[#f2f3f5] font-mono text-xs font-semibold shadow-lg border border-white/5 flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#ed4245] animate-pulse" />
-                                    {formatDuration(callDuration)}
+                                    {formatDuration(duration)}
                                 </div>
                             )}
 
@@ -487,7 +440,7 @@ export default function CallModal({
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
                                         <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#ed4245] text-white text-[10px] font-bold flex items-center justify-center">
-                                            {participants.length}
+                                            {participants.length + 1}
                                         </span>
                                     </div>
                                 </button>
@@ -498,7 +451,7 @@ export default function CallModal({
                             <div className="w-72 bg-[#1e1f22] border-l border-black/40 flex flex-col animate-slide-in-right">
                                 <div className="px-4 py-3.5 border-b border-white/[0.04] flex items-center justify-between">
                                     <h3 className="text-[#f2f3f5] text-sm font-bold uppercase tracking-wide">
-                                        در تماس — {participants.length}
+                                        در تماس — {participants.length + 1}
                                     </h3>
                                     <button
                                         type="button"
@@ -542,7 +495,6 @@ export default function CallModal({
                                             )}
                                         </div>
                                     </div>
-
                                     {participants
                                         .filter((p) => !p.isLocal)
                                         .map((p) => (
@@ -630,14 +582,14 @@ export default function CallModal({
                             </ControlButton>
 
                             <ControlButton
-                                active={isVideoOn}
+                                active={!isVideoOn}
                                 activeBg="bg-[#5865f2]"
                                 activeShadow="shadow-indigo-500/25"
                                 onClick={onToggleVideo}
                                 title={isVideoOn ? 'خاموش کردن دوربین' : 'روشن کردن دوربین'}
                                 disabled={isScreenSharing}
                             >
-                                {isVideoOn ? (
+                                {!isVideoOn ? (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                     </svg>
@@ -689,8 +641,6 @@ export default function CallModal({
 
     return (
         <>
-            {/* Always mounted so audio survives view switches; srcObject
-                is managed imperatively above */}
             <audio ref={remoteAudioRef} className="hidden" aria-hidden="true" />
             {renderContent()}
         </>
