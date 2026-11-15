@@ -40,7 +40,7 @@ export function setUnauthorizedHandler(fn) {
   unauthorizedHandler = fn;
 }
 
-async function apiRequest(endpoint, options = {}) {
+export async function apiRequest(endpoint, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 

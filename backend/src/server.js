@@ -12,6 +12,7 @@ import { uploadRouter } from './routes/upload.js';
 import { roomsRouter } from './routes/rooms.js';
 import { messagesRouter } from './routes/messages.js';
 import { notificationsRouter } from './routes/notifications.js';
+import { callsRouter } from './routes/calls.js';
 
 
 dotenv.config();
@@ -35,10 +36,10 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use('/auth', authRouter);
 app.use('/upload', uploadRouter);
+app.use('/api/calls', callsRouter);
 app.use('/api/apinator', apinatorRouter);
 app.use('/api/rooms', roomsRouter);
 app.use('/api/messages', messagesRouter);
