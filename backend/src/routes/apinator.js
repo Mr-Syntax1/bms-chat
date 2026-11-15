@@ -48,7 +48,6 @@ apinatorRouter.post('/auth', async (req, res) => {
       if (id1 !== decoded.id && id2 !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال دایرکت مجاز نیست' });
       }
-      channelData = JSON.stringify(userData);
     }
     else if (channel_name.startsWith('private-notifications-')) {
       const userId = channel_name.replace('private-notifications-', '');
@@ -56,7 +55,6 @@ apinatorRouter.post('/auth', async (req, res) => {
       if (userId !== decoded.id) {
         return res.status(403).json({ error: 'دسترسی به این کانال اعلان‌ها مجاز نیست' });
       }
-      channelData = JSON.stringify(userData);
     }
     else if (channel_name.startsWith('private-webrtc-')) {
       const webrtcPart = channel_name.replace('private-webrtc-', '');

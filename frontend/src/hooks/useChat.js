@@ -86,47 +86,26 @@ export function useChat() {
   const setupPresenceHandlers = useCallback((roomName) => {
     const channelName = getRoomChannelName(roomName);
     const channel = apinator.channel(channelName);
+    if (!channel) return;
 
-    if (!channel) {
-      console.warn('[Chat] Presence channel not available for:', roomName);
-      return;
-    }
-
-    setOnlineUsers([]);
+    setOnlineUsers([]); // پاک کردن لیست قبلی هنگام ورود به اتاق جدید
 
     const onMemberAdded = (member) => {
-      console.log('[Presence] Member added:', member);
       setOnlineUsers((prev) => {
         if (prev.some((u) => u.id === member.user_id)) return prev;
-        return [
-          ...prev,
-          {
-            id: member.user_id,
-            username: member.user_info?.name || 'Unknown',
-          },
-        ];
+        return [...prev, { id: member.user_id, username: member.user_info?.name || 'Unknown' }];
       });
     };
 
     const onMemberRemoved = (member) => {
-      console.log('[Presence] Member removed:', member);
       setOnlineUsers((prev) => prev.filter((u) => u.id !== member.user_id));
     };
 
     const onSubscriptionSucceeded = () => {
-      console.log('[Presence] Subscription succeeded for:', roomName);
+      // این مهم‌ترین بخش است: فقط بعد از موفقیت، لیست را می‌گیریم
       if (typeof channel.getMembers === 'function') {
         const members = channel.getMembers();
-        console.log('[Presence] Initial members:', members);
-
-        setOnlineUsers(
-          members.map((m) => ({
-            id: m.user_id,
-            username: m.user_info?.name || 'Unknown',
-          }))
-        );
-      } else {
-        console.warn('[Presence] getMembers not available on channel');
+        setOnlineUsers(members.map((m) => ({ id: m.user_id, username: m.user_info?.name || 'Unknown' })));
       }
     };
 
@@ -134,16 +113,7 @@ export function useChat() {
     channel.bind('realtime:member_removed', onMemberRemoved);
     channel.bind('realtime:subscription_succeeded', onSubscriptionSucceeded);
 
-    presenceHandlersRef.current[roomName] = {
-      onMemberAdded,
-      onMemberRemoved,
-      onSubscriptionSucceeded,
-    };
-
-    if (channel.subscribed === true) {
-      console.log('[Presence] Channel already subscribed, manually fetching members');
-      onSubscriptionSucceeded();
-    }
+    presenceHandlersRef.current[roomName] = { onMemberAdded, onMemberRemoved, onSubscriptionSucceeded };
   }, []);
 
   const cleanupPresenceHandlers = useCallback((roomName) => {
@@ -158,6 +128,7 @@ export function useChat() {
       }
       delete presenceHandlersRef.current[roomName];
     }
+    setOnlineUsers([]); // پاک کردن لیست هنگام خروج از اتاق
   }, []);
 
   const setupMessageHandlers = useCallback((roomName) => {

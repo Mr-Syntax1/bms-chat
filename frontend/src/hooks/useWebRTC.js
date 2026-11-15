@@ -33,6 +33,39 @@ const sendWebRTCWithCheck = (channelName, eventName, payload) => {
   return triggerClientEvent(channelName, eventName, payload);
 };
 
+// تابع کمکی برای انتظار امن برای سابسکرایب شدن کانال
+const waitForSubscription = (channelName, timeoutMs = 5000) => {
+  return new Promise((resolve, reject) => {
+    const channel = apinator.channel(channelName);
+    
+    if (channel && channel.subscribed === true) {
+      resolve();
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Subscription timeout'));
+    }, timeoutMs);
+
+    const onSubscribed = () => {
+      cleanup();
+      resolve();
+    };
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      if (channel) {
+        channel.unbind('realtime:subscription_succeeded', onSubscribed);
+      }
+    };
+
+    if (channel) {
+      channel.bind('realtime:subscription_succeeded', onSubscribed);
+    }
+  });
+};
+
 export function useWebRTC(currentUser) {
   const [isCalling, setIsCalling] = useState(false);
   const [incomingCall, setIncomingCall] = useState(null);
@@ -68,7 +101,6 @@ export function useWebRTC(currentUser) {
   const endCallRef = useRef(null);
   const webrtcChannelRef = useRef(null);
   const webrtcHandlersRef = useRef({});
-  const subscriptionWaitResolveRef = useRef(null);
 
   useEffect(() => {
     callStateRef.current = callState;
@@ -505,24 +537,7 @@ export function useWebRTC(currentUser) {
         webrtcChannelRef.current = channelName;
 
         subscribeToWebRTC(currentUser.id, targetUserId);
-
-        await new Promise((resolve) => {
-          const channel = apinator.channel(channelName);
-          if (channel && channel.subscribed === true) {
-            console.log('[WebRTC] Channel already subscribed');
-            resolve();
-          } else {
-            console.log('[WebRTC] Waiting for channel subscription...');
-            subscriptionWaitResolveRef.current = resolve;
-            channel?.bind('realtime:subscription_succeeded', () => {
-              console.log('[WebRTC] Channel subscribed');
-              if (subscriptionWaitResolveRef.current) {
-                subscriptionWaitResolveRef.current();
-                subscriptionWaitResolveRef.current = null;
-              }
-            });
-          }
-        });
+        await waitForSubscription(channelName); // 👈 استفاده از تابع کمکی جدید
 
         setupWebRTCListeners(channelName);
 
@@ -533,7 +548,7 @@ export function useWebRTC(currentUser) {
 
         const offer = await peer.createOffer();
         await peer.setLocalDescription(offer);
-        
+
         sendWebRTC('webrtc-offer', { targetUserId, offer });
       } catch (err) {
         console.error('Error starting call:', err);
@@ -583,31 +598,8 @@ export function useWebRTC(currentUser) {
         const channelName = getWebRTCChannelName(currentUser.id, fromUserId);
         webrtcChannelRef.current = channelName;
 
-        try {
-          subscribeToWebRTC(currentUser.id, fromUserId);
-        } catch (err) {
-          console.warn('[WebRTC] Subscribe error:', err);
-          endCall();
-          return;
-        }
-
-        await new Promise((resolve) => {
-          const channel = apinator.channel(channelName);
-          if (channel && channel.subscribed === true) {
-            console.log('[WebRTC] Channel already subscribed (answer)');
-            resolve();
-          } else {
-            console.log('[WebRTC] Waiting for channel subscription (answer)...');
-            subscriptionWaitResolveRef.current = resolve;
-            channel?.bind('realtime:subscription_succeeded', () => {
-              console.log('[WebRTC] Channel subscribed (answer)');
-              if (subscriptionWaitResolveRef.current) {
-                subscriptionWaitResolveRef.current();
-                subscriptionWaitResolveRef.current = null;
-              }
-            });
-          }
-        });
+        subscribeToWebRTC(currentUser.id, fromUserId);
+        await waitForSubscription(channelName); // 👈 استفاده از تابع کمکی جدید
 
         setupWebRTCListeners(channelName);
 
@@ -876,7 +868,7 @@ export function useWebRTC(currentUser) {
     if (incomingCall) {
       if (webrtcChannelRef.current && currentUser?.id) {
         sendWebRTC('webrtc-hangup', { targetUserId: incomingCall.fromUserId });
-        
+
         setTimeout(() => {
           if (currentUser?.id && incomingCall.fromUserId) {
             try {
@@ -887,7 +879,7 @@ export function useWebRTC(currentUser) {
           }
         }, 200);
       }
-      
+
       setIncomingCall(null);
       setCallState('ended');
     }
