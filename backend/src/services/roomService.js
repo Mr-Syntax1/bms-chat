@@ -1,6 +1,6 @@
 import { Room } from '../models/Room.js';
 
-export async function isRoomMember(userId, roomName) {
+export default async function isRoomMember(userId, roomName) {
   try {
     const room = await Room.findOne({ name: roomName });
     if (!room) return false;
