@@ -212,12 +212,12 @@ export default function Chat({ chat, user, onLogout }) {
           onToggleMute={rtc.toggleMute}
           onToggleVideo={rtc.toggleCamera}
           user={user}
-          isScreenSharing={rtc.isScreenSharing || false}
-          isDeafened={rtc.isDeafened || false}
-          onToggleDeafen={rtc.toggleDeafen || (() => { })}
-          onToggleScreenShare={rtc.toggleScreenShare || (() => { })}
-          participants={rtc.participants || []}
-          remoteScreenSharing={rtc.remoteScreenSharing || false}
+          isScreenSharing={rtc.isScreenSharing}
+          isDeafened={rtc.isDeafened}
+          remoteScreenSharing={rtc.remoteScreenSharing}
+          participants={rtc.participants}
+          onToggleDeafen={rtc.toggleDeafen}
+          onToggleScreenShare={rtc.toggleScreenShare}
         />
 
         {sidebar && (

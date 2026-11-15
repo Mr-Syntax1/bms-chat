@@ -35,7 +35,8 @@ export const apinator = new Apinator({
   authEndpoint: AUTH_ENDPOINT,
   authHeaders,
   enableReconnect: true,
-  autoConnect: false, // اتصال بعد از ست شدن توکن، با apinator.connect() (اگر کتابخانه نشناسد نادیده گرفته می‌شود)
+  autoConnect: false,
+  activityTimeout: 30,
 });
 
 if (import.meta.env.DEV) {

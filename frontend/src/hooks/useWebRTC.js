@@ -12,7 +12,7 @@ import {
   bindEvent,
   unbindEvent,
 } from '../lib/apinator';
-import { apiRequest } from './useChat'; // ⚠️ در useChat.js باید `export` به apiRequest اضافه شود
+import { apiRequest } from './useChat'; 
 
 /*
  * ===========================================================================
@@ -28,6 +28,7 @@ import { apiRequest } from './useChat'; // ⚠️ در useChat.js باید `expo
  *      callee  ── call-answer   ──► caller
  *      هر دو   ── ice-candidates (دسته‌ای) ──►
  *      هر دو   ── call-end / call-reject ──►
+ *      هر دو   ── call-stream-updated / call-screen-lock / call-screen-unlock ──►
  *
  * handshake ی call-accepted باعث می‌شود offer قبل از subscribe شدن callee ارسال نشود.
  * ===========================================================================
@@ -56,11 +57,23 @@ export const END_REASON_TEXT = {
 // ---------------------------------------------------------------------------
 // توابع کمکی
 // ---------------------------------------------------------------------------
+const setVideoSenderParameters = async (sender, maxBitrate = 8_000_000) => {
+  if (!sender || !sender.track || sender.track.kind !== 'video') return;
+  try {
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) {
+      params.encodings = [{}];
+    }
+    params.encodings[0].maxBitrate = maxBitrate;
+    await sender.setParameters(params);
+  } catch (err) {
+    console.warn('[WebRTC] Could not set video sender parameters:', err);
+  }
+};
+
 function buildIceServers(custom) {
   if (Array.isArray(custom) && custom.length) return custom;
-
   const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
-
   const turnUrl = import.meta.env.VITE_TURN_URL;
   if (turnUrl) {
     servers.push({
@@ -79,11 +92,7 @@ const newCallId = () =>
 
 function stopStream(stream) {
   stream?.getTracks().forEach((t) => {
-    try {
-      t.stop();
-    } catch {
-      /* ignore */
-    }
+    try { t.stop(); } catch { /* ignore */ }
   });
 }
 
@@ -100,19 +109,14 @@ async function getMedia(type) {
 function errorMessage(err) {
   switch (err?.name) {
     case 'NotAllowedError':
-    case 'SecurityError':
-      return 'دسترسی به میکروفون/دوربین مجاز نیست';
+    case 'SecurityError': return 'دسترسی به میکروفون/دوربین مجاز نیست';
     case 'NotFoundError':
-    case 'OverconstrainedError':
-      return 'میکروفون یا دوربین پیدا نشد';
-    case 'NotReadableError':
-      return 'میکروفون یا دوربین توسط برنامه‌ی دیگری استفاده می‌شود';
-    default:
-      return err?.message || 'خطای ناشناخته در تماس';
+    case 'OverconstrainedError': return 'میکروفون یا دوربین پیدا نشد';
+    case 'NotReadableError': return 'میکروفون یا دوربین توسط برنامه‌ی دیگری استفاده می‌شود';
+    default: return err?.message || 'خطای ناشناخته در تماس';
   }
 }
 
-/** صبر می‌کند تا subscribe روی کانال کامل شود. */
 function waitForSubscription(channelName, timeout = SUBSCRIBE_TIMEOUT) {
   return new Promise((resolve, reject) => {
     const channel = apinator.channel(channelName);
@@ -130,7 +134,7 @@ function waitForSubscription(channelName, timeout = SUBSCRIBE_TIMEOUT) {
     const onErr = () => done(reject, new Error('دسترسی به کانال تماس رد شد'));
 
     channel.bind('realtime:subscription_succeeded', onOk);
-    channel.bind('realtime:subscription_error', onErr); // ✱ نام رویداد را با مستندات چک کنید
+    channel.bind('realtime:subscription_error', onErr);
     timer = setTimeout(() => done(reject, new Error('اتصال به کانال تماس زمان‌بر شد')), timeout);
   });
 }
@@ -138,15 +142,7 @@ function waitForSubscription(channelName, timeout = SUBSCRIBE_TIMEOUT) {
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
-/**
- * @param {object}   options
- * @param {{id: string|number, username?: string}} options.currentUser کاربر لاگین‌شده
- * @param {boolean}  [options.connected=true]  وضعیت اتصال از useChat (برای bind شدن اعلان تماس)
- * @param {RTCIceServer[]} [options.iceServers] جایگزین STUN/TURN پیش‌فرض
- * @param {number}   [options.ringTimeout=35000] مدت زنگ خوردن (ms)
- */
 export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeout = 35000 } = {}) {
-  // callState: idle | calling | incoming | connecting | connected
   const [callState, setCallStateRaw] = useState('idle');
   const [callType, setCallType] = useState(null);
   const [peer, setPeer] = useState(null);
@@ -158,10 +154,21 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   const [error, setError] = useState(null);
   const [endReason, setEndReason] = useState(null);
 
+  // 👈 استیت‌های جدید (اسکرین‌شیر، Deafen، شرکت‌کنندگان)
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isDeafened, setIsDeafened] = useState(false);
+  const [remoteScreenSharing, setRemoteScreenSharing] = useState(false);
+  const [participants, setParticipants] = useState([]);
+
   const stateRef = useRef('idle');
-  const callRef = useRef(null); // { id, peerId, peerName, type, role, channelName, bound }
+  const callRef = useRef(null);
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
+  const cameraStreamRef = useRef(null); // برای برگشت از اسکرین‌شیر
+  const screenStreamRef = useRef(null);
+  const screenVideoSenderRef = useRef(null);
+  const isScreenSharingDuringCallRef = useRef(false);
+
   const pendingRemoteCandidatesRef = useRef([]);
   const outboundCandidatesRef = useRef([]);
   const iceFlushTimerRef = useRef(null);
@@ -171,8 +178,22 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   const iceServersRef = useRef(iceServers);
   const actionsRef = useRef({});
 
+  const isDeafenedRef = useRef(false);
+  const isCameraOffRef = useRef(false);
+
   // -------------------------------------------------------------------------
-  // کمک‌ها
+  // همگام‌سازی Ref ها
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    userRef.current = currentUser;
+    iceServersRef.current = iceServers;
+  }, [currentUser, iceServers]);
+
+  useEffect(() => { isDeafenedRef.current = isDeafened; }, [isDeafened]);
+  useEffect(() => { isCameraOffRef.current = isCameraOff; }, [isCameraOff]);
+
+  // -------------------------------------------------------------------------
+  // توابع کمکی داخلی
   // -------------------------------------------------------------------------
   function setState(next) {
     stateRef.current = next;
@@ -221,7 +242,18 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     setEndReason(null);
     setIsMuted(false);
     setIsCameraOff(false);
+    setIsScreenSharing(false);
+    setIsDeafened(false);
     setDuration(0);
+    setRemoteScreenSharing(false);
+
+    // ساخت لیست شرکت‌کنندگان (مثل دیسکورد)
+    if (me) {
+      setParticipants([
+        { id: me.id, username: me.username, isLocal: true, muted: false, video: type === 'video', screenSharing: false, speaking: false },
+        { id: peerId, username: peerName, isLocal: false, muted: false, video: false, screenSharing: false, speaking: false },
+      ]);
+    }
   }
 
   async function prepareLocalMedia(callId, type) {
@@ -231,6 +263,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       throw new Error(ABORTED);
     }
     localStreamRef.current = stream;
+    cameraStreamRef.current = stream;
     setLocalStream(stream);
   }
 
@@ -250,9 +283,25 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     on('ice-candidates', 'onIceCandidates');
     on('call-reject', 'onReject');
     on('call-end', 'onRemoteEnd');
+    // 👈 لیسنرهای جدید
+    on('call-stream-updated', 'onStreamUpdated');
+    on('call-screen-lock', 'onScreenLock');
+    on('call-screen-unlock', 'onScreenUnlock');
 
     await waitForSubscription(call.channelName);
     assertActive(callId);
+  }
+
+  async function attachVideoTrack(peer, track, stream) {
+    const reusable = peer.getTransceivers().find(
+      (t) => t.receiver?.track?.kind === 'video' && t.currentDirection !== 'stopped' && !t.sender.track
+    );
+    if (reusable) {
+      await reusable.sender.replaceTrack(track);
+      reusable.direction = 'sendrecv';
+      return reusable.sender;
+    }
+    return peer.addTrack(track, stream);
   }
 
   function createPeerConnection() {
@@ -269,7 +318,9 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     pc.ontrack = (event) => {
       if (pcRef.current !== pc) return;
       if (event.streams[0]) {
-        setRemoteStream(event.streams[0]);
+        const stream = event.streams[0];
+        stream.getAudioTracks().forEach(t => t.enabled = !isDeafenedRef.current);
+        setRemoteStream(stream);
       } else {
         fallbackRemote.addTrack(event.track);
         setRemoteStream(fallbackRemote);
@@ -280,28 +331,22 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       if (pcRef.current !== pc) return;
       if (event.candidate) {
         outboundCandidatesRef.current.push(event.candidate.toJSON());
-        if (!iceFlushTimerRef.current) {
-          iceFlushTimerRef.current = setTimeout(flushIce, ICE_FLUSH_DELAY);
-        }
+        if (!iceFlushTimerRef.current) iceFlushTimerRef.current = setTimeout(flushIce, ICE_FLUSH_DELAY);
       } else {
-        flushIce(); // پایان جمع‌آوری candidate ها
+        flushIce();
       }
     };
 
     pc.onconnectionstatechange = () => {
       if (pcRef.current !== pc) return;
       const s = pc.connectionState;
-
       if (s === 'connected') {
         clearTimeout(disconnectTimerRef.current);
         disconnectTimerRef.current = null;
         if (stateRef.current !== 'connected') setState('connected');
       } else if (s === 'disconnected') {
         if (!disconnectTimerRef.current) {
-          disconnectTimerRef.current = setTimeout(
-            () => actionsRef.current.endCall('connection-lost'),
-            DISCONNECT_GRACE
-          );
+          disconnectTimerRef.current = setTimeout(() => actionsRef.current.endCall('connection-lost'), DISCONNECT_GRACE);
         }
       } else if (s === 'failed') {
         setError('برقراری ارتباط ناموفق بود (ممکن است به TURN نیاز باشد)');
@@ -317,15 +362,10 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     if (!pc) return;
     const list = pendingRemoteCandidatesRef.current.splice(0);
     for (const c of list) {
-      try {
-        await pc.addIceCandidate(c);
-      } catch (err) {
-        console.warn('[WebRTC] addIceCandidate failed:', err);
-      }
+      try { await pc.addIceCandidate(c); } catch (err) { console.warn(err); }
     }
   }
 
-  /** همه‌چیز را جمع می‌کند و به حالت idle برمی‌گردد. */
   function cleanup(reason) {
     const call = callRef.current;
     clearTimers();
@@ -338,25 +378,21 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       pc.onicecandidate = null;
       pc.ontrack = null;
       pc.onconnectionstatechange = null;
-      try {
-        pc.close();
-      } catch {
-        /* ignore */
-      }
+      try { pc.close(); } catch { }
     }
 
     stopStream(localStreamRef.current);
     localStreamRef.current = null;
+    cameraStreamRef.current = null;
+    screenStreamRef.current = null;
+    screenVideoSenderRef.current = null;
+    isScreenSharingDuringCallRef.current = false;
 
     if (call) {
       for (const [event, fn] of call.bound) unbindClientEvent(call.channelName, event, fn);
       const me = userRef.current;
       if (me?.id) {
-        try {
-          unsubscribeFromWebRTC(me.id, call.peerId);
-        } catch (err) {
-          console.warn('[WebRTC] unsubscribe error:', err);
-        }
+        try { unsubscribeFromWebRTC(me.id, call.peerId); } catch { }
       }
     }
     callRef.current = null;
@@ -368,6 +404,10 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     setDuration(0);
     setIsMuted(false);
     setIsCameraOff(false);
+    setIsScreenSharing(false);
+    setIsDeafened(false);
+    setParticipants([]);
+    setRemoteScreenSharing(false);
     setEndReason(reason);
     setState('idle');
   }
@@ -382,7 +422,6 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     return { success: false, error: msg };
   }
 
-  /** ارسال یک رویداد تکی روی کانال تماس بدون اینکه تماس فعالی داشته باشیم (reject / busy). */
   async function sendOneShot(peerId, callId, event, data = {}) {
     const me = userRef.current;
     if (!me?.id) return;
@@ -396,13 +435,22 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     } finally {
       setTimeout(() => {
         if (callRef.current?.peerId !== String(peerId)) {
-          try {
-            unsubscribeFromWebRTC(me.id, peerId);
-          } catch {
-            /* ignore */
-          }
+          try { unsubscribeFromWebRTC(me.id, peerId); } catch { }
         }
       }, 1000);
+    }
+  }
+
+  async function renegotiate() {
+    const pc = pcRef.current;
+    const call = callRef.current;
+    if (!pc || !call) return;
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      sendSignal('call-offer', { sdp: { type: offer.type, sdp: offer.sdp }, renegotiate: true });
+    } catch (err) {
+      console.error('Renegotiation failed:', err);
     }
   }
 
@@ -417,7 +465,6 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     if (type !== 'audio' && type !== 'video') type = 'audio';
 
     const callId = newCallId();
-
     try {
       beginCall({ id: callId, peerId: targetUserId, peerName: targetUsername, type, role: 'caller' });
       setState('calling');
@@ -449,7 +496,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     try {
       await prepareLocalMedia(call.id, call.type);
       await openChannel(call.id);
-      createPeerConnection(); // قبل از اعلام آمادگی، pc و track ها آماده‌اند
+      createPeerConnection();
       sendSignal('call-accepted');
       return { success: true };
     } catch (err) {
@@ -470,16 +517,13 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   function endCall(reason = 'local-ended') {
     const call = callRef.current;
     if (!call) return;
-
     if (call.role === 'caller' && stateRef.current === 'calling') {
-      // callee احتمالاً هنوز روی کانال نیست، پس از مسیر سرور هم لغو می‌شود
       apiRequest('/api/calls/signal', {
         method: 'POST',
         body: JSON.stringify({ type: 'cancel', targetUserId: call.peerId, callId: call.id }),
       }).catch(() => { });
     }
     if (stateRef.current !== 'incoming') sendSignal('call-end', { reason });
-
     cleanup(reason);
   }
 
@@ -489,6 +533,21 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     const wasEnabled = tracks.some((t) => t.enabled);
     tracks.forEach((t) => (t.enabled = !wasEnabled));
     setIsMuted(wasEnabled);
+    setParticipants(prev => prev.map(p => p.isLocal ? { ...p, muted: wasEnabled } : p));
+  }
+
+  function toggleDeafen() {
+    setIsDeafened(prev => {
+      const next = !prev;
+      isDeafenedRef.current = next;
+      const stream = remoteStream;
+      if (stream) {
+        stream.getAudioTracks().forEach((track) => {
+          track.enabled = !next;
+        });
+      }
+      return next;
+    });
   }
 
   function toggleCamera() {
@@ -497,15 +556,102 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     const wasEnabled = tracks.some((t) => t.enabled);
     tracks.forEach((t) => (t.enabled = !wasEnabled));
     setIsCameraOff(wasEnabled);
+    setParticipants(prev => prev.map(p => p.isLocal ? { ...p, video: !wasEnabled } : p));
   }
 
-  useEffect(() => {
-    userRef.current = currentUser;
-    iceServersRef.current = iceServers;
-  }, [currentUser, iceServers]);
+  // 👈 توابع اسکرین‌شیر
+  async function stopScreenShareInternal() {
+    isScreenSharingDuringCallRef.current = false;
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(t => { t.onended = null; t.stop(); });
+      screenStreamRef.current = null;
+    }
+
+    let needsRenegotiation = false;
+    const pc = pcRef.current;
+    if (pc && screenVideoSenderRef.current) {
+      const sender = screenVideoSenderRef.current;
+      const camTrack = cameraStreamRef.current?.getVideoTracks()[0];
+      if (camTrack && !isCameraOffRef.current) {
+        await sender.replaceTrack(camTrack);
+        await setVideoSenderParameters(sender, 8_000_000);
+      } else {
+        pc.removeTrack(sender);
+        needsRenegotiation = true;
+      }
+      screenVideoSenderRef.current = null;
+    }
+
+    if (needsRenegotiation) {
+      await renegotiate();
+    } else {
+      sendSignal('call-stream-updated');
+    }
+    sendSignal('call-screen-unlock');
+
+    if (cameraStreamRef.current) {
+      localStreamRef.current = cameraStreamRef.current;
+      setLocalStream(cameraStreamRef.current);
+    }
+    setIsScreenSharing(false);
+    setParticipants(prev => prev.map(p => p.isLocal ? { ...p, screenSharing: false, video: !isCameraOffRef.current } : p));
+  }
+
+  async function toggleScreenShare() {
+    if (isScreenSharingDuringCallRef.current) {
+      await stopScreenShareInternal();
+      return;
+    }
+    const pc = pcRef.current;
+    if (!pc) return;
+
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always', frameRate: { ideal: 30, max: 60 } },
+        audio: false,
+      });
+      const screenTrack = screenStream.getVideoTracks()[0];
+      if (!screenTrack) { screenStream.getTracks().forEach(t => t.stop()); return; }
+
+      screenStreamRef.current = screenStream;
+      let needsRenegotiation = false;
+      const videoSender = pc.getSenders().find(s => s.track?.kind === 'video' && s.track.readyState === 'live');
+
+      if (videoSender) {
+        await videoSender.replaceTrack(screenTrack);
+        await setVideoSenderParameters(videoSender, 8_000_000);
+        screenVideoSenderRef.current = videoSender;
+      } else {
+        const newSender = await attachVideoTrack(pc, screenTrack, screenStream);
+        await setVideoSenderParameters(newSender, 8_000_000);
+        screenVideoSenderRef.current = newSender;
+        needsRenegotiation = true;
+      }
+
+      const micTrack = cameraStreamRef.current?.getAudioTracks()[0];
+      const local = new MediaStream(micTrack ? [screenTrack, micTrack] : [screenTrack]);
+      localStreamRef.current = local;
+      setLocalStream(local);
+
+      if (needsRenegotiation) await renegotiate();
+      else sendSignal('call-stream-updated');
+
+      sendSignal('call-screen-lock');
+
+      setIsScreenSharing(true);
+      isScreenSharingDuringCallRef.current = true;
+      setParticipants(prev => prev.map(p => p.isLocal ? { ...p, screenSharing: true, video: true } : p));
+
+      screenTrack.onended = async () => {
+        if (isScreenSharingDuringCallRef.current) await stopScreenShareInternal();
+      };
+    } catch (err) {
+      console.error('Cannot share screen:', err);
+    }
+  }
 
   // -------------------------------------------------------------------------
-  // رویدادهای ورودی: اعلان‌های سرور (روی کانال notifications)
+  // رویدادهای ورودی: اعلان‌ها
   // -------------------------------------------------------------------------
   function onIncoming(data) {
     const me = userRef.current;
@@ -521,16 +667,10 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
 
     try {
       beginCall({
-        id: callId,
-        peerId: callerId,
-        peerName: callerName || 'Unknown',
-        type: type === 'video' ? 'video' : 'audio',
-        role: 'callee',
+        id: callId, peerId: callerId, peerName: callerName || 'Unknown',
+        type: type === 'video' ? 'video' : 'audio', role: 'callee',
       });
-    } catch (err) {
-      console.warn('[WebRTC] incoming call error:', err);
-      return;
-    }
+    } catch (err) { console.warn(err); return; }
 
     setState('incoming');
     ringTimerRef.current = setTimeout(() => cleanup('missed'), ringTimeout);
@@ -543,25 +683,22 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   }
 
   // -------------------------------------------------------------------------
-  // رویدادهای ورودی: سیگنالینگ روی کانال تماس
+  // رویدادهای ورودی: سیگنالینگ
   // -------------------------------------------------------------------------
   const isCurrent = (data) => callRef.current && data?.callId === callRef.current.id;
 
   async function onAccepted(data) {
     const call = callRef.current;
     if (!isCurrent(data) || call.role !== 'caller' || stateRef.current !== 'calling') return;
-
     clearTimeout(ringTimerRef.current);
     ringTimerRef.current = null;
     setState('connecting');
-
     try {
       const pc = createPeerConnection();
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       assertActive(call.id);
-      const { type, sdp } = pc.localDescription;
-      sendSignal('call-offer', { sdp: { type, sdp } });
+      sendSignal('call-offer', { sdp: { type: offer.type, sdp: offer.sdp } });
     } catch (err) {
       const r = failCall(call.id, err);
       if (!r.aborted) sendSignal('call-end', { reason: 'error' });
@@ -571,16 +708,26 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   async function onOffer(data) {
     const call = callRef.current;
     const pc = pcRef.current;
-    if (!isCurrent(data) || call.role !== 'callee' || !pc || !data.sdp) return;
+    if (!isCurrent(data) || !pc || !data.sdp) return;
 
+    if (data.renegotiate) {
+      if (pc.signalingState !== 'stable') return;
+      await pc.setRemoteDescription(data.sdp);
+      await flushPendingRemoteCandidates();
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      sendSignal('call-answer', { sdp: { type: answer.type, sdp: answer.sdp } });
+      return;
+    }
+
+    if (call.role !== 'callee') return;
     try {
       await pc.setRemoteDescription(data.sdp);
       await flushPendingRemoteCandidates();
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       assertActive(call.id);
-      const { type, sdp } = pc.localDescription;
-      sendSignal('call-answer', { sdp: { type, sdp } });
+      sendSignal('call-answer', { sdp: { type: answer.type, sdp: answer.sdp } });
     } catch (err) {
       const r = failCall(call.id, err);
       if (!r.aborted) sendSignal('call-end', { reason: 'error' });
@@ -591,7 +738,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     const call = callRef.current;
     const pc = pcRef.current;
     if (!isCurrent(data) || call.role !== 'caller' || !pc || !data.sdp) return;
-
+    if (pc.signalingState !== 'have-local-offer') return;
     try {
       await pc.setRemoteDescription(data.sdp);
       await flushPendingRemoteCandidates();
@@ -604,16 +751,11 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   async function onIceCandidates(data) {
     if (!isCurrent(data) || !Array.isArray(data.candidates)) return;
     const pc = pcRef.current;
-
     for (const candidate of data.candidates) {
       if (pc && pc.remoteDescription) {
-        try {
-          await pc.addIceCandidate(candidate);
-        } catch (err) {
-          console.warn('[WebRTC] addIceCandidate failed:', err);
-        }
+        try { await pc.addIceCandidate(candidate); } catch { }
       } else {
-        pendingRemoteCandidatesRef.current.push(candidate); // قبل از remoteDescription صف می‌شود
+        pendingRemoteCandidatesRef.current.push(candidate);
       }
     }
   }
@@ -629,46 +771,46 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     cleanup('remote-ended');
   }
 
+  // 👈 لیسنرهای جدید برای اسکرین‌شیر
+  function onStreamUpdated() {
+    if (!callRef.current) return;
+    // در این حالت، دریافت‌کننده‌ها به‌طور خودکار track جدید را دریافت می‌کنند
+  }
+
+  function onScreenLock() {
+    setRemoteScreenSharing(true);
+    setParticipants(prev => prev.map(p => !p.isLocal ? { ...p, screenSharing: true, video: true } : p));
+  }
+
+  function onScreenUnlock() {
+    setRemoteScreenSharing(false);
+    setParticipants(prev => prev.map(p => !p.isLocal ? { ...p, screenSharing: false, video: false } : p));
+  }
+
   useEffect(() => {
     actionsRef.current = {
-      startCall,
-      acceptCall,
-      rejectCall,
-      endCall,
-      toggleMute,
-      toggleCamera,
-      onIncoming,
-      onCancelled,
-      onAccepted,
-      onOffer,
-      onAnswer,
-      onIceCandidates,
-      onReject,
-      onRemoteEnd,
+      startCall, acceptCall, rejectCall, endCall,
+      toggleMute, toggleDeafen, toggleCamera, toggleScreenShare,
+      onIncoming, onCancelled, onAccepted, onOffer, onAnswer,
+      onIceCandidates, onReject, onRemoteEnd,
+      onStreamUpdated, onScreenLock, onScreenUnlock,
     };
   });
 
   // -------------------------------------------------------------------------
   // Effect ها
   // -------------------------------------------------------------------------
-
-  // اعلان تماس ورودی از کانال notifications (کانال را useChat هم subscribe می‌کند؛ subscribe تکراری بی‌خطر است)
   const userId = currentUser?.id;
   useEffect(() => {
-    if (!connected || userId == null) return undefined;
-
+    if (!connected || userId == null) return;
     let channelName;
     try {
       subscribeToNotifications(userId);
       channelName = getNotificationChannelName(userId);
-    } catch (err) {
-      console.warn('[WebRTC] notifications subscribe error:', err);
-      return undefined;
-    }
+    } catch { return; }
 
     const handleIncoming = (d) => actionsRef.current.onIncoming?.(d);
     const handleCancelled = (d) => actionsRef.current.onCancelled?.(d);
-
     bindEvent(channelName, 'incoming-call', handleIncoming);
     bindEvent(channelName, 'call-cancelled', handleCancelled);
 
@@ -678,20 +820,17 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     };
   }, [connected, userId]);
 
-  // مدت تماس
   useEffect(() => {
-    if (callState !== 'connected') return undefined;
+    if (callState !== 'connected') return;
     const startedAt = Date.now();
     const id = setInterval(() => setDuration(Math.floor((Date.now() - startedAt) / 1000)), 1000);
     return () => clearInterval(id);
   }, [callState]);
 
-  // اگر کاربر خارج شد، تماس قطع شود
   useEffect(() => {
     if (userId == null) actionsRef.current.endCall?.('local-ended');
   }, [userId]);
 
-  // بستن تب / unmount
   useEffect(() => {
     const onPageHide = () => actionsRef.current.endCall?.('local-ended');
     window.addEventListener('pagehide', onPageHide);
@@ -709,25 +848,34 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   const rejectCallStable = useCallback(() => actionsRef.current.rejectCall(), []);
   const endCallStable = useCallback(() => actionsRef.current.endCall('local-ended'), []);
   const toggleMuteStable = useCallback(() => actionsRef.current.toggleMute(), []);
+  const toggleDeafenStable = useCallback(() => actionsRef.current.toggleDeafen(), []);
   const toggleCameraStable = useCallback(() => actionsRef.current.toggleCamera(), []);
+  const toggleScreenShareStable = useCallback(() => actionsRef.current.toggleScreenShare(), []);
 
   return {
-    callState, // idle | calling | incoming | connecting | connected
-    callType, // 'audio' | 'video' | null
-    peer, // { id, username } | null
+    callState,
+    callType,
+    peer,
     incomingCall: callState === 'incoming' ? { peer, callType } : null,
     localStream,
     remoteStream,
     isMuted,
     isCameraOff,
-    duration, // ثانیه
+    duration,
     error,
-    endReason, // کد دلیل پایان تماس (متن: END_REASON_TEXT[endReason])
-    startCall: startCallStable, // (targetUserId, targetUsername, 'audio' | 'video')
+    endReason,
+    // 👈 خروجی‌های جدید
+    isScreenSharing,
+    isDeafened,
+    remoteScreenSharing,
+    participants,
+    startCall: startCallStable,
     acceptCall: acceptCallStable,
     rejectCall: rejectCallStable,
     endCall: endCallStable,
     toggleMute: toggleMuteStable,
+    toggleDeafen: toggleDeafenStable,
     toggleCamera: toggleCameraStable,
+    toggleScreenShare: toggleScreenShareStable,
   };
 }
