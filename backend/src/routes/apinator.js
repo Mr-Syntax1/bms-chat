@@ -1,7 +1,7 @@
 import express from 'express';
 import { apinator } from '../config/apinator.js';
 import { verifyToken } from '../utils/jwt.js';
-import isRoomMember from '../services/roomService.js';
+import { isRoomMember } from '../services/roomService.js';
 // ⚠️ این تابع را خودتان باید بسازید (نمونه در پایین فایل آمده است)
 
 export const apinatorRouter = express.Router();
