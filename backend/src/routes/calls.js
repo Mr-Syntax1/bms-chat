@@ -134,11 +134,15 @@ callsRouter.post('/signal', requireAuth, rateLimit, async (req, res) => {
 
       try {
         // هویت caller از توکن می‌آید، نه از بدنه‌ی درخواست؛ پس قابل جعل نیست
-        await apinator.trigger(channel, 'incoming-call', {
-          callId,
-          callerId: me.id,
-          callerName: me.username,
-          callType: callType === 'video' ? 'video' : 'audio',
+        await apinator.trigger({
+          name: 'incoming-call',
+          channel: channel,
+          data: JSON.stringify({
+            callId,
+            callerId: me.id,
+            callerName: me.username,
+            callType: callType === 'video' ? 'video' : 'audio',
+          }),
         });
       } catch (err) {
         pendingCalls.delete(callId);
@@ -151,9 +155,13 @@ callsRouter.post('/signal', requireAuth, rateLimit, async (req, res) => {
       }
       pendingCalls.delete(callId);
 
-      await apinator.trigger(channel, 'call-cancelled', {
-        callId,
-        callerId: me.id,
+      await apinator.trigger({
+        name: 'call-cancelled',
+        channel: channel,
+        data: JSON.stringify({
+          callId,
+          callerId: me.id,
+        }),
       });
     }
 
