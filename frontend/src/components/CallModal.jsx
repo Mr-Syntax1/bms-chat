@@ -42,7 +42,7 @@ export default function CallModal({
     // پراپ‌های هماهنگ‌شده با API جدید هوک
     isCalling,
     incomingCall,
-    remoteUser,
+    remoteUser, // در هوک جدید این همان peer است
     localStream,
     remoteStream,
     callState,
@@ -58,7 +58,7 @@ export default function CallModal({
     onToggleMute,
     onToggleVideo,
     user,
-    // پراپ‌های اختیاری (که ممکن است در هوک جدید مقدار نداشته باشند ولی برای UI لازم هستند)
+    // پراپ‌های جدید از هوک
     participants = [],
     remoteScreenSharing = false,
     isScreenSharing = false,
@@ -319,13 +319,13 @@ export default function CallModal({
         if (isCalling && (callState === 'connected' || callState === 'connecting')) {
             const showRemoteVideo = hasLiveVideo(remoteStream);
             const localHasVideo = hasLiveVideo(localStream);
-            const showLocalVideo =
-                localHasVideo || (isVideoOn && callState === 'connected') || isScreenSharing;
+            const showLocalVideo = localHasVideo || (isVideoOn && callState === 'connected') || isScreenSharing;
 
             return (
                 <div className="fixed inset-0 bg-[#000000] z-50 flex flex-col animate-fade-in">
                     <div className="flex-1 flex relative overflow-hidden">
                         <div className="flex-1 flex items-center justify-center relative bg-[#313338]">
+                            {/* Remote Video (Center - Full) */}
                             <video
                                 ref={remoteVideoRef}
                                 autoPlay
@@ -335,6 +335,7 @@ export default function CallModal({
                                     showRemoteVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'
                                 }`}
                             />
+
                             {!showRemoteVideo && (
                                 <div className="flex flex-col items-center gap-6 text-center relative z-10">
                                     <div className="relative">
@@ -367,6 +368,8 @@ export default function CallModal({
                                     </div>
                                 </div>
                             )}
+
+                            {/* Remote Name Badge / Screen Share Indicator */}
                             {showRemoteVideo && (
                                 <div className="absolute bottom-6 right-6 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-lg text-[#f2f3f5] text-sm font-semibold flex items-center gap-2">
                                     {remoteUser?.username}
@@ -383,6 +386,8 @@ export default function CallModal({
                                     )}
                                 </div>
                             )}
+
+                            {/* Audio Blocked Button */}
                             {audioBlocked && callState === 'connected' && (
                                 <button
                                     type="button"
@@ -395,6 +400,8 @@ export default function CallModal({
                                     برای پخش صدا کلیک کنید
                                 </button>
                             )}
+
+                            {/* Local Video (Top Right - Small Rectangle/PIP) */}
                             {showLocalVideo && (
                                 <div className="absolute top-5 right-5 w-52 aspect-video bg-[#1e1f22] rounded-xl overflow-hidden border border-white/10 shadow-2xl z-10 transition-all hover:scale-105 hover:z-20">
                                     <video
@@ -416,6 +423,8 @@ export default function CallModal({
                                     </div>
                                 </div>
                             )}
+
+                            {/* Call Duration */}
                             {callState === 'connected' && (
                                 <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full text-[#f2f3f5] font-mono text-xs font-semibold shadow-lg border border-white/5 flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#ed4245] animate-pulse" />
@@ -423,6 +432,7 @@ export default function CallModal({
                                 </div>
                             )}
 
+                            {/* Participants Toggle Button */}
                             {participants.length > 0 && (
                                 <button
                                     type="button"
@@ -447,6 +457,7 @@ export default function CallModal({
                             )}
                         </div>
 
+                        {/* Participants Panel (Right Sidebar) */}
                         {showParticipants && (
                             <div className="w-72 bg-[#1e1f22] border-l border-black/40 flex flex-col animate-slide-in-right">
                                 <div className="px-4 py-3.5 border-b border-white/[0.04] flex items-center justify-between">
@@ -465,6 +476,7 @@ export default function CallModal({
                                     </button>
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                                    {/* Me */}
                                     <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#383a40]/50 transition-colors group">
                                         <div className="relative">
                                             <div className={`w-9 h-9 rounded-full ${getColorFromName(user?.username)} flex items-center justify-center text-sm font-bold text-white`}>
@@ -495,6 +507,7 @@ export default function CallModal({
                                             )}
                                         </div>
                                     </div>
+                                    {/* Others */}
                                     {participants
                                         .filter((p) => !p.isLocal)
                                         .map((p) => (
@@ -542,6 +555,7 @@ export default function CallModal({
                         )}
                     </div>
 
+                    {/* Control Bar */}
                     <div className="h-24 flex items-center justify-center gap-2.5 px-4 pb-5">
                         <div className="flex items-center gap-2.5 bg-[#1e1f22]/90 backdrop-blur-xl px-4 py-2.5 rounded-full border border-white/[0.04] shadow-2xl">
                             <ControlButton
