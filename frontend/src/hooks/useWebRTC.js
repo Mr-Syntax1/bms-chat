@@ -171,9 +171,6 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   const iceServersRef = useRef(iceServers);
   const actionsRef = useRef({});
 
-  userRef.current = currentUser;
-  iceServersRef.current = iceServers;
-
   // -------------------------------------------------------------------------
   // کمک‌ها
   // -------------------------------------------------------------------------
@@ -479,7 +476,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       apiRequest('/api/calls/signal', {
         method: 'POST',
         body: JSON.stringify({ type: 'cancel', targetUserId: call.peerId, callId: call.id }),
-      }).catch(() => {});
+      }).catch(() => { });
     }
     if (stateRef.current !== 'incoming') sendSignal('call-end', { reason });
 
@@ -501,6 +498,11 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     tracks.forEach((t) => (t.enabled = !wasEnabled));
     setIsCameraOff(wasEnabled);
   }
+
+  useEffect(() => {
+    userRef.current = currentUser;
+    iceServersRef.current = iceServers;
+  }, [currentUser, iceServers]);
 
   // -------------------------------------------------------------------------
   // رویدادهای ورودی: اعلان‌های سرور (روی کانال notifications)
@@ -627,22 +629,24 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     cleanup('remote-ended');
   }
 
-  actionsRef.current = {
-    startCall,
-    acceptCall,
-    rejectCall,
-    endCall,
-    toggleMute,
-    toggleCamera,
-    onIncoming,
-    onCancelled,
-    onAccepted,
-    onOffer,
-    onAnswer,
-    onIceCandidates,
-    onReject,
-    onRemoteEnd,
-  };
+  useEffect(() => {
+    actionsRef.current = {
+      startCall,
+      acceptCall,
+      rejectCall,
+      endCall,
+      toggleMute,
+      toggleCamera,
+      onIncoming,
+      onCancelled,
+      onAccepted,
+      onOffer,
+      onAnswer,
+      onIceCandidates,
+      onReject,
+      onRemoteEnd,
+    };
+  });
 
   // -------------------------------------------------------------------------
   // Effect ها
