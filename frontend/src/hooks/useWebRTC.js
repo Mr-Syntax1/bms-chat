@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   apinator,
   subscribeToWebRTC,
@@ -7,919 +7,723 @@ import {
   bindClientEvent,
   unbindClientEvent,
   triggerClientEvent,
-  isChannelSubscribed,
+  subscribeToNotifications,
+  getNotificationChannelName,
+  bindEvent,
+  unbindEvent,
 } from '../lib/apinator';
+import { apiRequest } from './useChat'; // ⚠️ در useChat.js باید `export` به apiRequest اضافه شود
 
-const setVideoSenderParameters = async (sender, maxBitrate = 8_000_000) => {
-  if (!sender || !sender.track || sender.track.kind !== 'video') return;
-  try {
-    const params = sender.getParameters();
-    if (!params.encodings || params.encodings.length === 0) {
-      params.encodings = [{}];
-    }
-    params.encodings[0].maxBitrate = maxBitrate;
-    await sender.setParameters(params);
-    console.log(`[WebRTC] Video sender bitrate set to ${maxBitrate / 1_000_000} Mbps`);
-  } catch (err) {
-    console.warn('[WebRTC] Could not set video sender parameters:', err);
-  }
+/*
+ * ===========================================================================
+ * معماری سیگنالینگ
+ * ===========================================================================
+ * ۱) دعوت به تماس (callee هنوز روی کانال تماس subscribe نیست):
+ *      caller ──POST /api/calls/signal──► سرور ──'incoming-call'──► private-notifications-<callee>
+ *    (سرور هویت caller را از توکن می‌گذارد، پس قابل جعل نیست)
+ *
+ * ۲) بقیه‌ی سیگنالینگ روی کانال دو نفره‌ی private-webrtc-<a>-<b> و با client event:
+ *      callee  ── call-accepted ──► caller      (callee روی کانال آماده است)
+ *      caller  ── call-offer    ──► callee
+ *      callee  ── call-answer   ──► caller
+ *      هر دو   ── ice-candidates (دسته‌ای) ──►
+ *      هر دو   ── call-end / call-reject ──►
+ *
+ * handshake ی call-accepted باعث می‌شود offer قبل از subscribe شدن callee ارسال نشود.
+ * ===========================================================================
+ */
+
+const ABORTED = 'CALL_ABORTED';
+const ICE_FLUSH_DELAY = 150; // ms (برای رعایت rate limit رویدادهای client)
+const DISCONNECT_GRACE = 8000; // ms
+const SUBSCRIBE_TIMEOUT = 10000; // ms
+
+export const END_REASON_TEXT = {
+  'local-ended': 'تماس پایان یافت',
+  'remote-ended': 'طرف مقابل تماس را پایان داد',
+  rejected: 'تماس رد شد',
+  busy: 'کاربر در تماس دیگری است',
+  'no-answer': 'پاسخی داده نشد',
+  cancelled: 'تماس لغو شد',
+  missed: 'تماس بی‌پاسخ',
+  'rejected-local': 'تماس را رد کردید',
+  'connection-lost': 'ارتباط قطع شد',
+  'connection-failed': 'برقراری ارتباط ناموفق بود',
+  error: 'خطا در تماس',
+  unmounted: 'تماس پایان یافت',
 };
 
-const sendWebRTCWithCheck = (channelName, eventName, payload) => {
-  if (!isChannelSubscribed(channelName)) {
-    console.warn(`[WebRTC] Cannot send "${eventName}" on channel "${channelName}": not subscribed`);
-    return false;
+// ---------------------------------------------------------------------------
+// توابع کمکی
+// ---------------------------------------------------------------------------
+function buildIceServers(custom) {
+  if (Array.isArray(custom) && custom.length) return custom;
+
+  const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+
+  const turnUrl = import.meta.env.VITE_TURN_URL;
+  if (turnUrl) {
+    servers.push({
+      urls: turnUrl.split(',').map((u) => u.trim()),
+      username: import.meta.env.VITE_TURN_USERNAME,
+      credential: import.meta.env.VITE_TURN_CREDENTIAL,
+    });
   }
-  return triggerClientEvent(channelName, eventName, payload);
-};
+  return servers;
+}
 
-// تابع کمکی برای انتظار امن برای سابسکرایب شدن کانال
-const waitForSubscription = (channelName, timeoutMs = 5000) => {
-  return new Promise((resolve, reject) => {
-    const channel = apinator.channel(channelName);
-    
-    if (channel && channel.subscribed === true) {
-      resolve();
-      return;
-    }
+const newCallId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('Subscription timeout'));
-    }, timeoutMs);
-
-    const onSubscribed = () => {
-      cleanup();
-      resolve();
-    };
-
-    const cleanup = () => {
-      clearTimeout(timeout);
-      if (channel) {
-        channel.unbind('realtime:subscription_succeeded', onSubscribed);
-      }
-    };
-
-    if (channel) {
-      channel.bind('realtime:subscription_succeeded', onSubscribed);
+function stopStream(stream) {
+  stream?.getTracks().forEach((t) => {
+    try {
+      t.stop();
+    } catch {
+      /* ignore */
     }
   });
-};
+}
 
-export function useWebRTC(currentUser) {
-  const [isCalling, setIsCalling] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(null);
-  const [remoteUser, setRemoteUser] = useState(null);
+async function getMedia(type) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('مرورگر شما از تماس پشتیبانی نمی‌کند (نیازمند HTTPS است)');
+  }
+  return navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    video: type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
+  });
+}
+
+function errorMessage(err) {
+  switch (err?.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'دسترسی به میکروفون/دوربین مجاز نیست';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'میکروفون یا دوربین پیدا نشد';
+    case 'NotReadableError':
+      return 'میکروفون یا دوربین توسط برنامه‌ی دیگری استفاده می‌شود';
+    default:
+      return err?.message || 'خطای ناشناخته در تماس';
+  }
+}
+
+/** صبر می‌کند تا subscribe روی کانال کامل شود. */
+function waitForSubscription(channelName, timeout = SUBSCRIBE_TIMEOUT) {
+  return new Promise((resolve, reject) => {
+    const channel = apinator.channel(channelName);
+    if (!channel) return reject(new Error('کانال تماس در دسترس نیست'));
+    if (channel.subscribed === true) return resolve(channel);
+
+    let timer;
+    const done = (fn, arg) => {
+      clearTimeout(timer);
+      channel.unbind('realtime:subscription_succeeded', onOk);
+      channel.unbind('realtime:subscription_error', onErr);
+      fn(arg);
+    };
+    const onOk = () => done(resolve, channel);
+    const onErr = () => done(reject, new Error('دسترسی به کانال تماس رد شد'));
+
+    channel.bind('realtime:subscription_succeeded', onOk);
+    channel.bind('realtime:subscription_error', onErr); // ✱ نام رویداد را با مستندات چک کنید
+    timer = setTimeout(() => done(reject, new Error('اتصال به کانال تماس زمان‌بر شد')), timeout);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+/**
+ * @param {object}   options
+ * @param {{id: string|number, username?: string}} options.currentUser کاربر لاگین‌شده
+ * @param {boolean}  [options.connected=true]  وضعیت اتصال از useChat (برای bind شدن اعلان تماس)
+ * @param {RTCIceServer[]} [options.iceServers] جایگزین STUN/TURN پیش‌فرض
+ * @param {number}   [options.ringTimeout=35000] مدت زنگ خوردن (ms)
+ */
+export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeout = 35000 } = {}) {
+  // callState: idle | calling | incoming | connecting | connected
+  const [callState, setCallStateRaw] = useState('idle');
+  const [callType, setCallType] = useState(null);
+  const [peer, setPeer] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
-  const [callState, setCallState] = useState('idle');
-  const [callType, setCallType] = useState('audio');
-  const [participants, setParticipants] = useState([]);
-
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOn, setIsVideoOn] = useState(false);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isDeafened, setIsDeafened] = useState(false);
-  const [remoteStreamVersion, setRemoteStreamVersion] = useState(0);
-  const [remoteScreenSharing, setRemoteScreenSharing] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [error, setError] = useState(null);
+  const [endReason, setEndReason] = useState(null);
 
-  const peerRef = useRef(null);
+  const stateRef = useRef('idle');
+  const callRef = useRef(null); // { id, peerId, peerName, type, role, channelName, bound }
+  const pcRef = useRef(null);
   const localStreamRef = useRef(null);
-  const cameraStreamRef = useRef(null);
-  const screenStreamRef = useRef(null);
-  const pendingCandidatesRef = useRef([]);
-  const isInitiatorRef = useRef(false);
-  const targetUserIdRef = useRef(null);
-  const callStateRef = useRef(callState);
-  const remoteStreamRef = useRef(null);
-  const isScreenSharingDuringCallRef = useRef(false);
-  const screenVideoSenderRef = useRef(null);
-  const screenAudioSenderRef = useRef(null);
-  const isDeafenedRef = useRef(false);
-  const isVideoOnRef = useRef(false);
-  const pendingRenegotiationRef = useRef(false);
-  const endCallRef = useRef(null);
-  const webrtcChannelRef = useRef(null);
-  const webrtcHandlersRef = useRef({});
+  const pendingRemoteCandidatesRef = useRef([]);
+  const outboundCandidatesRef = useRef([]);
+  const iceFlushTimerRef = useRef(null);
+  const ringTimerRef = useRef(null);
+  const disconnectTimerRef = useRef(null);
+  const userRef = useRef(currentUser);
+  const iceServersRef = useRef(iceServers);
+  const actionsRef = useRef({});
 
-  useEffect(() => {
-    callStateRef.current = callState;
-  }, [callState]);
+  userRef.current = currentUser;
+  iceServersRef.current = iceServers;
 
-  useEffect(() => {
-    isVideoOnRef.current = isVideoOn;
-  }, [isVideoOn]);
+  // -------------------------------------------------------------------------
+  // کمک‌ها
+  // -------------------------------------------------------------------------
+  function setState(next) {
+    stateRef.current = next;
+    setCallStateRaw(next);
+  }
 
-  useEffect(() => {
-    isDeafenedRef.current = isDeafened;
-  }, [isDeafened]);
+  function assertActive(callId) {
+    if (callRef.current?.id !== callId) throw new Error(ABORTED);
+  }
 
-  const syncRemoteStream = useCallback((tracks) => {
-    const live = tracks.filter((t) => t && t.readyState !== 'ended');
-    const audioTracks = live.filter((t) => t.kind === 'audio');
-    const videoTracks = live.filter((t) => t.kind === 'video');
+  function clearTimers() {
+    clearTimeout(ringTimerRef.current);
+    clearTimeout(iceFlushTimerRef.current);
+    clearTimeout(disconnectTimerRef.current);
+    ringTimerRef.current = null;
+    iceFlushTimerRef.current = null;
+    disconnectTimerRef.current = null;
+  }
 
-    const activeVideo =
-      [...videoTracks].reverse().find((t) => !t.muted) ||
-      videoTracks[videoTracks.length - 1];
-
-    const newStream = new MediaStream();
-    audioTracks.forEach((t) => {
-      t.enabled = !isDeafenedRef.current;
-      newStream.addTrack(t);
+  function sendSignal(event, data = {}) {
+    const call = callRef.current;
+    if (!call) return false;
+    return triggerClientEvent(call.channelName, event, {
+      callId: call.id,
+      from: userRef.current?.id,
+      ...data,
     });
-    if (activeVideo) newStream.addTrack(activeVideo);
+  }
 
-    remoteStreamRef.current = newStream;
-    setRemoteStream(newStream);
-    setRemoteStreamVersion((v) => v + 1);
-  }, []);
+  function flushIce() {
+    clearTimeout(iceFlushTimerRef.current);
+    iceFlushTimerRef.current = null;
+    const batch = outboundCandidatesRef.current.splice(0);
+    if (batch.length) sendSignal('ice-candidates', { candidates: batch });
+  }
 
-  const attachVideoTrack = async (peer, track, stream) => {
-    const reusable = peer
-      .getTransceivers()
-      .find(
-        (t) =>
-          t.receiver?.track?.kind === 'video' &&
-          t.currentDirection !== 'stopped' &&
-          !t.sender.track
-      );
-    if (reusable) {
-      await reusable.sender.replaceTrack(track);
-      reusable.direction = 'sendrecv';
-      return reusable.sender;
+  function beginCall({ id, peerId, peerName, type, role }) {
+    const me = userRef.current;
+    const channelName = getWebRTCChannelName(me.id, peerId);
+    callRef.current = { id, peerId: String(peerId), peerName, type, role, channelName, bound: [] };
+    pendingRemoteCandidatesRef.current = [];
+    outboundCandidatesRef.current = [];
+    setPeer({ id: String(peerId), username: peerName });
+    setCallType(type);
+    setError(null);
+    setEndReason(null);
+    setIsMuted(false);
+    setIsCameraOff(false);
+    setDuration(0);
+  }
+
+  async function prepareLocalMedia(callId, type) {
+    const stream = await getMedia(type);
+    if (callRef.current?.id !== callId) {
+      stopStream(stream);
+      throw new Error(ABORTED);
     }
-    return peer.addTrack(track, stream);
-  };
+    localStreamRef.current = stream;
+    setLocalStream(stream);
+  }
 
-  const syncFromPeer = useCallback(() => {
-    if (!peerRef.current) return;
-    const tracks = peerRef.current
-      .getReceivers()
-      .map((r) => r.track)
-      .filter((t) => t && t.readyState !== 'ended');
-    syncRemoteStream(tracks);
-  }, [syncRemoteStream]);
+  async function openChannel(callId) {
+    const call = callRef.current;
+    const me = userRef.current;
+    subscribeToWebRTC(me.id, call.peerId);
 
-  const attachTrackHandlers = useCallback(() => {
-    if (!peerRef.current) return;
-    peerRef.current.getReceivers().forEach((receiver) => {
-      const track = receiver.track;
-      if (!track || track._callHandlersAttached) return;
-      track._callHandlersAttached = true;
-      track.onunmute = () => syncFromPeer();
-      track.onended = () => setTimeout(syncFromPeer, 100);
+    const on = (event, handlerName) => {
+      const fn = (data) => actionsRef.current[handlerName]?.(data);
+      bindClientEvent(call.channelName, event, fn);
+      call.bound.push([event, fn]);
+    };
+    on('call-accepted', 'onAccepted');
+    on('call-offer', 'onOffer');
+    on('call-answer', 'onAnswer');
+    on('ice-candidates', 'onIceCandidates');
+    on('call-reject', 'onReject');
+    on('call-end', 'onRemoteEnd');
+
+    await waitForSubscription(call.channelName);
+    assertActive(callId);
+  }
+
+  function createPeerConnection() {
+    const pc = new RTCPeerConnection({
+      iceServers: buildIceServers(iceServersRef.current),
+      bundlePolicy: 'max-bundle',
     });
-  }, [syncFromPeer]);
+    pcRef.current = pc;
 
-  const sendWebRTC = useCallback((eventName, payload) => {
-    if (!webrtcChannelRef.current || !targetUserIdRef.current) return;
-    sendWebRTCWithCheck(webrtcChannelRef.current, eventName, payload);
-  }, []);
+    const local = localStreamRef.current;
+    local?.getTracks().forEach((track) => pc.addTrack(track, local));
 
-  const endCall = useCallback(() => {
-    console.log('[WebRTC] Ending call');
-
-    const userId = currentUser?.id;
-    const targetId = targetUserIdRef.current;
-    const channelName = webrtcChannelRef.current;
-
-    if (channelName && targetId) {
-      if (peerRef.current) {
-        if (isScreenSharingDuringCallRef.current) {
-          sendWebRTC('webrtc-screen-unlock', {
-            targetUserId: targetId,
-          });
-        }
-        sendWebRTC('webrtc-hangup', { targetUserId: targetId });
+    const fallbackRemote = new MediaStream();
+    pc.ontrack = (event) => {
+      if (pcRef.current !== pc) return;
+      if (event.streams[0]) {
+        setRemoteStream(event.streams[0]);
+      } else {
+        fallbackRemote.addTrack(event.track);
+        setRemoteStream(fallbackRemote);
       }
+    };
 
-      webrtcChannelRef.current = null;
-
-      setTimeout(() => {
-        if (!userId || !targetId) return;
-        try {
-          unsubscribeFromWebRTC(userId, targetId);
-        } catch (err) {
-          console.warn('[WebRTC] Unsubscribe error:', err);
+    pc.onicecandidate = (event) => {
+      if (pcRef.current !== pc) return;
+      if (event.candidate) {
+        outboundCandidatesRef.current.push(event.candidate.toJSON());
+        if (!iceFlushTimerRef.current) {
+          iceFlushTimerRef.current = setTimeout(flushIce, ICE_FLUSH_DELAY);
         }
-      }, 200);
+      } else {
+        flushIce(); // پایان جمع‌آوری candidate ها
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (pcRef.current !== pc) return;
+      const s = pc.connectionState;
+
+      if (s === 'connected') {
+        clearTimeout(disconnectTimerRef.current);
+        disconnectTimerRef.current = null;
+        if (stateRef.current !== 'connected') setState('connected');
+      } else if (s === 'disconnected') {
+        if (!disconnectTimerRef.current) {
+          disconnectTimerRef.current = setTimeout(
+            () => actionsRef.current.endCall('connection-lost'),
+            DISCONNECT_GRACE
+          );
+        }
+      } else if (s === 'failed') {
+        setError('برقراری ارتباط ناموفق بود (ممکن است به TURN نیاز باشد)');
+        actionsRef.current.endCall('connection-failed');
+      }
+    };
+
+    return pc;
+  }
+
+  async function flushPendingRemoteCandidates() {
+    const pc = pcRef.current;
+    if (!pc) return;
+    const list = pendingRemoteCandidatesRef.current.splice(0);
+    for (const c of list) {
+      try {
+        await pc.addIceCandidate(c);
+      } catch (err) {
+        console.warn('[WebRTC] addIceCandidate failed:', err);
+      }
+    }
+  }
+
+  /** همه‌چیز را جمع می‌کند و به حالت idle برمی‌گردد. */
+  function cleanup(reason) {
+    const call = callRef.current;
+    clearTimers();
+    outboundCandidatesRef.current = [];
+    pendingRemoteCandidatesRef.current = [];
+
+    const pc = pcRef.current;
+    pcRef.current = null;
+    if (pc) {
+      pc.onicecandidate = null;
+      pc.ontrack = null;
+      pc.onconnectionstatechange = null;
+      try {
+        pc.close();
+      } catch {
+        /* ignore */
+      }
     }
 
-    if (peerRef.current) {
-      peerRef.current.close();
-      peerRef.current = null;
-    }
-    if (cameraStreamRef.current) {
-      cameraStreamRef.current.getTracks().forEach((t) => t.stop());
-      cameraStreamRef.current = null;
-    }
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach((t) => {
-        t.onended = null;
-        t.stop();
-      });
-      screenStreamRef.current = null;
-    }
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((t) => t.stop());
-      localStreamRef.current = null;
-    }
-    if (remoteStreamRef.current) {
-      remoteStreamRef.current.getTracks().forEach((t) => t.stop());
-      remoteStreamRef.current = null;
-    }
+    stopStream(localStreamRef.current);
+    localStreamRef.current = null;
 
-    pendingCandidatesRef.current = [];
-    pendingRenegotiationRef.current = false;
-    targetUserIdRef.current = null;
-    isInitiatorRef.current = false;
-    isScreenSharingDuringCallRef.current = false;
-    screenVideoSenderRef.current = null;
-    screenAudioSenderRef.current = null;
-    isDeafenedRef.current = false;
+    if (call) {
+      for (const [event, fn] of call.bound) unbindClientEvent(call.channelName, event, fn);
+      const me = userRef.current;
+      if (me?.id) {
+        try {
+          unsubscribeFromWebRTC(me.id, call.peerId);
+        } catch (err) {
+          console.warn('[WebRTC] unsubscribe error:', err);
+        }
+      }
+    }
+    callRef.current = null;
 
-    setIsCalling(false);
-    setIncomingCall(null);
-    setRemoteUser(null);
     setLocalStream(null);
     setRemoteStream(null);
-    setCallState('ended');
+    setPeer(null);
+    setCallType(null);
+    setDuration(0);
     setIsMuted(false);
-    setIsVideoOn(false);
-    setIsScreenSharing(false);
-    setIsDeafened(false);
-    setParticipants([]);
-    setRemoteScreenSharing(false);
-  }, [currentUser, sendWebRTC]);
+    setIsCameraOff(false);
+    setEndReason(reason);
+    setState('idle');
+  }
 
-  useEffect(() => {
-    endCallRef.current = endCall;
-  }, [endCall]);
+  function failCall(callId, err) {
+    if (err?.message === ABORTED) return { success: false, aborted: true };
+    const msg = errorMessage(err);
+    if (callRef.current?.id === callId) {
+      setError(msg);
+      cleanup('error');
+    }
+    return { success: false, error: msg };
+  }
 
-  const createPeer = useCallback(
-    (targetUserId) => {
-      const peer = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-        ],
+  /** ارسال یک رویداد تکی روی کانال تماس بدون اینکه تماس فعالی داشته باشیم (reject / busy). */
+  async function sendOneShot(peerId, callId, event, data = {}) {
+    const me = userRef.current;
+    if (!me?.id) return;
+    try {
+      const name = getWebRTCChannelName(me.id, peerId);
+      subscribeToWebRTC(me.id, peerId);
+      await waitForSubscription(name, 8000);
+      triggerClientEvent(name, event, { callId, from: me.id, ...data });
+    } catch (err) {
+      console.warn('[WebRTC] one-shot signal failed:', err);
+    } finally {
+      setTimeout(() => {
+        if (callRef.current?.peerId !== String(peerId)) {
+          try {
+            unsubscribeFromWebRTC(me.id, peerId);
+          } catch {
+            /* ignore */
+          }
+        }
+      }, 1000);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // اقدام‌های کاربر
+  // -------------------------------------------------------------------------
+  async function startCall(targetUserId, targetUsername, type = 'audio') {
+    const me = userRef.current;
+    if (!me?.id) return { success: false, error: 'کاربر مشخص نیست' };
+    if (stateRef.current !== 'idle') return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
+    if (String(targetUserId) === String(me.id)) return { success: false, error: 'نمی‌توانید با خودتان تماس بگیرید' };
+    if (type !== 'audio' && type !== 'video') type = 'audio';
+
+    const callId = newCallId();
+
+    try {
+      beginCall({ id: callId, peerId: targetUserId, peerName: targetUsername, type, role: 'caller' });
+      setState('calling');
+
+      await prepareLocalMedia(callId, type);
+      await openChannel(callId);
+
+      await apiRequest('/api/calls/signal', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'invite', targetUserId, callId, callType: type }),
       });
+      assertActive(callId);
 
-      peer.onicecandidate = (event) => {
-        if (event.candidate) {
-          sendWebRTC('webrtc-ice-candidate', {
-            targetUserId,
-            candidate: event.candidate,
-          });
-        }
-      };
+      ringTimerRef.current = setTimeout(() => actionsRef.current.endCall('no-answer'), ringTimeout);
+      return { success: true, callId };
+    } catch (err) {
+      return failCall(callId, err);
+    }
+  }
 
-      peer.ontrack = (event) => {
-        const track = event.track;
-        track.onunmute = () => {
-          console.log('[WebRTC] Remote track unmuted:', track.kind);
-          syncFromPeer();
-        };
-        if (track.kind === 'audio') {
-          track.enabled = !isDeafenedRef.current;
-        }
-        attachTrackHandlers();
-        syncFromPeer();
-      };
+  async function acceptCall() {
+    const call = callRef.current;
+    if (!call || stateRef.current !== 'incoming') return { success: false, error: 'تماس ورودی وجود ندارد' };
 
-      peer.onconnectionstatechange = () => {
-        console.log('[WebRTC] Connection state:', peer.connectionState);
-        if (
-          peer.connectionState === 'disconnected' ||
-          peer.connectionState === 'failed'
-        ) {
-          if (callStateRef.current !== 'ended') endCall();
-        } else if (peer.connectionState === 'connected') {
-          setCallState('connected');
-        }
-      };
+    clearTimeout(ringTimerRef.current);
+    ringTimerRef.current = null;
+    setState('connecting');
 
-      peer.oniceconnectionstatechange = () => {
-        console.log('[WebRTC] ICE connection state:', peer.iceConnectionState);
-        if (
-          peer.iceConnectionState === 'disconnected' ||
-          peer.iceConnectionState === 'failed'
-        ) {
-          if (callStateRef.current !== 'ended') endCall();
-        }
-      };
+    try {
+      await prepareLocalMedia(call.id, call.type);
+      await openChannel(call.id);
+      createPeerConnection(); // قبل از اعلام آمادگی، pc و track ها آماده‌اند
+      sendSignal('call-accepted');
+      return { success: true };
+    } catch (err) {
+      const result = failCall(call.id, err);
+      if (!result.aborted) sendOneShot(call.peerId, call.id, 'call-end', { reason: 'error' });
+      return result;
+    }
+  }
 
-      return peer;
-    },
-    [endCall, syncFromPeer, attachTrackHandlers, sendWebRTC]
-  );
+  function rejectCall() {
+    const call = callRef.current;
+    if (!call || stateRef.current !== 'incoming') return;
+    const { peerId, id } = call;
+    cleanup('rejected-local');
+    sendOneShot(peerId, id, 'call-reject', { reason: 'rejected' });
+  }
 
-  const addLocalTracks = useCallback((stream, peer) => {
-    stream.getTracks().forEach((track) => {
-      peer.addTrack(track, stream);
-    });
-  }, []);
+  function endCall(reason = 'local-ended') {
+    const call = callRef.current;
+    if (!call) return;
 
-  const processPendingCandidates = useCallback((peer) => {
-    pendingCandidatesRef.current.forEach((candidate) => {
-      peer.addIceCandidate(new RTCIceCandidate(candidate)).catch(console.error);
-    });
-    pendingCandidatesRef.current = [];
-  }, []);
+    if (call.role === 'caller' && stateRef.current === 'calling') {
+      // callee احتمالاً هنوز روی کانال نیست، پس از مسیر سرور هم لغو می‌شود
+      apiRequest('/api/calls/signal', {
+        method: 'POST',
+        body: JSON.stringify({ type: 'cancel', targetUserId: call.peerId, callId: call.id }),
+      }).catch(() => {});
+    }
+    if (stateRef.current !== 'incoming') sendSignal('call-end', { reason });
 
-  const renegotiate = useCallback(async () => {
-    const peer = peerRef.current;
-    if (!peer || !targetUserIdRef.current) return;
+    cleanup(reason);
+  }
 
-    if (peer.signalingState !== 'stable') {
-      pendingRenegotiationRef.current = true;
+  function toggleMute() {
+    const tracks = localStreamRef.current?.getAudioTracks() ?? [];
+    if (!tracks.length) return;
+    const wasEnabled = tracks.some((t) => t.enabled);
+    tracks.forEach((t) => (t.enabled = !wasEnabled));
+    setIsMuted(wasEnabled);
+  }
+
+  function toggleCamera() {
+    const tracks = localStreamRef.current?.getVideoTracks() ?? [];
+    if (!tracks.length) return;
+    const wasEnabled = tracks.some((t) => t.enabled);
+    tracks.forEach((t) => (t.enabled = !wasEnabled));
+    setIsCameraOff(wasEnabled);
+  }
+
+  // -------------------------------------------------------------------------
+  // رویدادهای ورودی: اعلان‌های سرور (روی کانال notifications)
+  // -------------------------------------------------------------------------
+  function onIncoming(data) {
+    const me = userRef.current;
+    if (!me?.id || !data) return;
+    const { callId, callerId, callerName, callType: type } = data;
+    if (typeof callId !== 'string' || callerId == null) return;
+    if (String(callerId) === String(me.id)) return;
+
+    if (stateRef.current !== 'idle') {
+      sendOneShot(callerId, callId, 'call-reject', { reason: 'busy' });
       return;
     }
 
-    pendingRenegotiationRef.current = false;
     try {
-      const offer = await peer.createOffer();
-      await peer.setLocalDescription(offer);
-      sendWebRTC('webrtc-offer', {
-        targetUserId: targetUserIdRef.current,
-        offer,
-        renegotiate: true,
+      beginCall({
+        id: callId,
+        peerId: callerId,
+        peerName: callerName || 'Unknown',
+        type: type === 'video' ? 'video' : 'audio',
+        role: 'callee',
       });
     } catch (err) {
-      console.error('Renegotiation failed:', err);
-    }
-  }, [sendWebRTC]);
-
-  const setupWebRTCListeners = useCallback((channelName) => {
-    const handleOffer = async ({
-      fromUserId,
-      fromUsername,
-      offer,
-      renegotiate: isRenegotiation,
-    }) => {
-      if (
-        isRenegotiation &&
-        callStateRef.current === 'connected' &&
-        fromUserId === targetUserIdRef.current
-      ) {
-        const peer = peerRef.current;
-        if (!peer) return;
-        try {
-          if (peer.signalingState === 'have-local-offer') {
-            const amPolite = !currentUser || String(currentUser.id) < String(fromUserId);
-            if (amPolite) {
-              await peer.setLocalDescription({ type: 'rollback' });
-              await peer.setRemoteDescription(new RTCSessionDescription(offer));
-              pendingRenegotiationRef.current = true;
-            } else {
-              console.log('[WebRTC] Glare: impolite side ignores remote offer');
-              return;
-            }
-          } else {
-            await peer.setRemoteDescription(new RTCSessionDescription(offer));
-          }
-
-          const answer = await peer.createAnswer();
-          await peer.setLocalDescription(answer);
-          sendWebRTC('webrtc-answer', { targetUserId: fromUserId, answer });
-
-          attachTrackHandlers();
-          syncFromPeer();
-          setTimeout(() => {
-            if (peerRef.current) {
-              attachTrackHandlers();
-              syncFromPeer();
-            }
-          }, 400);
-        } catch (err) {
-          console.error('Renegotiation answer failed:', err);
-        }
-        return;
-      }
-
-      if (callStateRef.current !== 'idle' && callStateRef.current !== 'ended') {
-        return;
-      }
-      setIncomingCall({ fromUserId, fromUsername, offer });
-      setCallState('ringing');
-    };
-
-    const handleAnswer = async ({ fromUserId, answer }) => {
-      if (peerRef.current && fromUserId === targetUserIdRef.current) {
-        await peerRef.current.setRemoteDescription(
-          new RTCSessionDescription(answer)
-        );
-        processPendingCandidates(peerRef.current);
-        attachTrackHandlers();
-        syncFromPeer();
-
-        if (pendingRenegotiationRef.current) {
-          pendingRenegotiationRef.current = false;
-          setTimeout(() => renegotiate(), 0);
-        }
-      }
-    };
-
-    const handleIceCandidate = async ({ fromUserId, candidate }) => {
-      if (peerRef.current && fromUserId === targetUserIdRef.current) {
-        if (peerRef.current.remoteDescription) {
-          await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-        } else {
-          pendingCandidatesRef.current.push(candidate);
-        }
-      }
-    };
-
-    const handleHangup = ({ fromUserId }) => {
-      if (callStateRef.current !== 'idle' && callStateRef.current !== 'ended') {
-        if (!targetUserIdRef.current || fromUserId === targetUserIdRef.current) {
-          console.log('[WebRTC] Remote hangup received, ending call');
-          if (endCallRef.current) endCallRef.current();
-        }
-      }
-    };
-
-    const handleStreamUpdated = () => {
-      if (!peerRef.current) return;
-      attachTrackHandlers();
-      syncFromPeer();
-      setTimeout(() => {
-        if (peerRef.current) {
-          attachTrackHandlers();
-          syncFromPeer();
-        }
-      }, 400);
-    };
-
-    const handleScreenLock = () => {
-      setRemoteScreenSharing(true);
-    };
-
-    const handleScreenUnlock = () => {
-      setRemoteScreenSharing(false);
-      setTimeout(() => {
-        if (peerRef.current) {
-          attachTrackHandlers();
-          syncFromPeer();
-        }
-      }, 200);
-    };
-
-    webrtcHandlersRef.current = {
-      handleOffer,
-      handleAnswer,
-      handleIceCandidate,
-      handleHangup,
-      handleStreamUpdated,
-      handleScreenLock,
-      handleScreenUnlock,
-    };
-
-    bindClientEvent(channelName, 'webrtc-offer', handleOffer);
-    bindClientEvent(channelName, 'webrtc-answer', handleAnswer);
-    bindClientEvent(channelName, 'webrtc-ice-candidate', handleIceCandidate);
-    bindClientEvent(channelName, 'webrtc-hangup', handleHangup);
-    bindClientEvent(channelName, 'webrtc-stream-updated', handleStreamUpdated);
-    bindClientEvent(channelName, 'webrtc-screen-lock', handleScreenLock);
-    bindClientEvent(channelName, 'webrtc-screen-unlock', handleScreenUnlock);
-  }, [processPendingCandidates, renegotiate, syncFromPeer, attachTrackHandlers, currentUser, sendWebRTC]);
-
-  const cleanupWebRTCListeners = useCallback((channelName) => {
-    const handlers = webrtcHandlersRef.current;
-    if (handlers) {
-      unbindClientEvent(channelName, 'webrtc-offer', handlers.handleOffer);
-      unbindClientEvent(channelName, 'webrtc-answer', handlers.handleAnswer);
-      unbindClientEvent(channelName, 'webrtc-ice-candidate', handlers.handleIceCandidate);
-      unbindClientEvent(channelName, 'webrtc-hangup', handlers.handleHangup);
-      unbindClientEvent(channelName, 'webrtc-stream-updated', handlers.handleStreamUpdated);
-      unbindClientEvent(channelName, 'webrtc-screen-lock', handlers.handleScreenLock);
-      unbindClientEvent(channelName, 'webrtc-screen-unlock', handlers.handleScreenUnlock);
-      webrtcHandlersRef.current = {};
-    }
-  }, []);
-
-  const startCall = useCallback(
-    async (targetUserId, targetUsername, type = 'audio') => {
-      try {
-        setCallType(type);
-        setIsCalling(true);
-        setCallState('ringing');
-        isInitiatorRef.current = true;
-        targetUserIdRef.current = targetUserId;
-        setRemoteUser({ id: targetUserId, username: targetUsername });
-
-        remoteStreamRef.current = new MediaStream();
-        setRemoteStream(remoteStreamRef.current);
-
-        const constraints = type === 'video'
-          ? {
-            video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } },
-            audio: true
-          }
-          : { video: false, audio: true };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        cameraStreamRef.current = stream;
-        localStreamRef.current = stream;
-        setLocalStream(stream);
-        setIsVideoOn(type === 'video');
-        setIsMuted(false);
-
-        if (currentUser) {
-          setParticipants([
-            { id: currentUser.id, username: currentUser.username, isLocal: true, muted: false, video: type === 'video', screenSharing: false, speaking: false },
-            { id: targetUserId, username: targetUsername, isLocal: false, muted: false, video: false, screenSharing: false, speaking: false },
-          ]);
-        }
-
-        const channelName = getWebRTCChannelName(currentUser.id, targetUserId);
-        webrtcChannelRef.current = channelName;
-
-        subscribeToWebRTC(currentUser.id, targetUserId);
-        await waitForSubscription(channelName); // 👈 استفاده از تابع کمکی جدید
-
-        setupWebRTCListeners(channelName);
-
-        const peer = createPeer(targetUserId);
-        peerRef.current = peer;
-        addLocalTracks(stream, peer);
-        attachTrackHandlers();
-
-        const offer = await peer.createOffer();
-        await peer.setLocalDescription(offer);
-
-        sendWebRTC('webrtc-offer', { targetUserId, offer });
-      } catch (err) {
-        console.error('Error starting call:', err);
-        endCall();
-      }
-    },
-    [createPeer, addLocalTracks, attachTrackHandlers, currentUser, endCall, setupWebRTCListeners, sendWebRTC]
-  );
-
-  const answerCall = useCallback(
-    async (type = 'audio') => {
-      if (!incomingCall) return;
-      const { fromUserId, fromUsername, offer } = incomingCall;
-
-      try {
-        setCallType(type);
-        setRemoteUser({ id: fromUserId, username: fromUsername });
-        setIsCalling(true);
-        setCallState('connecting');
-        isInitiatorRef.current = false;
-        targetUserIdRef.current = fromUserId;
-
-        remoteStreamRef.current = new MediaStream();
-        setRemoteStream(remoteStreamRef.current);
-
-        const constraints = type === 'video'
-          ? {
-            video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } },
-            audio: true
-          }
-          : { video: false, audio: true };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        cameraStreamRef.current = stream;
-        localStreamRef.current = stream;
-        setLocalStream(stream);
-        setIsVideoOn(type === 'video');
-        setIsMuted(false);
-
-        if (currentUser) {
-          setParticipants([
-            { id: currentUser.id, username: currentUser.username, isLocal: true, muted: false, video: type === 'video', screenSharing: false, speaking: false },
-            { id: fromUserId, username: fromUsername, isLocal: false, muted: false, video: false, screenSharing: false, speaking: false },
-          ]);
-        }
-
-        const channelName = getWebRTCChannelName(currentUser.id, fromUserId);
-        webrtcChannelRef.current = channelName;
-
-        subscribeToWebRTC(currentUser.id, fromUserId);
-        await waitForSubscription(channelName); // 👈 استفاده از تابع کمکی جدید
-
-        setupWebRTCListeners(channelName);
-
-        const peer = createPeer(fromUserId);
-        peerRef.current = peer;
-        addLocalTracks(stream, peer);
-
-        await peer.setRemoteDescription(new RTCSessionDescription(offer));
-        processPendingCandidates(peer);
-        attachTrackHandlers();
-
-        const answer = await peer.createAnswer();
-        await peer.setLocalDescription(answer);
-        sendWebRTC('webrtc-answer', { targetUserId: fromUserId, answer });
-        setIncomingCall(null);
-      } catch (err) {
-        console.error('Error answering call:', err);
-        endCall();
-      }
-    },
-    [incomingCall, createPeer, addLocalTracks, processPendingCandidates, attachTrackHandlers, currentUser, endCall, setupWebRTCListeners, sendWebRTC]
-  );
-
-  const toggleMute = useCallback(() => {
-    if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        setIsMuted(!audioTrack.enabled);
-        setParticipants((prev) =>
-          prev.map((p) => (p.isLocal ? { ...p, muted: !audioTrack.enabled } : p))
-        );
-      }
-    }
-  }, []);
-
-  const toggleDeafen = useCallback(() => {
-    setIsDeafened((prev) => {
-      const next = !prev;
-      isDeafenedRef.current = next;
-      const stream = remoteStreamRef.current;
-      if (stream) {
-        stream.getAudioTracks().forEach((track) => {
-          track.enabled = !next;
-        });
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleVideo = useCallback(async () => {
-    if (isScreenSharingDuringCallRef.current) {
-      console.warn('[WebRTC] Cannot toggle camera while screen sharing');
+      console.warn('[WebRTC] incoming call error:', err);
       return;
     }
 
-    if (!isVideoOnRef.current) {
-      try {
-        const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } },
-          audio: false,
-        });
-        const videoTrack = videoStream.getVideoTracks()[0];
-        let needsRenegotiation = false;
+    setState('incoming');
+    ringTimerRef.current = setTimeout(() => cleanup('missed'), ringTimeout);
+  }
 
-        const combined = new MediaStream(localStreamRef.current.getTracks());
-        combined.addTrack(videoTrack);
-        localStreamRef.current = combined;
-        setLocalStream(combined);
+  function onCancelled(data) {
+    const call = callRef.current;
+    if (!call || data?.callId !== call.id) return;
+    if (call.role === 'callee' && stateRef.current !== 'connected') cleanup('cancelled');
+  }
 
-        if (peerRef.current) {
-          const sender = peerRef.current.getSenders().find((s) => s.track?.kind === 'video');
+  // -------------------------------------------------------------------------
+  // رویدادهای ورودی: سیگنالینگ روی کانال تماس
+  // -------------------------------------------------------------------------
+  const isCurrent = (data) => callRef.current && data?.callId === callRef.current.id;
 
-          if (sender) {
-            await sender.replaceTrack(videoTrack);
-            await setVideoSenderParameters(sender, 8_000_000);
-          } else {
-            const newSender = await attachVideoTrack(peerRef.current, videoTrack, combined);
-            await setVideoSenderParameters(newSender, 8_000_000);
-            needsRenegotiation = true;
-          }
-        }
+  async function onAccepted(data) {
+    const call = callRef.current;
+    if (!isCurrent(data) || call.role !== 'caller' || stateRef.current !== 'calling') return;
 
-        if (targetUserIdRef.current) {
-          sendWebRTC('webrtc-stream-updated', { targetUserId: targetUserIdRef.current });
-        }
-        if (needsRenegotiation) {
-          await renegotiate();
-        }
-        setIsVideoOn(true);
-        setCallType('video');
-        setParticipants((prev) =>
-          prev.map((p) => (p.isLocal ? { ...p, video: true } : p))
-        );
-      } catch (err) {
-        console.error('Cannot access camera:', err);
-      }
-    } else {
-      const videoTrack = localStreamRef.current?.getVideoTracks()[0];
-      if (videoTrack) {
-        let needsRenegotiation = false;
-        if (peerRef.current) {
-          const sender = peerRef.current.getSenders().find((s) => s.track === videoTrack);
-          if (sender) {
-            peerRef.current.removeTrack(sender);
-            needsRenegotiation = true;
-          }
-        }
-        videoTrack.stop();
-        localStreamRef.current.removeTrack(videoTrack);
-        setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
-        if (targetUserIdRef.current) {
-          sendWebRTC('webrtc-stream-updated', { targetUserId: targetUserIdRef.current });
-        }
-        if (needsRenegotiation) {
-          await renegotiate();
-        }
-        setIsVideoOn(false);
-        setCallType('audio');
-        setParticipants((prev) =>
-          prev.map((p) => (p.isLocal ? { ...p, video: false } : p))
-        );
-      }
-    }
-  }, [renegotiate, sendWebRTC]);
-
-  const stopScreenShareInternal = useCallback(async () => {
-    isScreenSharingDuringCallRef.current = false;
-
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach((t) => {
-        t.onended = null;
-        t.stop();
-      });
-      screenStreamRef.current = null;
-    }
-
-    let needsRenegotiation = false;
-
-    if (peerRef.current) {
-      if (screenVideoSenderRef.current) {
-        const sender = screenVideoSenderRef.current;
-        const cameraVideoTrack = cameraStreamRef.current?.getVideoTracks()[0];
-        if (cameraVideoTrack && isVideoOnRef.current) {
-          cameraVideoTrack.enabled = true;
-          if (cameraVideoTrack.readyState === 'live') {
-            await sender.replaceTrack(cameraVideoTrack);
-          } else {
-            peerRef.current.removeTrack(sender);
-            needsRenegotiation = true;
-          }
-        } else {
-          peerRef.current.removeTrack(sender);
-          needsRenegotiation = true;
-        }
-        screenVideoSenderRef.current = null;
-      }
-
-      if (screenAudioSenderRef.current) {
-        try {
-          peerRef.current.removeTrack(screenAudioSenderRef.current);
-        } catch (e) {
-          console.error('Error removing screen audio sender:', e);
-        }
-        screenAudioSenderRef.current = null;
-        needsRenegotiation = true;
-      }
-    }
-
-    if (needsRenegotiation) {
-      await renegotiate();
-    } else if (targetUserIdRef.current) {
-      sendWebRTC('webrtc-stream-updated', { targetUserId: targetUserIdRef.current });
-    }
-
-    if (targetUserIdRef.current) {
-      sendWebRTC('webrtc-screen-unlock', { targetUserId: targetUserIdRef.current });
-    }
-
-    if (cameraStreamRef.current) {
-      localStreamRef.current = cameraStreamRef.current;
-      setLocalStream(cameraStreamRef.current);
-    }
-    setIsScreenSharing(false);
-    setCallType(isVideoOnRef.current ? 'video' : 'audio');
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.isLocal ? { ...p, screenSharing: false, video: isVideoOnRef.current } : p
-      )
-    );
-  }, [renegotiate, sendWebRTC]);
-
-  const toggleScreenShare = useCallback(async () => {
-    if (isScreenSharingDuringCallRef.current) {
-      await stopScreenShareInternal();
-      return;
-    }
-
-    if (!peerRef.current) return;
+    clearTimeout(ringTimerRef.current);
+    ringTimerRef.current = null;
+    setState('connecting');
 
     try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always', frameRate: { ideal: 30, max: 60 } },
-        audio: false,
-      });
-      const screenTrack = screenStream.getVideoTracks()[0];
+      const pc = createPeerConnection();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      assertActive(call.id);
+      const { type, sdp } = pc.localDescription;
+      sendSignal('call-offer', { sdp: { type, sdp } });
+    } catch (err) {
+      const r = failCall(call.id, err);
+      if (!r.aborted) sendSignal('call-end', { reason: 'error' });
+    }
+  }
 
-      if (!screenTrack) {
-        screenStream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+  async function onOffer(data) {
+    const call = callRef.current;
+    const pc = pcRef.current;
+    if (!isCurrent(data) || call.role !== 'callee' || !pc || !data.sdp) return;
 
-      screenStreamRef.current = screenStream;
-      let needsRenegotiation = false;
+    try {
+      await pc.setRemoteDescription(data.sdp);
+      await flushPendingRemoteCandidates();
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      assertActive(call.id);
+      const { type, sdp } = pc.localDescription;
+      sendSignal('call-answer', { sdp: { type, sdp } });
+    } catch (err) {
+      const r = failCall(call.id, err);
+      if (!r.aborted) sendSignal('call-end', { reason: 'error' });
+    }
+  }
 
-      const videoSender = peerRef.current
-        .getSenders()
-        .find((s) => s.track?.kind === 'video' && s.track.readyState === 'live');
+  async function onAnswer(data) {
+    const call = callRef.current;
+    const pc = pcRef.current;
+    if (!isCurrent(data) || call.role !== 'caller' || !pc || !data.sdp) return;
 
-      if (videoSender) {
-        await videoSender.replaceTrack(screenTrack);
-        await setVideoSenderParameters(videoSender, 8_000_000);
-        screenVideoSenderRef.current = videoSender;
+    try {
+      await pc.setRemoteDescription(data.sdp);
+      await flushPendingRemoteCandidates();
+    } catch (err) {
+      const r = failCall(call.id, err);
+      if (!r.aborted) sendSignal('call-end', { reason: 'error' });
+    }
+  }
+
+  async function onIceCandidates(data) {
+    if (!isCurrent(data) || !Array.isArray(data.candidates)) return;
+    const pc = pcRef.current;
+
+    for (const candidate of data.candidates) {
+      if (pc && pc.remoteDescription) {
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (err) {
+          console.warn('[WebRTC] addIceCandidate failed:', err);
+        }
       } else {
-        const newSender = await attachVideoTrack(peerRef.current, screenTrack, screenStream);
-        await setVideoSenderParameters(newSender, 8_000_000);
-        screenVideoSenderRef.current = newSender;
-        needsRenegotiation = true;
+        pendingRemoteCandidatesRef.current.push(candidate); // قبل از remoteDescription صف می‌شود
       }
-
-      const micTrack = cameraStreamRef.current?.getAudioTracks()[0];
-      const previewTracks = micTrack ? [screenTrack, micTrack] : [screenTrack];
-      const local = new MediaStream(previewTracks);
-      localStreamRef.current = local;
-      setLocalStream(local);
-
-      if (needsRenegotiation) {
-        await renegotiate();
-      } else if (targetUserIdRef.current) {
-        sendWebRTC('webrtc-stream-updated', { targetUserId: targetUserIdRef.current });
-      }
-
-      if (targetUserIdRef.current) {
-        sendWebRTC('webrtc-screen-lock', { targetUserId: targetUserIdRef.current });
-      }
-
-      setIsScreenSharing(true);
-      isScreenSharingDuringCallRef.current = true;
-      setCallType('screen');
-      setParticipants((prev) =>
-        prev.map((p) =>
-          p.isLocal ? { ...p, screenSharing: true, video: true } : p
-        )
-      );
-
-      screenTrack.onended = async () => {
-        if (!isScreenSharingDuringCallRef.current) return;
-        await stopScreenShareInternal();
-      };
-    } catch (err) {
-      console.error('Cannot share screen:', err);
     }
-  }, [renegotiate, stopScreenShareInternal, sendWebRTC]);
+  }
 
-  const declineCall = useCallback(() => {
-    if (incomingCall) {
-      if (webrtcChannelRef.current && currentUser?.id) {
-        sendWebRTC('webrtc-hangup', { targetUserId: incomingCall.fromUserId });
+  function onReject(data) {
+    const call = callRef.current;
+    if (!isCurrent(data) || call.role !== 'caller') return;
+    cleanup(data.reason === 'busy' ? 'busy' : 'rejected');
+  }
 
-        setTimeout(() => {
-          if (currentUser?.id && incomingCall.fromUserId) {
-            try {
-              unsubscribeFromWebRTC(currentUser.id, incomingCall.fromUserId);
-            } catch (err) {
-              console.warn('[WebRTC] Decline unsubscribe error:', err);
-            }
-          }
-        }, 200);
-      }
+  function onRemoteEnd(data) {
+    if (!isCurrent(data)) return;
+    cleanup('remote-ended');
+  }
 
-      setIncomingCall(null);
-      setCallState('ended');
-    }
-  }, [incomingCall, currentUser, sendWebRTC]);
+  actionsRef.current = {
+    startCall,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMute,
+    toggleCamera,
+    onIncoming,
+    onCancelled,
+    onAccepted,
+    onOffer,
+    onAnswer,
+    onIceCandidates,
+    onReject,
+    onRemoteEnd,
+  };
 
+  // -------------------------------------------------------------------------
+  // Effect ها
+  // -------------------------------------------------------------------------
+
+  // اعلان تماس ورودی از کانال notifications (کانال را useChat هم subscribe می‌کند؛ subscribe تکراری بی‌خطر است)
+  const userId = currentUser?.id;
   useEffect(() => {
+    if (!connected || userId == null) return undefined;
+
+    let channelName;
+    try {
+      subscribeToNotifications(userId);
+      channelName = getNotificationChannelName(userId);
+    } catch (err) {
+      console.warn('[WebRTC] notifications subscribe error:', err);
+      return undefined;
+    }
+
+    const handleIncoming = (d) => actionsRef.current.onIncoming?.(d);
+    const handleCancelled = (d) => actionsRef.current.onCancelled?.(d);
+
+    bindEvent(channelName, 'incoming-call', handleIncoming);
+    bindEvent(channelName, 'call-cancelled', handleCancelled);
+
     return () => {
-      if (webrtcChannelRef.current && targetUserIdRef.current) {
-        cleanupWebRTCListeners(webrtcChannelRef.current);
-        try {
-          unsubscribeFromWebRTC(currentUser?.id, targetUserIdRef.current);
-        } catch (err) {
-          console.warn('[WebRTC] Unsubscribe error:', err);
-        }
-      }
+      unbindEvent(channelName, 'incoming-call', handleIncoming);
+      unbindEvent(channelName, 'call-cancelled', handleCancelled);
     };
-  }, [currentUser, cleanupWebRTCListeners]);
+  }, [connected, userId]);
+
+  // مدت تماس
+  useEffect(() => {
+    if (callState !== 'connected') return undefined;
+    const startedAt = Date.now();
+    const id = setInterval(() => setDuration(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [callState]);
+
+  // اگر کاربر خارج شد، تماس قطع شود
+  useEffect(() => {
+    if (userId == null) actionsRef.current.endCall?.('local-ended');
+  }, [userId]);
+
+  // بستن تب / unmount
+  useEffect(() => {
+    const onPageHide = () => actionsRef.current.endCall?.('local-ended');
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      actionsRef.current.endCall?.('unmounted');
+    };
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // API پایدار
+  // -------------------------------------------------------------------------
+  const startCallStable = useCallback((...args) => actionsRef.current.startCall(...args), []);
+  const acceptCallStable = useCallback(() => actionsRef.current.acceptCall(), []);
+  const rejectCallStable = useCallback(() => actionsRef.current.rejectCall(), []);
+  const endCallStable = useCallback(() => actionsRef.current.endCall('local-ended'), []);
+  const toggleMuteStable = useCallback(() => actionsRef.current.toggleMute(), []);
+  const toggleCameraStable = useCallback(() => actionsRef.current.toggleCamera(), []);
 
   return {
-    isCalling,
-    incomingCall,
-    remoteUser,
+    callState, // idle | calling | incoming | connecting | connected
+    callType, // 'audio' | 'video' | null
+    peer, // { id, username } | null
+    incomingCall: callState === 'incoming' ? { peer, callType } : null,
     localStream,
     remoteStream,
-    remoteStreamVersion,
-    callState,
-    callType,
-    participants,
     isMuted,
-    isVideoOn,
-    isScreenSharing,
-    isDeafened,
-    remoteScreenSharing,
-    startCall,
-    answerCall,
-    endCall,
-    declineCall,
-    toggleMute,
-    toggleDeafen,
-    toggleVideo,
-    toggleScreenShare,
+    isCameraOff,
+    duration, // ثانیه
+    error,
+    endReason, // کد دلیل پایان تماس (متن: END_REASON_TEXT[endReason])
+    startCall: startCallStable, // (targetUserId, targetUsername, 'audio' | 'video')
+    acceptCall: acceptCallStable,
+    rejectCall: rejectCallStable,
+    endCall: endCallStable,
+    toggleMute: toggleMuteStable,
+    toggleCamera: toggleCameraStable,
   };
 }
