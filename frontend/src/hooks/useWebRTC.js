@@ -14,10 +14,46 @@ import {
 } from '../lib/apinator';
 import { apiRequest } from './useChat';
 
+/*
+ * ===========================================================================
+ * معماری سیگنالینگ (Apinator)
+ * ===========================================================================
+ * ۱) دعوت: caller ──POST /api/calls/signal──► سرور ──'incoming-call'──► private-notifications-<callee>
+ * ۲) بقیه روی کانال private-webrtc-<a>-<b> با client event:
+ *      call-accepted / call-offer / call-answer / ice-candidates / call-end / call-reject
+ *      call-media-state (بی‌صدا، دوربین، اشتراک صفحه)   call-stream-updated
+ *      signal-chunk (تکه‌های پیام‌های بزرگ؛ مثل SDP تماس تصویری)
+ *
+ * نکات مهم این نسخه (نسبت به نسخه قبلی):
+ *  - پیام‌های بزرگ (SDP تصویری) تکه‌تکه می‌شوند تا از سقف اندازه‌ی client event رد نشوند
+ *  - remote stream از روی receiver ها ساخته می‌شود (مثل نسخه‌ی socket.io) نه از event.streams[0]
+ *  - renegotiation به‌صورت perfect negotiation است و برای هر دو طرف کار می‌کند
+ *  - کیفیت ارسال برای TURN محدود شده (bitrate ی کمتر)
+ * ===========================================================================
+ */
+
 const ABORTED = 'CALL_ABORTED';
-const ICE_FLUSH_DELAY = 150;
-const DISCONNECT_GRACE = 8000;
-const SUBSCRIBE_TIMEOUT = 10000;
+const ICE_FLUSH_DELAY = 150; // ms
+const DISCONNECT_GRACE = 10000; // ms
+const SUBSCRIBE_TIMEOUT = 10000; // ms
+
+// سقف اندازه‌ی client event معمولاً ~10KB است؛ بالاتر از این مقدار تکه‌تکه می‌فرستیم
+const MAX_INLINE_BYTES = 6000;
+const CHUNK_CHARS = 5000;
+const CHUNK_TTL = 15000; // ms
+const MAX_CHUNK_BUFFERS = 8;
+const CHUNKABLE = {
+  'call-offer': 'onOffer',
+  'call-answer': 'onAnswer',
+  'ice-candidates': 'onIceCandidates',
+};
+
+// روی TURN (relay) پهنای باند محدود است؛ 8Mbps باعث ازدحام و افتادن صدا می‌شود
+const BITRATE = { camera: 1_500_000, screen: 2_500_000 };
+
+const VIDEO_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } };
+
+const encoder = new TextEncoder();
 
 export const END_REASON_TEXT = {
   'local-ended': 'تماس پایان یافت',
@@ -37,53 +73,49 @@ export const END_REASON_TEXT = {
 // ---------------------------------------------------------------------------
 // توابع کمکی
 // ---------------------------------------------------------------------------
-const setVideoSenderParameters = async (sender, maxBitrate = 8_000_000) => {
-  if (!sender || !sender.track || sender.track.kind !== 'video') return;
+async function setVideoSenderParameters(sender, profile = 'camera') {
+  if (!sender?.track || sender.track.kind !== 'video') return;
   try {
-    const params = sender.getParameters();
-    if (!params.encodings || params.encodings.length === 0) {
-      params.encodings = [{}];
+    if ('contentHint' in sender.track) {
+      sender.track.contentHint = profile === 'screen' ? 'detail' : 'motion';
     }
-    params.encodings[0].maxBitrate = maxBitrate;
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+    params.encodings[0].maxBitrate = BITRATE[profile];
+    if (profile === 'screen') params.encodings[0].maxFramerate = 15;
+    else delete params.encodings[0].maxFramerate;
+    params.degradationPreference = profile === 'screen' ? 'maintain-resolution' : 'balanced';
     await sender.setParameters(params);
   } catch (err) {
-    console.warn('[WebRTC] Could not set video sender parameters:', err);
+    // قبل از اولین negotiation ممکن است شکست بخورد؛ بعد از answer دوباره اعمال می‌شود
+    console.debug('[WebRTC] setParameters skipped:', err?.message);
   }
-};
+}
 
 function buildIceServers(custom) {
   if (Array.isArray(custom) && custom.length) return custom;
 
-  const METERED_USERNAME = import.meta.env.VITE_METERED_USERNAME;
-  const METERED_CREDENTIAL = import.meta.env.VITE_METERED_CREDENTIAL;
-
+  // STUN برای مسیر مستقیم (P2P)، تا همه‌چیز از TURN رد نشود
   const servers = [
-    {
-      urls: "stun:stun.relay.metered.ca:80",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80",
-      username: METERED_USERNAME,
-      credential: METERED_CREDENTIAL,
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80?transport=tcp",
-      username: METERED_USERNAME,
-      credential: METERED_CREDENTIAL,
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443",
-      username: METERED_USERNAME,
-      credential: METERED_CREDENTIAL,
-    },
-    {
-      urls: "turns:global.relay.metered.ca:443?transport=tcp",
-      username: METERED_USERNAME,
-      credential: METERED_CREDENTIAL,
-    },
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    { urls: 'stun:stun.relay.metered.ca:80' },
   ];
+
+  const user = import.meta.env.VITE_METERED_USERNAME;
+  const credential = import.meta.env.VITE_METERED_CREDENTIAL;
+
+  // ورودی TURN بدون username/credential باعث خطا در ساخت RTCPeerConnection می‌شود
+  if (user && credential) {
+    servers.push(
+      { urls: 'turn:global.relay.metered.ca:80', username: user, credential },
+      { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: user, credential },
+      { urls: 'turn:global.relay.metered.ca:443', username: user, credential },
+      { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: user, credential }
+    );
+  }
+
   const turnUrl = import.meta.env.VITE_TURN_URL;
-  if (turnUrl) {
+  if (turnUrl && import.meta.env.VITE_TURN_USERNAME && import.meta.env.VITE_TURN_CREDENTIAL) {
     servers.push({
       urls: turnUrl.split(',').map((u) => u.trim()),
       username: import.meta.env.VITE_TURN_USERNAME,
@@ -101,6 +133,7 @@ const newCallId = () =>
 function stopStream(stream) {
   stream?.getTracks().forEach((t) => {
     try {
+      t.onended = null;
       t.stop();
     } catch {
       /* ignore */
@@ -114,10 +147,7 @@ async function getMedia(type) {
   }
   return navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    video:
-      type === 'video'
-        ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
-        : false,
+    video: type === 'video' ? { ...VIDEO_CONSTRAINTS, facingMode: 'user' } : false,
   });
 }
 
@@ -162,57 +192,68 @@ function waitForSubscription(channelName, timeout = SUBSCRIBE_TIMEOUT) {
 // Hook
 // ---------------------------------------------------------------------------
 export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeout = 35000 } = {}) {
+  // callState: idle | calling | incoming | connecting | connected
   const [callState, setCallStateRaw] = useState('idle');
-  const [callType, setCallType] = useState(null);
+  const [callType, setCallType] = useState(null); // 'audio' | 'video' | 'screen'
   const [peer, setPeer] = useState(null);
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [remoteStreamVersion, setRemoteStreamVersion] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [error, setError] = useState(null);
-  const [endReason, setEndReason] = useState(null);
-
+  const [isVideoOn, setIsVideoOnState] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
   const [remoteScreenSharing, setRemoteScreenSharing] = useState(false);
   const [participants, setParticipants] = useState([]);
+  const [duration, setDuration] = useState(0);
+  const [error, setError] = useState(null);
+  const [endReason, setEndReason] = useState(null);
 
   const stateRef = useRef('idle');
-  const callRef = useRef(null);
+  const callRef = useRef(null); // { id, peerId, peerName, type, role, channelName, bound }
   const pcRef = useRef(null);
-  const localStreamRef = useRef(null);
-  const cameraStreamRef = useRef(null);
+
+  const localStreamRef = useRef(null); // آنچه پیش‌نمایش محلی نشان می‌دهد
+  const cameraStreamRef = useRef(null); // میکروفون (+ دوربین در صورت روشن بودن)
   const screenStreamRef = useRef(null);
   const screenVideoSenderRef = useRef(null);
   const isScreenSharingDuringCallRef = useRef(false);
+  const isVideoOnRef = useRef(false);
+  const isDeafenedRef = useRef(false);
+
+  const remoteStreamRef = useRef(null);
+  const remoteSigRef = useRef('');
+
+  const negotiationRef = useRef({ makingOffer: false, pending: false });
+  const restartTriedRef = useRef(false);
   const pendingRemoteCandidatesRef = useRef([]);
   const outboundCandidatesRef = useRef([]);
+  const chunkBuffersRef = useRef(new Map());
+
   const iceFlushTimerRef = useRef(null);
   const ringTimerRef = useRef(null);
   const disconnectTimerRef = useRef(null);
+
   const userRef = useRef(currentUser);
   const iceServersRef = useRef(iceServers);
   const actionsRef = useRef({});
-  const isDeafenedRef = useRef(false);
-  const isCameraOffRef = useRef(false);
 
   useEffect(() => {
     userRef.current = currentUser;
     iceServersRef.current = iceServers;
   }, [currentUser, iceServers]);
 
-  useEffect(() => {
-    isDeafenedRef.current = isDeafened;
-  }, [isDeafened]);
-
-  useEffect(() => {
-    isCameraOffRef.current = isCameraOff;
-  }, [isCameraOff]);
-
+  // -------------------------------------------------------------------------
+  // کمک‌ها
+  // -------------------------------------------------------------------------
   function setState(next) {
     stateRef.current = next;
     setCallStateRaw(next);
+  }
+
+  function setVideoOn(value) {
+    isVideoOnRef.current = value;
+    setIsVideoOnState(value);
   }
 
   function assertActive(callId) {
@@ -228,14 +269,45 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     disconnectTimerRef.current = null;
   }
 
+  function clearChunkBuffers() {
+    for (const buf of chunkBuffersRef.current.values()) clearTimeout(buf.timer);
+    chunkBuffersRef.current.clear();
+  }
+
+  /**
+   * ارسال سیگنال روی کانال تماس. پیام‌های بزرگ (مثل SDP تصویری) خودکار تکه‌تکه می‌شوند،
+   * چون client event ها سقف اندازه دارند و پیام بزرگ بی‌صدا دور ریخته می‌شود.
+   */
   function sendSignal(event, data = {}) {
     const call = callRef.current;
     if (!call) return false;
-    return triggerClientEvent(call.channelName, event, {
-      callId: call.id,
-      from: userRef.current?.id,
-      ...data,
-    });
+
+    const payload = { callId: call.id, from: userRef.current?.id, ...data };
+    const json = JSON.stringify(payload);
+    const bytes = encoder.encode(json).length;
+
+    if (import.meta.env.DEV) console.debug(`[WebRTC] signal ${event} (${bytes} bytes)`);
+
+    if (bytes <= MAX_INLINE_BYTES) {
+      const ok = triggerClientEvent(call.channelName, event, payload);
+      if (!ok) console.warn(`[WebRTC] signal "${event}" was not sent`);
+      return ok;
+    }
+
+    const msgId = newCallId().slice(0, 8);
+    const total = Math.ceil(json.length / CHUNK_CHARS);
+    for (let index = 0; index < total; index += 1) {
+      triggerClientEvent(call.channelName, 'signal-chunk', {
+        callId: call.id,
+        from: userRef.current?.id,
+        msgId,
+        event,
+        index,
+        total,
+        part: json.slice(index * CHUNK_CHARS, (index + 1) * CHUNK_CHARS),
+      });
+    }
+    return true;
   }
 
   function flushIce() {
@@ -245,45 +317,51 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     if (batch.length) sendSignal('ice-candidates', { candidates: batch });
   }
 
+  function sendMediaState() {
+    const audio = cameraStreamRef.current?.getAudioTracks()[0];
+    sendSignal('call-media-state', {
+      muted: audio ? !audio.enabled : false,
+      video: isVideoOnRef.current,
+      screenSharing: isScreenSharingDuringCallRef.current,
+    });
+  }
+
+  function updateLocalParticipant(patch) {
+    setParticipants((prev) => prev.map((p) => (p.isLocal ? { ...p, ...patch } : p)));
+  }
+
   function beginCall({ id, peerId, peerName, type, role }) {
     const me = userRef.current;
     const channelName = getWebRTCChannelName(me.id, peerId);
     callRef.current = { id, peerId: String(peerId), peerName, type, role, channelName, bound: [] };
+
     pendingRemoteCandidatesRef.current = [];
     outboundCandidatesRef.current = [];
+    negotiationRef.current = { makingOffer: false, pending: false };
+    restartTriedRef.current = false;
+    remoteStreamRef.current = null;
+    remoteSigRef.current = '';
+    clearChunkBuffers();
+
+    isScreenSharingDuringCallRef.current = false;
+    isDeafenedRef.current = false;
+
     setPeer({ id: String(peerId), username: peerName });
     setCallType(type);
     setError(null);
     setEndReason(null);
     setIsMuted(false);
-    setIsCameraOff(false);
+    setVideoOn(false);
     setIsScreenSharing(false);
     setIsDeafened(false);
-    setDuration(0);
     setRemoteScreenSharing(false);
+    setDuration(0);
+    setRemoteStream(null);
 
-    if (me) {
-      setParticipants([
-        {
-          id: me.id,
-          username: me.username,
-          isLocal: true,
-          muted: false,
-          video: type === 'video',
-          screenSharing: false,
-          speaking: false,
-        },
-        {
-          id: peerId,
-          username: peerName,
-          isLocal: false,
-          muted: false,
-          video: false,
-          screenSharing: false,
-          speaking: false,
-        },
-      ]);
-    }
+    setParticipants([
+      { id: me.id, username: me.username, isLocal: true, muted: false, video: type === 'video', screenSharing: false, speaking: false },
+      { id: peerId, username: peerName, isLocal: false, muted: false, video: false, screenSharing: false, speaking: false },
+    ]);
   }
 
   async function prepareLocalMedia(callId, type) {
@@ -295,12 +373,14 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     localStreamRef.current = stream;
     cameraStreamRef.current = stream;
     setLocalStream(stream);
+    setVideoOn(stream.getVideoTracks().length > 0);
   }
 
   async function openChannel(callId) {
     const call = callRef.current;
     const me = userRef.current;
     subscribeToWebRTC(me.id, call.peerId);
+
     const on = (event, handlerName) => {
       const fn = (data) => actionsRef.current[handlerName]?.(data);
       bindClientEvent(call.channelName, event, fn);
@@ -310,61 +390,122 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     on('call-offer', 'onOffer');
     on('call-answer', 'onAnswer');
     on('ice-candidates', 'onIceCandidates');
+    on('signal-chunk', 'onSignalChunk');
     on('call-reject', 'onReject');
     on('call-end', 'onRemoteEnd');
+    on('call-media-state', 'onMediaState');
     on('call-stream-updated', 'onStreamUpdated');
-    on('call-screen-lock', 'onScreenLock');
-    on('call-screen-unlock', 'onScreenUnlock');
+
     await waitForSubscription(call.channelName);
     assertActive(callId);
   }
 
-  async function attachVideoTrack(peer, track, stream) {
-    const reusable = peer
+  // -------------------------------------------------------------------------
+  // Remote stream: از روی receiver ها ساخته می‌شود (راه‌حل نسخه‌ی قدیمی)
+  //  - track های ended حذف می‌شوند، ولی muted نگه داشته می‌شوند (muted حالت موقت است)
+  //  - هر تغییر یک MediaStream جدید + افزایش version می‌دهد تا UI حتماً آپدیت شود
+  // -------------------------------------------------------------------------
+  function syncRemoteStream(tracks) {
+    const live = tracks.filter((t) => t && t.readyState !== 'ended');
+    const audio = live.filter((t) => t.kind === 'audio');
+    const video = live.filter((t) => t.kind === 'video');
+
+    // فقط یک ویدیو نمایش داده می‌شود (اشتراک صفحه جای دوربین را می‌گیرد)
+    const activeVideo = [...video].reverse().find((t) => !t.muted) || video[video.length - 1];
+
+    audio.forEach((t) => {
+      t.enabled = !isDeafenedRef.current;
+    });
+
+    const picked = activeVideo ? [...audio, activeVideo] : audio;
+    const signature = picked.map((t) => `${t.id}:${t.muted ? 'm' : 'u'}`).join('|');
+
+    if (remoteStreamRef.current && signature === remoteSigRef.current) return;
+    if (!picked.length) return;
+
+    remoteSigRef.current = signature;
+    const stream = new MediaStream(picked);
+    remoteStreamRef.current = stream;
+    setRemoteStream(stream);
+    setRemoteStreamVersion((v) => v + 1);
+  }
+
+  function syncFromPeer() {
+    const pc = pcRef.current;
+    if (!pc) return;
+    syncRemoteStream(pc.getReceivers().map((r) => r.track));
+  }
+
+  function attachTrackHandlers() {
+    const pc = pcRef.current;
+    if (!pc) return;
+    pc.getReceivers().forEach((receiver) => {
+      const track = receiver.track;
+      if (!track || track._callHandlersAttached) return;
+      track._callHandlersAttached = true;
+      track.onunmute = () => syncFromPeer();
+      track.onmute = () => syncFromPeer();
+      track.onended = () => setTimeout(syncFromPeer, 100);
+    });
+  }
+
+  function resyncSoon() {
+    attachTrackHandlers();
+    syncFromPeer();
+    setTimeout(() => {
+      if (pcRef.current) {
+        attachTrackHandlers();
+        syncFromPeer();
+      }
+    }, 400); // track هایی که کمی دیرتر می‌رسند
+  }
+
+  function applyVideoParams() {
+    const pc = pcRef.current;
+    if (!pc) return;
+    const profile = isScreenSharingDuringCallRef.current ? 'screen' : 'camera';
+    pc.getSenders().forEach((s) => {
+      if (s.track?.kind === 'video') setVideoSenderParameters(s, profile);
+    });
+  }
+
+  async function attachVideoTrack(pc, track, stream) {
+    const reusable = pc
       .getTransceivers()
-      .find(
-        (t) =>
-          t.receiver?.track?.kind === 'video' &&
-          t.currentDirection !== 'stopped' &&
-          !t.sender.track
-      );
+      .find((t) => t.receiver?.track?.kind === 'video' && t.currentDirection !== 'stopped' && !t.sender.track);
     if (reusable) {
       await reusable.sender.replaceTrack(track);
       reusable.direction = 'sendrecv';
       return reusable.sender;
     }
-    return peer.addTrack(track, stream);
+    return pc.addTrack(track, stream);
   }
 
+  // -------------------------------------------------------------------------
+  // PeerConnection
+  // -------------------------------------------------------------------------
   function createPeerConnection() {
     const pc = new RTCPeerConnection({
       iceServers: buildIceServers(iceServersRef.current),
       bundlePolicy: 'max-bundle',
     });
     pcRef.current = pc;
+
     const local = localStreamRef.current;
     local?.getTracks().forEach((track) => pc.addTrack(track, local));
 
-    const fallbackRemote = new MediaStream();
     pc.ontrack = (event) => {
       if (pcRef.current !== pc) return;
-      if (event.streams[0]) {
-        const stream = event.streams[0];
-        stream.getAudioTracks().forEach((t) => (t.enabled = !isDeafenedRef.current));
-        setRemoteStream(stream);
-      } else {
-        fallbackRemote.addTrack(event.track);
-        setRemoteStream(fallbackRemote);
-      }
+      if (event.track.kind === 'audio') event.track.enabled = !isDeafenedRef.current;
+      attachTrackHandlers();
+      syncFromPeer();
     };
 
     pc.onicecandidate = (event) => {
       if (pcRef.current !== pc) return;
       if (event.candidate) {
         outboundCandidatesRef.current.push(event.candidate.toJSON());
-        if (!iceFlushTimerRef.current) {
-          iceFlushTimerRef.current = setTimeout(flushIce, ICE_FLUSH_DELAY);
-        }
+        if (!iceFlushTimerRef.current) iceFlushTimerRef.current = setTimeout(flushIce, ICE_FLUSH_DELAY);
       } else {
         flushIce();
       }
@@ -373,9 +514,11 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     pc.onconnectionstatechange = () => {
       if (pcRef.current !== pc) return;
       const s = pc.connectionState;
+
       if (s === 'connected') {
         clearTimeout(disconnectTimerRef.current);
         disconnectTimerRef.current = null;
+        restartTriedRef.current = false;
         if (stateRef.current !== 'connected') setState('connected');
       } else if (s === 'disconnected') {
         if (!disconnectTimerRef.current) {
@@ -385,10 +528,21 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
           );
         }
       } else if (s === 'failed') {
-        setError('برقراری ارتباط ناموفق بود (ممکن است به TURN نیاز باشد)');
-        actionsRef.current.endCall('connection-failed');
+        const role = callRef.current?.role;
+        if (role === 'caller' && !restartTriedRef.current) {
+          // یک بار ICE restart قبل از قطع تماس
+          restartTriedRef.current = true;
+          actionsRef.current.renegotiate?.({ iceRestart: true });
+        }
+        if (!disconnectTimerRef.current) {
+          disconnectTimerRef.current = setTimeout(() => {
+            setError('برقراری ارتباط ناموفق بود (ممکن است به TURN نیاز باشد)');
+            actionsRef.current.endCall('connection-failed');
+          }, role === 'caller' && restartTriedRef.current ? DISCONNECT_GRACE : 4000);
+        }
       }
     };
+
     return pc;
   }
 
@@ -405,11 +559,15 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     }
   }
 
+  /** همه‌چیز را جمع می‌کند و به حالت idle برمی‌گردد. */
   function cleanup(reason) {
     const call = callRef.current;
     clearTimers();
+    clearChunkBuffers();
     outboundCandidatesRef.current = [];
     pendingRemoteCandidatesRef.current = [];
+    negotiationRef.current = { makingOffer: false, pending: false };
+
     const pc = pcRef.current;
     pcRef.current = null;
     if (pc) {
@@ -423,12 +581,18 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       }
     }
 
+    // هر سه stream باید بسته شوند (دوربین، صفحه، پیش‌نمایش) وگرنه چراغ دوربین روشن می‌ماند
+    stopStream(screenStreamRef.current);
+    stopStream(cameraStreamRef.current);
     stopStream(localStreamRef.current);
-    localStreamRef.current = null;
-    cameraStreamRef.current = null;
     screenStreamRef.current = null;
+    cameraStreamRef.current = null;
+    localStreamRef.current = null;
     screenVideoSenderRef.current = null;
     isScreenSharingDuringCallRef.current = false;
+    isDeafenedRef.current = false;
+    remoteStreamRef.current = null;
+    remoteSigRef.current = '';
 
     if (call) {
       for (const [event, fn] of call.bound) unbindClientEvent(call.channelName, event, fn);
@@ -436,8 +600,8 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       if (me?.id) {
         try {
           unsubscribeFromWebRTC(me.id, call.peerId);
-        } catch {
-          /* ignore */
+        } catch (err) {
+          console.warn('[WebRTC] unsubscribe error:', err);
         }
       }
     }
@@ -449,17 +613,18 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     setCallType(null);
     setDuration(0);
     setIsMuted(false);
-    setIsCameraOff(false);
+    setVideoOn(false);
     setIsScreenSharing(false);
     setIsDeafened(false);
-    setParticipants([]);
     setRemoteScreenSharing(false);
+    setParticipants([]);
     setEndReason(reason);
     setState('idle');
   }
 
   function failCall(callId, err) {
     if (err?.message === ABORTED) return { success: false, aborted: true };
+    console.error('[WebRTC] call failed:', err);
     const msg = errorMessage(err);
     if (callRef.current?.id === callId) {
       setError(msg);
@@ -491,19 +656,53 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     }
   }
 
-  async function renegotiate() {
+  // -------------------------------------------------------------------------
+  // Negotiation (Perfect Negotiation: callee مؤدب است، caller غیرمؤدب)
+  // -------------------------------------------------------------------------
+
+  /** offer می‌سازد و می‌فرستد (هم برای offer اولیه و هم برای renegotiation) */
+  async function createAndSendOffer({ renegotiate: isRenegotiation, iceRestart = false } = {}) {
     const pc = pcRef.current;
     const call = callRef.current;
     if (!pc || !call) return;
+    const neg = negotiationRef.current;
+
+    neg.makingOffer = true;
     try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      sendSignal('call-offer', {
-        sdp: { type: offer.type, sdp: offer.sdp },
-        renegotiate: true,
-      });
+      if (iceRestart) pc.restartIce();
+      await pc.setLocalDescription(); // offer ضمنی؛ همیشه با state فعلی هماهنگ است
+      assertActive(call.id);
+      const { type, sdp } = pc.localDescription;
+      sendSignal('call-offer', { sdp: { type, sdp }, renegotiate: Boolean(isRenegotiation) });
+    } finally {
+      neg.makingOffer = false;
+    }
+  }
+
+  /** بعد از تغییر track ها صدا زده می‌شود. اگر الان نمی‌شود، به تعویق می‌افتد (حذف نمی‌شود). */
+  async function renegotiate(opts = {}) {
+    const pc = pcRef.current;
+    if (!pc || !callRef.current) return;
+    const neg = negotiationRef.current;
+
+    if (neg.makingOffer || pc.signalingState !== 'stable') {
+      neg.pending = true;
+      return;
+    }
+    neg.pending = false;
+
+    try {
+      await createAndSendOffer({ renegotiate: true, iceRestart: Boolean(opts.iceRestart) });
     } catch (err) {
-      console.error('Renegotiation failed:', err);
+      if (err?.message !== ABORTED) console.error('[WebRTC] renegotiation failed:', err);
+    }
+  }
+
+  function runPendingRenegotiation() {
+    const neg = negotiationRef.current;
+    if (neg.pending) {
+      neg.pending = false;
+      setTimeout(() => actionsRef.current.renegotiate?.(), 0);
     }
   }
 
@@ -512,7 +711,16 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   // -------------------------------------------------------------------------
   async function startCall(targetUserId, targetUsername, type = 'audio') {
     const me = userRef.current;
-    if (!me?.id) return { success: false, error: 'کاربر مشخص نیست' };
+    console.debug('[WebRTC] startCall', { me: me?.id, targetUserId, type, state: stateRef.current });
+
+    if (!me?.id) {
+      console.error('[WebRTC] currentUser.id خالی است؛ currentUser را به useWebRTC بدهید');
+      return { success: false, error: 'کاربر مشخص نیست' };
+    }
+    if (targetUserId == null || targetUserId === '') {
+      console.error('[WebRTC] id کاربر مقصد خالی است (dmPartnerId چک شود)');
+      return { success: false, error: 'کاربر مقصد مشخص نیست' };
+    }
     if (stateRef.current !== 'idle') {
       return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
     }
@@ -525,13 +733,16 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     try {
       beginCall({ id: callId, peerId: targetUserId, peerName: targetUsername, type, role: 'caller' });
       setState('calling');
+
       await prepareLocalMedia(callId, type);
       await openChannel(callId);
+
       await apiRequest('/api/calls/signal', {
         method: 'POST',
         body: JSON.stringify({ type: 'invite', targetUserId, callId, callType: type }),
       });
       assertActive(callId);
+
       ringTimerRef.current = setTimeout(() => actionsRef.current.endCall('no-answer'), ringTimeout);
       return { success: true, callId };
     } catch (err) {
@@ -544,13 +755,15 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     if (!call || stateRef.current !== 'incoming') {
       return { success: false, error: 'تماس ورودی وجود ندارد' };
     }
+
     clearTimeout(ringTimerRef.current);
     ringTimerRef.current = null;
     setState('connecting');
+
     try {
       await prepareLocalMedia(call.id, call.type);
       await openChannel(call.id);
-      createPeerConnection();
+      createPeerConnection(); // قبل از اعلام آمادگی، pc و track ها آماده‌اند
       sendSignal('call-accepted');
       return { success: true };
     } catch (err) {
@@ -571,111 +784,147 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   function endCall(reason = 'local-ended') {
     const call = callRef.current;
     if (!call) return;
+
     if (call.role === 'caller' && stateRef.current === 'calling') {
       apiRequest('/api/calls/signal', {
         method: 'POST',
         body: JSON.stringify({ type: 'cancel', targetUserId: call.peerId, callId: call.id }),
-      }).catch(() => { });
+      }).catch(() => {});
     }
     if (stateRef.current !== 'incoming') sendSignal('call-end', { reason });
+
     cleanup(reason);
   }
 
   function toggleMute() {
-    const tracks = localStreamRef.current?.getAudioTracks() ?? [];
+    const tracks = cameraStreamRef.current?.getAudioTracks() ?? [];
     if (!tracks.length) return;
     const wasEnabled = tracks.some((t) => t.enabled);
-    tracks.forEach((t) => (t.enabled = !wasEnabled));
+    tracks.forEach((t) => {
+      t.enabled = !wasEnabled;
+    });
     setIsMuted(wasEnabled);
-    setParticipants((prev) => prev.map((p) => (p.isLocal ? { ...p, muted: wasEnabled } : p)));
+    updateLocalParticipant({ muted: wasEnabled });
+    sendMediaState();
   }
 
   function toggleDeafen() {
-    setIsDeafened((prev) => {
-      const next = !prev;
-      isDeafenedRef.current = next;
-      const stream = remoteStream;
-      if (stream) {
-        stream.getAudioTracks().forEach((track) => {
-          track.enabled = !next;
-        });
-      }
-      return next;
+    const next = !isDeafenedRef.current;
+    isDeafenedRef.current = next;
+    setIsDeafened(next);
+    remoteStreamRef.current?.getAudioTracks().forEach((t) => {
+      t.enabled = !next;
     });
   }
 
-  // 👈 منطق کامل toggleCamera (با افزودن ویدیو در صورت نبود)
-  async function toggleCamera() {
-    if (isScreenSharingDuringCallRef.current) return;
+  async function toggleVideo() {
     const pc = pcRef.current;
-    if (!pc) return;
-    const videoTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (!pc || !cameraStreamRef.current) return;
+    if (isScreenSharingDuringCallRef.current) {
+      console.warn('[WebRTC] Cannot toggle camera while screen sharing');
+      return;
+    }
 
-    if (!videoTrack) {
-      // روشن کردن دوربین
+    if (!isVideoOnRef.current) {
+      // ---------- روشن کردن دوربین ----------
+      let camStream;
       try {
-        const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-        const newTrack = videoStream.getVideoTracks()[0];
-        const combined = new MediaStream([...localStreamRef.current.getTracks(), newTrack]);
-        localStreamRef.current = combined;
-        setLocalStream(combined);
-
-        const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
-        if (sender) await sender.replaceTrack(newTrack);
-        else await attachVideoTrack(pc, newTrack, combined);
-
-        await renegotiate(); // برای اعمال track جدید
-        setIsCameraOff(false);
-        setParticipants((prev) => prev.map((p) => (p.isLocal ? { ...p, video: true } : p)));
+        camStream = await navigator.mediaDevices.getUserMedia({ video: VIDEO_CONSTRAINTS, audio: false });
       } catch (err) {
-        console.error(err);
+        console.error('[WebRTC] Cannot access camera:', err);
+        setError(errorMessage(err));
+        return;
       }
+      const track = camStream.getVideoTracks()[0];
+      if (pcRef.current !== pc) {
+        track.stop(); // تماس در این فاصله تمام شده
+        return;
+      }
+
+      const combined = new MediaStream([...cameraStreamRef.current.getAudioTracks(), track]);
+      cameraStreamRef.current = combined;
+      localStreamRef.current = combined;
+      setLocalStream(combined);
+
+      const liveSender = pc.getSenders().find((s) => s.track?.kind === 'video' && s.track.readyState === 'live');
+      let needsRenegotiation = false;
+      if (liveSender) {
+        await liveSender.replaceTrack(track);
+        await setVideoSenderParameters(liveSender, 'camera');
+      } else {
+        const sender = await attachVideoTrack(pc, track, combined);
+        await setVideoSenderParameters(sender, 'camera');
+        needsRenegotiation = true;
+      }
+
+      setVideoOn(true);
+      setCallType('video');
+      updateLocalParticipant({ video: true });
+
+      if (needsRenegotiation) await renegotiate();
+      else sendSignal('call-stream-updated');
+      sendMediaState();
     } else {
-      // خاموش کردن دوربین
-      const wasEnabled = videoTrack.enabled;
-      videoTrack.enabled = !wasEnabled;
-      setIsCameraOff(!wasEnabled);
-      setParticipants((prev) => prev.map((p) => (p.isLocal ? { ...p, video: !wasEnabled } : p)));
+      // ---------- خاموش کردن دوربین (track حذف و آزاد می‌شود) ----------
+      const track = cameraStreamRef.current.getVideoTracks()[0];
+      if (!track) {
+        setVideoOn(false);
+        return;
+      }
+      const sender = pc.getSenders().find((s) => s.track === track);
+      if (sender) pc.removeTrack(sender);
+      track.stop();
+
+      const next = new MediaStream(cameraStreamRef.current.getAudioTracks());
+      cameraStreamRef.current = next;
+      localStreamRef.current = next;
+      setLocalStream(next);
+
+      setVideoOn(false);
+      setCallType('audio');
+      updateLocalParticipant({ video: false });
+
+      await renegotiate();
+      sendMediaState();
     }
   }
 
   async function stopScreenShareInternal() {
     isScreenSharingDuringCallRef.current = false;
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach((t) => {
-        t.onended = null;
-        t.stop();
-      });
-      screenStreamRef.current = null;
-    }
-    let needsRenegotiation = false;
+    stopStream(screenStreamRef.current);
+    screenStreamRef.current = null;
+
     const pc = pcRef.current;
+    let needsRenegotiation = false;
+
     if (pc && screenVideoSenderRef.current) {
       const sender = screenVideoSenderRef.current;
       const camTrack = cameraStreamRef.current?.getVideoTracks()[0];
-      if (camTrack && !isCameraOffRef.current) {
+      if (camTrack && isVideoOnRef.current && camTrack.readyState === 'live') {
         await sender.replaceTrack(camTrack);
-        await setVideoSenderParameters(sender, 8_000_000);
+        await setVideoSenderParameters(sender, 'camera');
       } else {
-        pc.removeTrack(sender);
+        try {
+          pc.removeTrack(sender);
+        } catch {
+          /* ignore */
+        }
         needsRenegotiation = true;
       }
       screenVideoSenderRef.current = null;
     }
-    if (needsRenegotiation) await renegotiate();
-    else sendSignal('call-stream-updated');
-    sendSignal('call-screen-unlock');
+
     if (cameraStreamRef.current) {
       localStreamRef.current = cameraStreamRef.current;
       setLocalStream(cameraStreamRef.current);
     }
     setIsScreenSharing(false);
-    setParticipants((prev) =>
-      prev.map((p) => (p.isLocal ? { ...p, screenSharing: false, video: !isCameraOffRef.current } : p))
-    );
+    setCallType(isVideoOnRef.current ? 'video' : 'audio');
+    updateLocalParticipant({ screenSharing: false, video: isVideoOnRef.current });
+
+    if (needsRenegotiation) await renegotiate();
+    else sendSignal('call-stream-updated');
+    sendMediaState();
   }
 
   async function toggleScreenShare() {
@@ -683,63 +932,78 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       await stopScreenShareInternal();
       return;
     }
+
     const pc = pcRef.current;
     if (!pc) return;
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      setError('مرورگر شما از اشتراک صفحه پشتیبانی نمی‌کند');
+      return;
+    }
+
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always', frameRate: { ideal: 30, max: 60 } },
+        video: { cursor: 'always', frameRate: { ideal: 15, max: 30 } },
         audio: false,
       });
       const screenTrack = screenStream.getVideoTracks()[0];
-      if (!screenTrack) {
-        screenStream.getTracks().forEach((t) => t.stop());
+      if (!screenTrack || pcRef.current !== pc) {
+        stopStream(screenStream);
         return;
       }
       screenStreamRef.current = screenStream;
+
       let needsRenegotiation = false;
-      const videoSender = pc
-        .getSenders()
-        .find((s) => s.track?.kind === 'video' && s.track.readyState === 'live');
-      if (videoSender) {
-        await videoSender.replaceTrack(screenTrack);
-        await setVideoSenderParameters(videoSender, 8_000_000);
-        screenVideoSenderRef.current = videoSender;
+      const liveSender = pc.getSenders().find((s) => s.track?.kind === 'video' && s.track.readyState === 'live');
+      if (liveSender) {
+        await liveSender.replaceTrack(screenTrack); // دوربین روشن بود؛ فقط track عوض می‌شود
+        screenVideoSenderRef.current = liveSender;
       } else {
-        const newSender = await attachVideoTrack(pc, screenTrack, screenStream);
-        await setVideoSenderParameters(newSender, 8_000_000);
-        screenVideoSenderRef.current = newSender;
+        screenVideoSenderRef.current = await attachVideoTrack(pc, screenTrack, screenStream);
         needsRenegotiation = true;
       }
+
+      isScreenSharingDuringCallRef.current = true;
+      await setVideoSenderParameters(screenVideoSenderRef.current, 'screen');
+
       const micTrack = cameraStreamRef.current?.getAudioTracks()[0];
-      const local = new MediaStream(micTrack ? [screenTrack, micTrack] : [screenTrack]);
-      localStreamRef.current = local;
-      setLocalStream(local);
+      const preview = new MediaStream(micTrack ? [screenTrack, micTrack] : [screenTrack]);
+      localStreamRef.current = preview;
+      setLocalStream(preview);
+
+      setIsScreenSharing(true);
+      setCallType('screen');
+      updateLocalParticipant({ screenSharing: true, video: true });
+
       if (needsRenegotiation) await renegotiate();
       else sendSignal('call-stream-updated');
-      sendSignal('call-screen-lock');
-      setIsScreenSharing(true);
-      isScreenSharingDuringCallRef.current = true;
-      setParticipants((prev) =>
-        prev.map((p) => (p.isLocal ? { ...p, screenSharing: true, video: true } : p))
-      );
+      sendMediaState();
+
       screenTrack.onended = async () => {
         if (isScreenSharingDuringCallRef.current) await stopScreenShareInternal();
       };
     } catch (err) {
-      console.error('Cannot share screen:', err);
+      if (err?.name !== 'NotAllowedError') console.error('[WebRTC] Cannot share screen:', err);
+      isScreenSharingDuringCallRef.current = false;
+      stopStream(screenStreamRef.current);
+      screenStreamRef.current = null;
     }
   }
 
+  // -------------------------------------------------------------------------
+  // رویدادهای ورودی: اعلان‌های سرور
+  // -------------------------------------------------------------------------
   function onIncoming(data) {
     const me = userRef.current;
     if (!me?.id || !data) return;
     const { callId, callerId, callerName, callType: type } = data;
     if (typeof callId !== 'string' || callerId == null) return;
     if (String(callerId) === String(me.id)) return;
+
     if (stateRef.current !== 'idle') {
       sendOneShot(callerId, callId, 'call-reject', { reason: 'busy' });
       return;
     }
+
     try {
       beginCall({
         id: callId,
@@ -748,9 +1012,11 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
         type: type === 'video' ? 'video' : 'audio',
         role: 'callee',
       });
-    } catch {
+    } catch (err) {
+      console.warn('[WebRTC] incoming call error:', err);
       return;
     }
+
     setState('incoming');
     ringTimerRef.current = setTimeout(() => cleanup('missed'), ringTimeout);
   }
@@ -761,48 +1027,67 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     if (call.role === 'callee' && stateRef.current !== 'connected') cleanup('cancelled');
   }
 
-  const isCurrent = (data) => callRef.current && data?.callId === callRef.current.id;
+  // -------------------------------------------------------------------------
+  // رویدادهای ورودی: سیگنالینگ روی کانال تماس
+  // -------------------------------------------------------------------------
+  const isCurrent = (data) => Boolean(callRef.current) && data?.callId === callRef.current.id;
 
   async function onAccepted(data) {
     const call = callRef.current;
     if (!isCurrent(data) || call.role !== 'caller' || stateRef.current !== 'calling') return;
+
     clearTimeout(ringTimerRef.current);
     ringTimerRef.current = null;
     setState('connecting');
+
     try {
-      const pc = createPeerConnection();
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      assertActive(call.id);
-      sendSignal('call-offer', { sdp: { type: offer.type, sdp: offer.sdp } });
+      createPeerConnection();
+      await createAndSendOffer({ renegotiate: false });
     } catch (err) {
       const r = failCall(call.id, err);
       if (!r.aborted) sendSignal('call-end', { reason: 'error' });
     }
   }
 
+  /** offer (اولیه یا renegotiation) برای هر دو نقش با قاعده‌ی perfect negotiation */
   async function onOffer(data) {
     const call = callRef.current;
     const pc = pcRef.current;
     if (!isCurrent(data) || !pc || !data.sdp) return;
-    if (data.renegotiate) {
-      if (pc.signalingState !== 'stable') return;
-      await pc.setRemoteDescription(data.sdp);
-      await flushPendingRemoteCandidates();
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      sendSignal('call-answer', { sdp: { type: answer.type, sdp: answer.sdp } });
+
+    const neg = negotiationRef.current;
+    const polite = call.role === 'callee';
+    const collision = neg.makingOffer || pc.signalingState !== 'stable';
+
+    if (collision && !polite) {
+      console.debug('[WebRTC] glare: impolite side ignores remote offer');
       return;
     }
-    if (call.role !== 'callee') return;
+
     try {
+      if (collision && pc.signalingState === 'have-local-offer') {
+        // rollback و setRemoteDescription باید پشت‌سرهم باشند، نه موازی
+        await pc.setLocalDescription({ type: 'rollback' });
+        neg.pending = true; // تغییرات محلی بعد از این تبادل دوباره ارسال می‌شوند
+      }
+
       await pc.setRemoteDescription(data.sdp);
       await flushPendingRemoteCandidates();
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       assertActive(call.id);
-      sendSignal('call-answer', { sdp: { type: answer.type, sdp: answer.sdp } });
+
+      const { type, sdp } = pc.localDescription;
+      sendSignal('call-answer', { sdp: { type, sdp } });
+
+      resyncSoon();
+      applyVideoParams();
+      runPendingRenegotiation();
     } catch (err) {
+      if (data.renegotiate) {
+        console.error('[WebRTC] renegotiation answer failed:', err);
+        return;
+      }
       const r = failCall(call.id, err);
       if (!r.aborted) sendSignal('call-end', { reason: 'error' });
     }
@@ -811,11 +1096,15 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   async function onAnswer(data) {
     const call = callRef.current;
     const pc = pcRef.current;
-    if (!isCurrent(data) || call.role !== 'caller' || !pc || !data.sdp) return;
+    if (!isCurrent(data) || !pc || !data.sdp) return;
     if (pc.signalingState !== 'have-local-offer') return;
+
     try {
       await pc.setRemoteDescription(data.sdp);
       await flushPendingRemoteCandidates();
+      resyncSoon();
+      applyVideoParams();
+      runPendingRenegotiation();
     } catch (err) {
       const r = failCall(call.id, err);
       if (!r.aborted) sendSignal('call-end', { reason: 'error' });
@@ -825,6 +1114,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   async function onIceCandidates(data) {
     if (!isCurrent(data) || !Array.isArray(data.candidates)) return;
     const pc = pcRef.current;
+
     for (const candidate of data.candidates) {
       if (pc && pc.remoteDescription) {
         try {
@@ -838,6 +1128,60 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     }
   }
 
+  /** بازسازی پیام‌های تکه‌تکه‌شده (SDP تصویری) */
+  function onSignalChunk(data) {
+    if (!isCurrent(data)) return;
+    const handlerName = CHUNKABLE[data.event];
+    if (
+      !handlerName ||
+      typeof data.msgId !== 'string' ||
+      typeof data.part !== 'string' ||
+      !Number.isInteger(data.index) ||
+      !Number.isInteger(data.total) ||
+      data.total < 1 ||
+      data.total > 20 ||
+      data.index < 0 ||
+      data.index >= data.total
+    ) {
+      return;
+    }
+
+    const buffers = chunkBuffersRef.current;
+    let buf = buffers.get(data.msgId);
+    if (!buf) {
+      if (buffers.size >= MAX_CHUNK_BUFFERS) {
+        const oldest = buffers.keys().next().value;
+        clearTimeout(buffers.get(oldest)?.timer);
+        buffers.delete(oldest);
+      }
+      buf = {
+        parts: new Array(data.total),
+        count: 0,
+        total: data.total,
+        timer: setTimeout(() => buffers.delete(data.msgId), CHUNK_TTL),
+      };
+      buffers.set(data.msgId, buf);
+    }
+
+    if (buf.parts[data.index] === undefined) {
+      buf.parts[data.index] = data.part;
+      buf.count += 1;
+    }
+    if (buf.count < buf.total) return;
+
+    clearTimeout(buf.timer);
+    buffers.delete(data.msgId);
+
+    let payload;
+    try {
+      payload = JSON.parse(buf.parts.join(''));
+    } catch {
+      console.warn('[WebRTC] invalid chunked payload');
+      return;
+    }
+    actionsRef.current[handlerName]?.(payload);
+  }
+
   function onReject(data) {
     const call = callRef.current;
     if (!isCurrent(data) || call.role !== 'caller') return;
@@ -849,22 +1193,21 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     cleanup('remote-ended');
   }
 
-  function onStreamUpdated() {
-    if (!callRef.current) return;
+  function onStreamUpdated(data) {
+    if (!isCurrent(data)) return;
+    resyncSoon();
   }
 
-  function onScreenLock() {
-    setRemoteScreenSharing(true);
+  function onMediaState(data) {
+    if (!isCurrent(data)) return;
+    const screen = Boolean(data.screenSharing);
+    setRemoteScreenSharing(screen);
     setParticipants((prev) =>
-      prev.map((p) => (!p.isLocal ? { ...p, screenSharing: true, video: true } : p))
+      prev.map((p) =>
+        p.isLocal ? p : { ...p, muted: Boolean(data.muted), video: Boolean(data.video) || screen, screenSharing: screen }
+      )
     );
-  }
-
-  function onScreenUnlock() {
-    setRemoteScreenSharing(false);
-    setParticipants((prev) =>
-      prev.map((p) => (!p.isLocal ? { ...p, screenSharing: false, video: false } : p))
-    );
+    if (!screen) setTimeout(resyncSoon, 200);
   }
 
   useEffect(() => {
@@ -875,44 +1218,59 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       endCall,
       toggleMute,
       toggleDeafen,
-      toggleCamera,
+      toggleVideo,
       toggleScreenShare,
+      renegotiate,
+      sendMediaState,
       onIncoming,
       onCancelled,
       onAccepted,
       onOffer,
       onAnswer,
       onIceCandidates,
+      onSignalChunk,
       onReject,
       onRemoteEnd,
       onStreamUpdated,
-      onScreenLock,
-      onScreenUnlock,
+      onMediaState,
     };
   });
 
+  // -------------------------------------------------------------------------
+  // Effect ها
+  // -------------------------------------------------------------------------
   const userId = currentUser?.id;
+
   useEffect(() => {
-    if (!connected || userId == null) return;
+    if (!connected || userId == null) return undefined;
+
     let channelName;
     try {
       subscribeToNotifications(userId);
       channelName = getNotificationChannelName(userId);
-    } catch {
-      return;
+    } catch (err) {
+      console.warn('[WebRTC] notifications subscribe error:', err);
+      return undefined;
     }
+
     const handleIncoming = (d) => actionsRef.current.onIncoming?.(d);
     const handleCancelled = (d) => actionsRef.current.onCancelled?.(d);
     bindEvent(channelName, 'incoming-call', handleIncoming);
     bindEvent(channelName, 'call-cancelled', handleCancelled);
+
     return () => {
       unbindEvent(channelName, 'incoming-call', handleIncoming);
       unbindEvent(channelName, 'call-cancelled', handleCancelled);
     };
   }, [connected, userId]);
 
+  // وضعیت بی‌صدا/دوربین را بعد از برقراری تماس یک بار به طرف مقابل اطلاع بده
   useEffect(() => {
-    if (callState !== 'connected') return;
+    if (callState === 'connected') actionsRef.current.sendMediaState?.();
+  }, [callState]);
+
+  useEffect(() => {
+    if (callState !== 'connected') return undefined;
     const startedAt = Date.now();
     const id = setInterval(() => setDuration(Math.floor((Date.now() - startedAt) / 1000)), 1000);
     return () => clearInterval(id);
@@ -931,38 +1289,56 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     };
   }, []);
 
+  // -------------------------------------------------------------------------
+  // API پایدار
+  // -------------------------------------------------------------------------
   const startCallStable = useCallback((...args) => actionsRef.current.startCall(...args), []);
   const acceptCallStable = useCallback(() => actionsRef.current.acceptCall(), []);
   const rejectCallStable = useCallback(() => actionsRef.current.rejectCall(), []);
   const endCallStable = useCallback(() => actionsRef.current.endCall('local-ended'), []);
   const toggleMuteStable = useCallback(() => actionsRef.current.toggleMute(), []);
   const toggleDeafenStable = useCallback(() => actionsRef.current.toggleDeafen(), []);
-  const toggleCameraStable = useCallback(() => actionsRef.current.toggleCamera(), []);
+  const toggleVideoStable = useCallback(() => actionsRef.current.toggleVideo(), []);
   const toggleScreenShareStable = useCallback(() => actionsRef.current.toggleScreenShare(), []);
 
   return {
-    callState,
-    callType,
-    peer,
-    incomingCall: callState === 'incoming' ? { peer, callType } : null,
+    // --- وضعیت ---
+    callState, // idle | calling | incoming | connecting | connected
+    callType, // 'audio' | 'video' | 'screen'
+    peer, // { id, username } | null
+    incomingCall:
+      callState === 'incoming'
+        ? { peer, callType, fromUserId: peer?.id, fromUsername: peer?.username }
+        : null,
     localStream,
     remoteStream,
+    remoteStreamVersion,
     isMuted,
-    isCameraOff,
-    duration,
-    error,
-    endReason,
+    isCameraOff: !isVideoOn,
+    isVideoOn,
     isScreenSharing,
     isDeafened,
     remoteScreenSharing,
     participants,
-    startCall: startCallStable,
+    duration, // ثانیه
+    error,
+    endReason, // متن: END_REASON_TEXT[endReason]
+
+    // --- اقدام‌ها ---
+    startCall: startCallStable, // (targetUserId, targetUsername, 'audio' | 'video')
     acceptCall: acceptCallStable,
     rejectCall: rejectCallStable,
     endCall: endCallStable,
     toggleMute: toggleMuteStable,
     toggleDeafen: toggleDeafenStable,
-    toggleCamera: toggleCameraStable,
+    toggleCamera: toggleVideoStable,
     toggleScreenShare: toggleScreenShareStable,
+
+    // --- نام‌های سازگار با نسخه‌ی socket.io (برای CallModal قدیمی) ---
+    isCalling: callState === 'calling' || callState === 'connecting' || callState === 'connected',
+    remoteUser: peer,
+    answerCall: acceptCallStable,
+    declineCall: rejectCallStable,
+    toggleVideo: toggleVideoStable,
   };
 }
