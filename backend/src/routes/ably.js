@@ -28,21 +28,20 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
   try {
     const userId = req.userId;
 
-    // 👇 تغییر حیاتی: استفاده از نام دقیق کانال به جای * برای نوتیفیکیشن 👇
+    // 👇 تغییر حیاتی: پاس دادن آبجکت به صورت مستقیم (بدون JSON.stringify) 👇
     const capabilities = {
       'presence:room-*': ['subscribe', 'presence'],
       'private:dm-*': ['subscribe', 'publish'],
-      [`private:notifications-${userId}`]: ['subscribe', 'presence'], // تطابق ۱۰۰٪ دقیق و امن
+      'private:notifications-*': ['subscribe', 'presence'],
       'private:webrtc-*': ['subscribe', 'publish'],
       'presence:online': ['subscribe', 'presence']
     };
 
-    const capabilityString = JSON.stringify(capabilities);
-    console.log('✅ [Backend] Secure Capability String:', capabilityString);
+    console.log('✅ [Backend] Sending capabilities OBJECT:', capabilities);
 
     const tokenParams = {
       clientId: userId,
-      capability: capabilityString,
+      capability: capabilities, // <--- آبجکت را مستقیم بفرستید، نه رشته را
       ttl: 3600 * 1000,
     };
 
