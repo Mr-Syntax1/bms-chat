@@ -23,14 +23,48 @@ const authMiddleware = (req, res, next) => {
 
 messagesRouter.use(authMiddleware);
 
+// Channel naming helpers matching frontend/src/lib/ably.js exactly
+const MAX_CHANNEL_LENGTH = 164;
+const CHANNEL_RE = /^[A-Za-z0-9_\-=@,.;:]{1,164}$/;
+const SAFE_CHAR_RE = /[A-Za-z0-9_.-]/;
+const encoder = new TextEncoder();
+
+function encodeChannelPart(value) {
+  const str = String(value);
+  let out = '';
+  for (const ch of str) {
+    if (SAFE_CHAR_RE.test(ch)) {
+      out += ch;
+    } else {
+      for (const byte of encoder.encode(ch)) {
+        out += `=${byte.toString(16).toUpperCase().padStart(2, '0')}`;
+      }
+    }
+  }
+  return out;
+}
+
+function assertValidChannelName(name) {
+  if (name.length > MAX_CHANNEL_LENGTH || !CHANNEL_RE.test(name)) {
+    throw new Error(`[Ably] Invalid channel name: "${name}"`);
+  }
+  return name;
+}
+
+function pairChannelName(prefix, a, b) {
+  const [x, y] = [String(a), String(b)].sort();
+  return assertValidChannelName(`${prefix}${x}-${y}`);
+}
+
 function getChannelName(roomName) {
   if (roomName.startsWith('dm_')) {
-    const idsPart = roomName.replace('dm_', '');
-    // در Ably کانال‌های خصوصی باید با private: شروع شوند
-    return `private:dm-${idsPart.replace('_', '-')}`;
+    const parts = roomName.slice(3).split('_');
+    if (parts.length === 2 && parts[0] && parts[1]) {
+      return pairChannelName('private:dm-', parts[0], parts[1]);
+    }
+    return assertValidChannelName(`private:dm-${roomName.slice(3).replace('_', '-')}`);
   }
-  // در Ably کانال‌های حضور باید با presence: شروع شوند
-  return `presence:room-${roomName}`;
+  return assertValidChannelName(`presence:room-${encodeChannelPart(roomName)}`);
 }
 
 // ... (بخش‌های GET /history و اعتبارسنجی‌ها دقیقاً مانند قبل باقی می‌مانند) ...

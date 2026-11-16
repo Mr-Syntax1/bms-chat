@@ -4,37 +4,60 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const AUTH_ENDPOINT = `${API_BASE}/api/ably/auth`;
 
 let authToken = null;
+let authTokenPromise = null;
 
 export function setAblyAuthToken(token) {
   authToken = token;
+  authTokenPromise = null; // Reset promise so next call fetches fresh
+}
+
+function getAuthToken() {
+  if (authToken) return Promise.resolve(authToken);
+  if (authTokenPromise) return authTokenPromise;
+  // Wait for token to be set (e.g., from App.jsx useEffect)
+  authTokenPromise = new Promise((resolve) => {
+    const checkToken = () => {
+      if (authToken) {
+        resolve(authToken);
+      } else {
+        setTimeout(checkToken, 50);
+      }
+    };
+    checkToken();
+  });
+  return authTokenPromise;
 }
 
 export const ably = new Ably.Realtime({
-  authCallback: (tokenParams, callback) => {
+  authCallback: async (tokenParams, callback) => {
     console.log('[Ably] authCallback called!', { AUTH_ENDPOINT });
 
-    fetch(AUTH_ENDPOINT, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      },
-    })
-      .then((res) => {
-        console.log('[Ably] Auth response status:', res.status);
-        if (!res.ok) throw new Error(`Auth failed: ${res.status}`);
-        return res.json();
-      })
-      .then((tokenRequest) => {
-        //  این خط حیاتی بود که جا افتاده بود! D
-        console.log('[Ably] Token request received successfully, passing to SDK');
-        callback(null, tokenRequest); 
-      })
-      .catch((err) => {
-        console.error('[Ably] Auth callback error:', err);
-        callback(err);
+    try {
+      const token = await getAuthToken();
+      console.log('[Ably] Using token for auth:', token ? 'present' : 'missing');
+
+      const res = await fetch(AUTH_ENDPOINT, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
+
+      console.log('[Ably] Auth response status:', res.status);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`Auth failed: ${res.status} ${errText}`);
+      }
+
+      const tokenRequest = await res.json();
+      console.log('[Ably] Token request received successfully, passing to SDK');
+      callback(null, tokenRequest);
+    } catch (err) {
+      console.error('[Ably] Auth callback error:', err);
+      callback(err);
+    }
   },
   autoConnect: false,
   disconnectedRetryTimeout: 3000,
