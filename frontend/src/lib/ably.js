@@ -12,7 +12,6 @@ export function setAblyAuthToken(token) {
 export const ably = createClient({
   authCallback: async (tokenParams, callback) => {
     try {
-      console.log('[Ably v3] Requesting token from:', AUTH_ENDPOINT);
 
       const res = await fetch(AUTH_ENDPOINT, {
         method: 'POST',
@@ -29,7 +28,6 @@ export const ably = createClient({
       }
 
       const tokenRequest = await res.json();
-      console.log('✅ [Frontend] Token received. Capabilities:', tokenRequest.capability);
 
       callback(null, tokenRequest);
     } catch (err) {
