@@ -429,14 +429,13 @@ export default function ChatInput({ onSend, onTyping }) {
             ref={emojiPickerRef}
             role="dialog"
             aria-label="انتخاب ایموجی"
-            className="cic-anim z-50 overflow-hidden
-                       fixed inset-x-0 bottom-0 max-h-[60vh] pb-[env(safe-area-inset-bottom)] rounded-t-2xl
+            className="cic-anim z-50 overflow-y-auto h-fit max-h-[60vh]
+                       fixed inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)] rounded-t-2xl
                        sm:absolute sm:inset-x-auto sm:bottom-full sm:end-0 sm:mb-3 sm:rounded-2xl
                        sm:w-[360px] sm:max-h-[420px] sm:pb-0 
                        bg-gray-900 border border-white/10 shadow-2xl shadow-black/50"
             style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
           >
-            {/* یک خط کوچک تزئینی برای موبایل تا حس Bottom Sheet بدهد */}
             <div className="sm:hidden flex justify-center pt-2.5 pb-1">
               <span className="h-1.5 w-10 rounded-full bg-white/20" />
             </div>
