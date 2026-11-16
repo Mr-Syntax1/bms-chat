@@ -13,7 +13,7 @@ export const ably = createClient({
   authCallback: async (tokenParams, callback) => {
     try {
       console.log('[Ably v3] Requesting token from:', AUTH_ENDPOINT);
-      
+
       const res = await fetch(AUTH_ENDPOINT, {
         method: 'POST',
         credentials: 'include',
@@ -22,17 +22,16 @@ export const ably = createClient({
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
       });
-      
+
       if (!res.ok) {
         const errText = await res.text();
         throw new Error(`Auth failed: ${res.status} - ${errText}`);
       }
-      
+
       const tokenRequest = await res.json();
-      
+
       console.log('✅ [Frontend] Token received. Capabilities:', tokenRequest.capability);
-      
-      // تحویل توکن به SDK نسخه ۳
+
       callback(null, tokenRequest);
     } catch (err) {
       console.error('❌ [Ably v3] Auth callback error:', err);
@@ -114,20 +113,16 @@ export function subscribeToDM(userId1, userId2) { return getChannel(getDMChannel
 export function subscribeToNotifications(userId) { return getChannel(getNotificationChannelName(userId)); }
 export function subscribeToWebRTC(userId1, userId2) { return getChannel(getWebRTCChannelName(userId1, userId2)); }
 
-// 👇 تابع حیاتی برای جلوگیری از خطای release در حالت attached 👇
 function safeReleaseChannel(channelName) {
   const channel = ably.channels.get(channelName);
   if (channel) {
-    // اگر کانال هنوز متصل یا در حال اتصال است، ابتدا آن را detach کن
     if (channel.state === 'attached' || channel.state === 'attaching') {
       channel.detach();
     }
-    // سپس آن را به طور کامل آزاد (release) کن
     ably.channels.release(channelName);
   }
 }
 
-// استفاده از تابع ایمن به جای release مستقیم
 export function unsubscribeFromRoom(roomName) { safeReleaseChannel(getRoomChannelName(roomName)); }
 export function unsubscribeFromDM(userId1, userId2) { safeReleaseChannel(getDMChannelName(userId1, userId2)); }
 export function unsubscribeFromNotifications(userId) { safeReleaseChannel(getNotificationChannelName(userId)); }
@@ -142,14 +137,12 @@ export function publishEvent(channelName, eventName, data) {
   return channel.publish(eventName, data);
 }
 
+// 👇 اصلاح حیاتی: callback پیام کامل (message) را می‌گیرد، نه data استخراج‌شده 👇
+// این دقیقاً با انتظارات useWebRTC.js (که خودش message.data را می‌خواند) سازگار است.
 export function bindEvent(channelName, eventName, callback) {
   const channel = getChannel(channelName);
-  const wrappedFn = (message) => {
-    // در v3، آبجکت Message برگردانده می‌شود. داده اصلی در message.data است.
-    callback(message.data !== undefined ? message.data : message);
-  };
-  channel.subscribe(eventName, wrappedFn);
-  return wrappedFn;
+  channel.subscribe(eventName, callback);
+  return callback;
 }
 
 export function unbindEvent(channelName, eventName, callback) {
