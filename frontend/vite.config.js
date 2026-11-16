@@ -12,7 +12,11 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
-      nodePolyfills(),
+      
+      nodePolyfills({
+        exclude: ['@ably/pubsub-device', '@ably/pubsub-core']
+      }),
+      
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
@@ -30,6 +34,9 @@ export default defineConfig(({ mode }) => {
 
     define: {
       'process.env.NODE_ENV': JSON.stringify(mode),
+    },
+    optimizeDeps: {
+      include: ['@ably/pubsub-device'],
     },
 
     server: {
