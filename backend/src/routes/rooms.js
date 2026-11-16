@@ -63,7 +63,7 @@ roomsRouter.get('/search', async (req, res) => {
       users: users.map((u) => ({
         id: u._id.toString(),
         username: u.username,
-        isOnline: false, // وضعیت آنلاین از طریق Apinator Presence مدیریت می‌شود
+        isOnline: false, // وضعیت آنلاین از طریق Presence مدیریت می‌شود
       })),
     });
   } catch (err) {

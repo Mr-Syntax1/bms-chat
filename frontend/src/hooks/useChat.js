@@ -1,17 +1,18 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { sileo } from 'sileo';
 import {
-  apinator,
+  ably,
   subscribeToRoom,
   unsubscribeFromRoom,
   getRoomChannelName,
-  triggerClientEvent,
+  publishEvent,
   subscribeToNotifications,
   unsubscribeFromNotifications,
   getNotificationChannelName,
   isChannelSubscribed,
-  setApinatorAuthToken,
-} from '../lib/apinator';
+  setAblyAuthToken,
+  getChannel,
+} from '../lib/ably'; // مسیر را به فایل ably.js جدید تغییر دهید
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -29,10 +30,10 @@ const isDmRoom = (name) => typeof name === 'string' && name.startsWith('dm_');
 let authToken = null;
 let unauthorizedHandler = null;
 
-/** یک‌جا توکن هم برای API و هم برای auth کانال‌های Apinator ست می‌شود. */
+/** یک‌جا توکن هم برای API و هم برای auth کانال‌های Ably ست می‌شود. */
 export function setApiToken(token) {
   authToken = token;
-  setApinatorAuthToken(token);
+  setAblyAuthToken(token);
 }
 
 /** اختیاری: وقتی سرور 401 داد صدا زده می‌شود (مثلاً برای هدایت به صفحه‌ی لاگین). */
@@ -56,7 +57,6 @@ export async function apiRequest(endpoint, options = {}) {
       },
     });
 
-    // پاسخ 204 یا بدنه‌ی خالی نباید خطا بدهد
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
@@ -68,7 +68,7 @@ export async function apiRequest(endpoint, options = {}) {
 
     return data;
   } catch (err) {
-    if (err.name === 'AbortError') throw new Error('زمان درخواست به پایان رسید', err);
+    if (err.name === 'AbortError') throw new Error('زمان درخواست به پایان رسید',err);
     throw err;
   } finally {
     clearTimeout(timer);
@@ -91,12 +91,11 @@ export function useChat() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [dmPartnerName, setDmPartnerName] = useState(null);
 
-  // ref ها: همیشه آخرین مقدار را دارند و همزمان (بدون انتظار برای رندر) آپدیت می‌شوند
   const currentRoomRef = useRef(null);
   const currentUserRef = useRef(null);
-  const roomHandlersRef = useRef({}); // roomName -> { channelName, handlers: [[event, fn], ...] }
-  const notificationHandlersRef = useRef(null); // { channelName, userId, handler }
-  const typingMapRef = useRef(new Map()); // key -> { username, timer }
+  const roomHandlersRef = useRef({}); // roomName -> { channelName, handlers: [[event, fn], ...], presenceHandlers: [...] }
+  const notificationHandlersRef = useRef(null); 
+  const typingMapRef = useRef(new Map()); 
   const typingTimeoutRef = useRef(null);
   const lastTypingSentRef = useRef(0);
   const sysMsgCounterRef = useRef(0);
@@ -107,27 +106,23 @@ export function useChat() {
   const disconnectRef = useRef(null);
 
   // -------------------------------------------------------------------------
-  // وضعیت اتصال (فقط از روی state_change، با callback نام‌دار)
+  // وضعیت اتصال Ably
   // -------------------------------------------------------------------------
   useEffect(() => {
-    const onState = ({ current }) => {
-      if (current === 'connected') {
+    const onState = (stateChange) => {
+      if (stateChange.current === 'connected') {
         setConnected(true);
-        // اتصال مجدد بعد از یک قطعی: داده‌های از دست رفته را دوباره بگیر
         if (wasConnectedRef.current) resyncRef.current?.();
         wasConnectedRef.current = true;
-      } else if (current === 'disconnected' || current === 'unavailable') {
+      } else if (stateChange.current === 'disconnected' || stateChange.current === 'suspended') {
         setConnected(false);
       }
     };
-    const onErr = (err) => console.error('[Apinator] realtime error:', err);
-
-    apinator.bind('state_change', onState);
-    apinator.bind('realtime:error', onErr);
+    
+    ably.connection.on(onState);
 
     return () => {
-      apinator.unbind('state_change', onState);
-      apinator.unbind('realtime:error', onErr);
+      ably.connection.off(onState);
     };
   }, []);
 
@@ -188,21 +183,25 @@ export function useChat() {
   }, []);
 
   // -------------------------------------------------------------------------
-  // هندلرهای اتاق (presence + message + typing در یک جا)
+  // هندلرهای اتاق (presence + message + typing)
   // -------------------------------------------------------------------------
   const bindRoomHandlers = useCallback(
-    (roomName) => {
+    async (roomName) => {
       const channelName = getRoomChannelName(roomName);
-      const channel = apinator.channel(channelName);
+      const channel = getChannel(channelName);
       if (!channel) {
         console.warn('[Chat] Channel not available for:', roomName);
         return;
       }
 
       const handlers = [];
+      const presenceHandlers = [];
+      
       const on = (event, fn) => {
-        channel.bind(event, fn);
-        handlers.push([event, fn]);
+        // در Ably، callback شیء Message را دریافت می‌کند، ما .data را استخراج می‌کنیم
+        const wrappedFn = (message) => fn(message.data);
+        channel.subscribe(event, wrappedFn);
+        handlers.push([event, wrappedFn]);
       };
 
       // ---- پیام‌ها ----
@@ -213,7 +212,6 @@ export function useChat() {
           const next = [...prev, msg];
           return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
         });
-        // فرستنده‌ی پیام دیگر در حال تایپ نیست
         const senderKey = msg.senderId ?? msg.userId;
         if (senderKey != null) clearTypingUser(String(senderKey));
         else if (msg.sender) clearTypingByUsername(msg.sender);
@@ -243,7 +241,7 @@ export function useChat() {
       });
 
       // ---- typing ----
-      on('client-typing', (data) => {
+      on('typing', (data) => {
         const { username, userId, isTyping } = data || {};
         const key = String(userId ?? username ?? '');
         if (!key) return;
@@ -269,32 +267,43 @@ export function useChat() {
       if (!isDmRoom(roomName)) {
         setOnlineUsers([]);
 
-        const toUser = (m) => ({ id: m.user_id, username: m.user_info?.name || 'Unknown' });
+        const toUser = (m) => ({ 
+          id: m.clientId, 
+          username: m.data?.name || 'Unknown' 
+        });
 
-        const loadMembers = () => {
-          if (typeof channel.getMembers !== 'function') return;
-          const raw = channel.getMembers();
-          const list = Array.isArray(raw) ? raw : Object.values(raw || {});
-          setOnlineUsers(list.map(toUser));
+        const loadMembers = async () => {
+          try {
+            const members = await channel.presence.get();
+            setOnlineUsers(members.map(toUser));
+          } catch (err) {
+            console.error('[Chat] Failed to load presence members:', err);
+          }
         };
 
-        on('realtime:member_added', (member) => {
+        const onEnter = (member) => {
           setOnlineUsers((prev) =>
-            prev.some((u) => u.id === member.user_id) ? prev : [...prev, toUser(member)]
+            prev.some((u) => u.id === member.clientId) ? prev : [...prev, toUser(member)]
           );
-        });
+        };
 
-        on('realtime:member_removed', (member) => {
-          setOnlineUsers((prev) => prev.filter((u) => u.id !== member.user_id));
-        });
+        const onLeave = (member) => {
+          setOnlineUsers((prev) => prev.filter((u) => u.id !== member.clientId));
+        };
 
-        on('realtime:subscription_succeeded', loadMembers);
+        channel.presence.subscribe('enter', onEnter);
+        channel.presence.subscribe('leave', onLeave);
+        presenceHandlers.push(['enter', onEnter], ['leave', onLeave]);
 
-        // اگر subscribe قبلاً کامل شده باشد، رویدادش دیگر نمی‌آید
-        if (isChannelSubscribed(channelName)) loadMembers();
+        // ورود خودکار کاربر فعلی به Presence
+        if (currentUserRef.current) {
+          channel.presence.enter({ name: currentUserRef.current.username });
+        }
+
+        loadMembers();
       }
 
-      roomHandlersRef.current[roomName] = { channelName, handlers };
+      roomHandlersRef.current[roomName] = { channelName, handlers, presenceHandlers };
     },
     [clearTypingUser, clearTypingByUsername, syncTyping]
   );
@@ -302,14 +311,20 @@ export function useChat() {
   const unbindRoomHandlers = useCallback((roomName) => {
     const entry = roomHandlersRef.current[roomName];
     if (!entry) return;
-    const channel = apinator.channel(entry.channelName);
+    const channel = getChannel(entry.channelName);
     if (channel) {
-      for (const [event, fn] of entry.handlers) channel.unbind(event, fn);
+      for (const [event, fn] of entry.handlers) {
+        channel.unsubscribe(event, fn);
+      }
+      for (const [event, fn] of entry.presenceHandlers) {
+        channel.presence.unsubscribe(event, fn);
+      }
+      // خروج از Presence
+      channel.presence.leave();
     }
     delete roomHandlersRef.current[roomName];
   }, []);
 
-  /** همه‌چیز مربوط به یک اتاق را جمع می‌کند: هندلرها، unsubscribe، تایمرها. */
   const teardownRoom = useCallback(
     (roomName) => {
       unbindRoomHandlers(roomName);
@@ -330,19 +345,15 @@ export function useChat() {
     [unbindRoomHandlers]
   );
 
-  /**
-   * وارد اتاق جدید می‌شود. اگر subscribe شکست بخورد throw می‌کند،
-   * و تا جای ممکن اتاق قبلی را دست‌نخورده نگه می‌دارد.
-   */
   const activateRoom = useCallback(
-    (room) => {
+    async (room) => {
       const prev = currentRoomRef.current;
 
       if (prev && prev !== room) {
-        subscribeToRoom(room); // اگر throw کند، اتاق قبلی سالم می‌ماند
+        subscribeToRoom(room);
         teardownRoom(prev);
       } else {
-        if (prev) teardownRoom(prev); // ورود مجدد به همان اتاق: بدون هندلر تکراری
+        if (prev) teardownRoom(prev);
         try {
           subscribeToRoom(room);
         } catch (err) {
@@ -352,16 +363,15 @@ export function useChat() {
       }
 
       currentRoomRef.current = room;
-      bindRoomHandlers(room);
+      await bindRoomHandlers(room);
     },
     [teardownRoom, bindRoomHandlers]
   );
 
-  /** منطق مشترک switchRoom و openDM بعد از موفقیت API */
   const enterRoom = useCallback(
     async ({ room, history, partnerName }) => {
       try {
-        activateRoom(room);
+        await activateRoom(room);
       } catch (err) {
         console.warn('[Chat] Subscribe room error:', err);
         if (!currentRoomRef.current) {
@@ -378,13 +388,12 @@ export function useChat() {
       setDmPartnerName(partnerName ?? null);
       resetTyping();
 
-      await markRead(room); // شکست آن نباید ورود به اتاق را خراب کند
+      await markRead(room);
       return { ok: true };
     },
     [activateRoom, markRead, resetTyping]
   );
 
-  /** خروج محلی از اتاق جاری (بعد از leave/delete موفق) */
   const leaveCurrentRoomLocally = useCallback(() => {
     const room = currentRoomRef.current;
     if (room) teardownRoom(room);
@@ -402,8 +411,8 @@ export function useChat() {
     const entry = notificationHandlersRef.current;
     if (!entry) return;
 
-    const channel = apinator.channel(entry.channelName);
-    if (channel) channel.unbind('new-notification', entry.handler);
+    const channel = getChannel(entry.channelName);
+    if (channel) channel.unsubscribe('new-notification', entry.handler);
 
     try {
       unsubscribeFromNotifications(entry.userId);
@@ -417,12 +426,12 @@ export function useChat() {
     const userId = currentUserRef.current?.id;
     if (!userId) return;
 
-    cleanupNotificationHandlers(); // جلوگیری از bind تکراری (toast دوبار)
+    cleanupNotificationHandlers();
 
     const channelName = getNotificationChannelName(userId);
 
-    const handler = (notif) => {
-      // اگر همین اتاق باز است، فقط خوانده‌شده علامت بزن؛ toast و badge لازم نیست
+    const handler = (message) => {
+      const notif = message.data; // استخراج داده از پیام Ably
       if (notif.roomName && notif.roomName === currentRoomRef.current) {
         markRead(notif.roomName);
         return;
@@ -449,8 +458,8 @@ export function useChat() {
       return;
     }
 
-    const channel = apinator.channel(channelName);
-    if (channel) channel.bind('new-notification', handler);
+    const channel = getChannel(channelName);
+    if (channel) channel.subscribe('new-notification', handler);
 
     notificationHandlersRef.current = { channelName, userId, handler };
   }, [cleanupNotificationHandlers, markRead]);
@@ -481,8 +490,6 @@ export function useChat() {
     }
   }, []);
 
-  // بعد از reconnect. TODO: اگر endpoint جداگانه‌ای برای history دارید،
-  // اینجا history اتاق جاری را هم دوباره بگیرید (join را صدا نزنید چون ممکن است پیام سیستمی بسازد).
   useEffect(() => {
     resyncRef.current = async () => {
       await Promise.all([fetchNotifications(), refreshRooms()]);
@@ -490,7 +497,7 @@ export function useChat() {
   }, [fetchNotifications, refreshRooms]);
 
   const connectSocket = useCallback(async () => {
-    const seq = ++connectSeqRef.current; // آخرین فراخوانی برنده است (StrictMode / دوبار کلیک)
+    const seq = ++connectSeqRef.current;
     const isStale = () => seq !== connectSeqRef.current;
 
     try {
@@ -501,8 +508,8 @@ export function useChat() {
       if (!me.user) throw new Error('احراز هویت انجام نشد');
       currentUserRef.current = me.user;
 
-      apinator.connect();
-      if (apinator.state === 'connected') setConnected(true); // اگر از قبل وصل بوده
+      ably.connect();
+      if (ably.connection.state === 'connected') setConnected(true);
       setupNotificationHandlers();
 
       const roomsRes = await apiRequest('/api/rooms/list');
@@ -514,7 +521,7 @@ export function useChat() {
       console.error('[Chat] Connect error:', err);
       if (!isStale()) {
         cleanupNotificationHandlers();
-        apinator.disconnect();
+        ably.disconnect();
         setError(err.message);
         setConnected(false);
       }
@@ -523,7 +530,7 @@ export function useChat() {
   }, [setupNotificationHandlers, cleanupNotificationHandlers]);
 
   const disconnectSocket = useCallback(() => {
-    connectSeqRef.current += 1; // درخواست‌های در حال انجام را باطل کن
+    connectSeqRef.current += 1;
     switchSeqRef.current += 1;
 
     cleanupNotificationHandlers();
@@ -533,7 +540,7 @@ export function useChat() {
     roomNames.forEach((name) => teardownRoom(name));
     currentRoomRef.current = null;
 
-    apinator.disconnect();
+    ably.disconnect();
     wasConnectedRef.current = false;
     currentUserRef.current = null;
 
@@ -550,7 +557,6 @@ export function useChat() {
     setConnected(false);
   }, [cleanupNotificationHandlers, teardownRoom, resetTyping]);
 
-  /** خروج کامل: سوکت، state و توکن‌ها. (صدا زدن endpoint خروج سرور با کد احراز هویت شماست) */
   const logout = useCallback(() => {
     disconnectSocket();
     setApiToken(null);
@@ -560,7 +566,6 @@ export function useChat() {
     disconnectRef.current = disconnectSocket;
   }, [disconnectSocket]);
 
-  // پاکسازی هنگام unmount
   useEffect(() => {
     return () => {
       disconnectRef.current?.();
@@ -580,7 +585,6 @@ export function useChat() {
       }
 
       try {
-        // اول join؛ فقط اگر موفق بود اتاق قبلی را ببند
         const res = await apiRequest('/api/rooms/join', {
           method: 'POST',
           body: JSON.stringify({ roomName }),
@@ -729,10 +733,9 @@ export function useChat() {
     }
 
     if (isTyping) {
-      // throttle: برای هر کلید رویداد نفرست
       const now = Date.now();
       if (now - lastTypingSentRef.current > TYPING_SEND_INTERVAL) {
-        triggerClientEvent(channelName, 'typing', payload(true));
+        publishEvent(channelName, 'typing', payload(true)).catch(console.error);
         lastTypingSentRef.current = now;
       }
 
@@ -740,12 +743,12 @@ export function useChat() {
         typingTimeoutRef.current = null;
         lastTypingSentRef.current = 0;
         if (isChannelSubscribed(channelName)) {
-          triggerClientEvent(channelName, 'typing', payload(false));
+          publishEvent(channelName, 'typing', payload(false)).catch(console.error);
         }
       }, TYPING_STOP_DELAY);
     } else if (lastTypingSentRef.current !== 0) {
       lastTypingSentRef.current = 0;
-      triggerClientEvent(channelName, 'typing', payload(false));
+      publishEvent(channelName, 'typing', payload(false)).catch(console.error);
     }
   }, []);
 
@@ -776,7 +779,6 @@ export function useChat() {
         method: 'POST',
         body: JSON.stringify({ messageId, deleteForEveryone }),
       });
-      // «حذف فقط برای من» broadcast نمی‌شود، پس محلی حذف کن
       if (!deleteForEveryone && !res?.error) {
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
       }
@@ -816,7 +818,6 @@ export function useChat() {
 
   const markNotificationsAsRead = useCallback(() => markRead(null), [markRead]);
 
-  // -------------------------------------------------------------------------
   return {
     messages,
     onlineUsers,

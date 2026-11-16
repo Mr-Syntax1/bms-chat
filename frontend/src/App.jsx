@@ -1,4 +1,4 @@
-import { setApinatorAuthToken } from './lib/apinator';
+import { setAblyAuthToken } from './lib/ably';
 import { setApiToken } from './hooks/useChat';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
@@ -25,8 +25,8 @@ function App() {
         if (data?.user) {
           setAuthUser(data.user);
           if (data.token) {
-            setApinatorAuthToken(data.token);
-            setApiToken(data.token); // توکن را برای API ذخیره کن
+            setAblyAuthToken(data.token); // تغییر نام تابع
+            setApiToken(data.token);
           }
         }
         setAuthLoading(false);
@@ -37,8 +37,8 @@ function App() {
   const handleAuth = (userData, token) => {
     setAuthUser(userData);
     if (token) {
-      setApinatorAuthToken(token);
-      setApiToken(token); // توکن را برای API ذخیره کن
+      setAblyAuthToken(token); // تغییر نام تابع
+      setApiToken(token);
     }
   };
 
@@ -61,11 +61,10 @@ function App() {
     }
 
     setApiToken(null); // پاک کردن توکن هنگام خروج
-    setApinatorAuthToken(null);
+    setAblyAuthToken(null); // تغییر نام تابع
   };
 
   if (authLoading) {
-    // ... کدهای لودینگ بدون تغییر ...
     return (
       <ToastProvider>
         <div className="min-h-screen flex items-center justify-center bg-aurora text-white relative overflow-hidden">

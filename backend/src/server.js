@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { connectDB } from './config/db.js';
-import { apinatorRouter } from './routes/apinator.js';
 // Routes
 import { authRouter } from './routes/auth.js';
 import { uploadRouter } from './routes/upload.js';
@@ -13,6 +12,7 @@ import { roomsRouter } from './routes/rooms.js';
 import { messagesRouter } from './routes/messages.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { callsRouter } from './routes/calls.js';
+import { ablyRouter } from './routes/ably.js'; 
 
 
 dotenv.config();
@@ -41,8 +41,8 @@ app.use(cookieParser());
 app.use('/auth', authRouter);
 app.use('/upload', uploadRouter);
 app.use('/api/calls', callsRouter);
-app.use('/api/apinator', apinatorRouter);
 app.use('/api/rooms', roomsRouter);
+app.use('/api/ably', ablyRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/notifications', notificationsRouter);
 
