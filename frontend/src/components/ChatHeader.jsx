@@ -36,11 +36,7 @@ export default function ChatHeader({
     : null;
 
   const isGroupRoom = currentRoomObj && !currentRoomObj.isPrivate && currentRoomObj.members;
-  const onlineMembers = isGroupRoom 
-    ? currentRoomObj.members
-        .map(memberId => onlineUsers.find(u => u.id === memberId))
-        .filter(Boolean)
-    : [];
+  const onlineMembers = onlineUsers;
 
   const displayTitle = resolvedDmName
     ? `گفتگو با ${resolvedDmName}`
@@ -60,7 +56,7 @@ export default function ChatHeader({
 
   return (
     <header className="glass-panel-strong border-b border-white/10 px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 animate-slide-down sticky top-0 z-30">
-      
+
       {/* سمت چپ: اطلاعات اتاق */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         {/* دکمه لوگو - در موبایل کوچک‌تر */}
@@ -81,7 +77,7 @@ export default function ChatHeader({
           <h1 className="font-bold text-surface-50 truncate text-sm sm:text-base max-w-[120px] sm:max-w-xs md:max-w-md lg:max-w-lg transition-all duration-300">
             {displayTitle}
           </h1>
-          
+
           {/* 👈 این بخش از سایز sm به بالا نمایش داده می‌شود (تبلت و دسکتاپ) */}
           <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 mt-0.5">
             <span className={`status-dot ${isConnected ? 'status-online' : 'status-offline'} animate-pulse-soft scale-75 sm:scale-100`} />
@@ -98,7 +94,7 @@ export default function ChatHeader({
 
       {/* سمت راست: دکمه‌های عملیاتی */}
       <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-        
+
         {/* دکمه منو (همبرگری) - فقط موبایل و تبلت */}
         <button
           onClick={onToggleSidebar}
@@ -131,9 +127,9 @@ export default function ChatHeader({
         </button>
 
         {/* دکمه نصب - فقط دسکتاپ */}
-         <div className="hidden md:block">
+        <div className="hidden md:block">
           <InstallButton />
-        </div> 
+        </div>
 
         {/* تماس خصوصی */}
         {dmPartner && (
@@ -162,7 +158,7 @@ export default function ChatHeader({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </button>
-            
+
             {showCallMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowCallMenu(false)} />
