@@ -13,10 +13,10 @@
     "devi": "npm run build && concurrently \"npm run backend\" \"npm run preview\""
   },
   "dependencies": {
+    "@ably/pubsub-device": "^3.1.0",
     "@ferrucc-io/emoji-picker": "^0.1.2",
     "@hookform/resolvers": "^6.0.2",
     "@tailwindcss/vite": "^4.3.3",
-    "ably": "^2.30.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.91.0",
