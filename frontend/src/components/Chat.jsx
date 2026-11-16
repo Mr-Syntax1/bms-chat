@@ -194,30 +194,32 @@ export default function Chat({ chat, user, onLogout }) {
         </div>
 
         <CallModal
-          isCalling={rtc.callState === 'calling' || rtc.callState === 'connecting' || rtc.callState === 'connected'}
-          incomingCall={rtc.incomingCall}
-          remoteUser={rtc.peer}
-          localStream={rtc.localStream}
-          remoteStream={rtc.remoteStream}
-          callState={rtc.callState}
-          callType={rtc.callType}
-          isMuted={rtc.isMuted}
-          isVideoOn={!rtc.isCameraOff}
-          duration={rtc.duration}
-          error={rtc.error}
-          endReason={rtc.endReason}
-          onAnswer={rtc.acceptCall}
-          onDecline={rtc.rejectCall}
-          onEnd={rtc.endCall}
-          onToggleMute={rtc.toggleMute}
-          onToggleVideo={rtc.toggleCamera}
+          // isCalling={rtc.callState === 'calling' || rtc.callState === 'connecting' || rtc.callState === 'connected'}
+          // incomingCall={rtc.incomingCall}
+          // remoteUser={rtc.peer}
+          // localStream={rtc.localStream}
+          // remoteStream={rtc.remoteStream}
+          // callState={rtc.callState}
+          // callType={rtc.callType}
+          // isMuted={rtc.isMuted}
+          // isVideoOn={!rtc.isCameraOff}
+          // duration={rtc.duration}
+          // error={rtc.error}
+          // endReason={rtc.endReason}
+          // onAnswer={rtc.acceptCall}
+          // onDecline={rtc.rejectCall}
+          // onEnd={rtc.endCall}
+          // onToggleMute={rtc.toggleMute}
+          // onToggleVideo={rtc.toggleCamera}
+          // user={user}
+          // isScreenSharing={rtc.isScreenSharing}
+          // isDeafened={rtc.isDeafened}
+          // remoteScreenSharing={rtc.remoteScreenSharing}
+          // participants={rtc.participants}
+          // onToggleDeafen={rtc.toggleDeafen}
+          // onToggleScreenShare={rtc.toggleScreenShare}
+          call={rtc}
           user={user}
-          isScreenSharing={rtc.isScreenSharing}
-          isDeafened={rtc.isDeafened}
-          remoteScreenSharing={rtc.remoteScreenSharing}
-          participants={rtc.participants}
-          onToggleDeafen={rtc.toggleDeafen}
-          onToggleScreenShare={rtc.toggleScreenShare}
         />
 
         {sidebar && (

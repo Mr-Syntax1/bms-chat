@@ -210,6 +210,8 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   const [endReason, setEndReason] = useState(null);
 
   const stateRef = useRef('idle');
+  const isDeafenedRef = useRef(false);
+  const remoteScreenSharingRef = useRef(false);
   const callRef = useRef(null); // { id, peerId, peerName, type, role, channelName, bound }
   const pcRef = useRef(null);
 
@@ -219,7 +221,6 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   const screenVideoSenderRef = useRef(null);
   const isScreenSharingDuringCallRef = useRef(false);
   const isVideoOnRef = useRef(false);
-  const isDeafenedRef = useRef(false);
 
   const remoteStreamRef = useRef(null);
   const remoteSigRef = useRef('');
@@ -345,6 +346,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
 
     isScreenSharingDuringCallRef.current = false;
     isDeafenedRef.current = false;
+    remoteScreenSharingRef.current = false;
 
     setPeer({ id: String(peerId), username: peerName });
     setCallType(type);
@@ -410,8 +412,16 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     const audio = live.filter((t) => t.kind === 'audio');
     const video = live.filter((t) => t.kind === 'video');
 
-    // فقط یک ویدیو نمایش داده می‌شود (اشتراک صفحه جای دوربین را می‌گیرد)
-    const activeVideo = [...video].reverse().find((t) => !t.muted) || video[video.length - 1];
+    let activeVideo = null;
+    if (video.length > 0) {
+      if (isScreenSharingDuringCallRef.current) {
+        activeVideo = video[0]; // خودم شیر می‌کنم
+      } else if (remoteScreenSharingRef.current) {
+        activeVideo = video[video.length - 1]; // مخاطب شیر می‌کنه
+      } else {
+        activeVideo = video[0]; // حالت عادی (فقط دوربین)
+      }
+    }
 
     audio.forEach((t) => {
       t.enabled = !isDeafenedRef.current;
@@ -591,6 +601,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     screenVideoSenderRef.current = null;
     isScreenSharingDuringCallRef.current = false;
     isDeafenedRef.current = false;
+    remoteScreenSharingRef.current = false;
     remoteStreamRef.current = null;
     remoteSigRef.current = '';
 
@@ -750,10 +761,16 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     }
   }
 
-  async function acceptCall() {
+  async function acceptCall(mediaType) {
     const call = callRef.current;
     if (!call || stateRef.current !== 'incoming') {
       return { success: false, error: 'تماس ورودی وجود ندارد' };
+    }
+
+    const effectiveType = mediaType === 'audio' ? 'audio' : call.type;
+    if (effectiveType !== call.type) {
+      callRef.current.type = effectiveType;
+      setCallType(effectiveType);
     }
 
     clearTimeout(ringTimerRef.current);
@@ -761,9 +778,9 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     setState('connecting');
 
     try {
-      await prepareLocalMedia(call.id, call.type);
+      await prepareLocalMedia(call.id, effectiveType);
       await openChannel(call.id);
-      createPeerConnection(); // قبل از اعلام آمادگی، pc و track ها آماده‌اند
+      createPeerConnection();
       sendSignal('call-accepted');
       return { success: true };
     } catch (err) {
@@ -789,7 +806,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       apiRequest('/api/calls/signal', {
         method: 'POST',
         body: JSON.stringify({ type: 'cancel', targetUserId: call.peerId, callId: call.id }),
-      }).catch(() => {});
+      }).catch(() => { });
     }
     if (stateRef.current !== 'incoming') sendSignal('call-end', { reason });
 
@@ -1201,6 +1218,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   function onMediaState(data) {
     if (!isCurrent(data)) return;
     const screen = Boolean(data.screenSharing);
+    remoteScreenSharingRef.current = screen; // این خط رو اضافه کن
     setRemoteScreenSharing(screen);
     setParticipants((prev) =>
       prev.map((p) =>
@@ -1293,7 +1311,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   // API پایدار
   // -------------------------------------------------------------------------
   const startCallStable = useCallback((...args) => actionsRef.current.startCall(...args), []);
-  const acceptCallStable = useCallback(() => actionsRef.current.acceptCall(), []);
+  const acceptCallStable = useCallback((mediaType) => actionsRef.current.acceptCall(mediaType), []);
   const rejectCallStable = useCallback(() => actionsRef.current.rejectCall(), []);
   const endCallStable = useCallback(() => actionsRef.current.endCall('local-ended'), []);
   const toggleMuteStable = useCallback(() => actionsRef.current.toggleMute(), []);
