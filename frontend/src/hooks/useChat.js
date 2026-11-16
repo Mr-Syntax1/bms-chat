@@ -521,7 +521,7 @@ export function useChat() {
       console.error('[Chat] Connect error:', err);
       if (!isStale()) {
         cleanupNotificationHandlers();
-        ably.disconnect();
+        ably.close();
         setError(err.message);
         setConnected(false);
       }
@@ -540,7 +540,7 @@ export function useChat() {
     roomNames.forEach((name) => teardownRoom(name));
     currentRoomRef.current = null;
 
-    ably.disconnect();
+    ably.close();
     wasConnectedRef.current = false;
     currentUserRef.current = null;
 

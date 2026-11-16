@@ -7,16 +7,13 @@ let authToken = null;
 
 export function setAblyAuthToken(token) {
   authToken = token;
-  // اگر نمونه‌ی ably از قبل ساخته شده باشد، نیاز به بازسازی ندارد 
-  // چون authCallback در هر بار درخواست توکن، مقدار به‌روز authToken را می‌خواند.
 }
 
-// استفاده از authCallback برای کنترل کامل روی هدرها و کوکی‌ها
 export const ably = new Ably.Realtime({
   authCallback: (tokenParams, callback) => {
     fetch(AUTH_ENDPOINT, {
       method: 'POST',
-      credentials: 'include', // برای ارسال کوکی‌های httpOnly
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -46,10 +43,11 @@ if (import.meta.env.DEV) {
 }
 
 // ---------------------------------------------------------------------------
-// نام‌گذاری کانال‌ها (هماهنگ با استانداردهای Ably)
+// نام‌گذاری کانال‌ها
 // ---------------------------------------------------------------------------
 const MAX_CHANNEL_LENGTH = 164;
-const CHANNEL_RE = /^[A-Za-z0-9_\-=@,.;]{1,164}$/;
+// اصلاح شد: اضافه کردن ':' به لیست کاراکترهای مجاز
+const CHANNEL_RE = /^[A-Za-z0-9_\-=@,.;:]{1,164}$/;
 const SAFE_CHAR_RE = /[A-Za-z0-9_.-]/;
 const encoder = new TextEncoder();
 
@@ -91,7 +89,6 @@ export function getRoomChannelName(roomName) {
     }
     return assertValidChannelName(`private:dm-${roomName.slice(3).replace('_', '-')}`);
   }
-  // کانال‌های Presence در Ably باید با presence: شروع شوند
   return assertValidChannelName(`presence:room-${encodeChannelPart(roomName)}`);
 }
 
@@ -115,8 +112,7 @@ export function getChannel(channelName) {
 }
 
 export function subscribeToRoom(roomName) {
-  const channelName = getRoomChannelName(roomName);
-  return getChannel(channelName);
+  return getChannel(getRoomChannelName(roomName));
 }
 
 export function subscribeToDM(userId1, userId2) {
@@ -132,7 +128,6 @@ export function subscribeToWebRTC(userId1, userId2) {
 }
 
 export function unsubscribeFromRoom(roomName) {
-  // در Ably، release کانال را از حافظه پاک می‌کند و اشتراک را لغو می‌کند
   ably.channels.release(getRoomChannelName(roomName));
 }
 
@@ -148,20 +143,20 @@ export function unsubscribeFromWebRTC(userId1, userId2) {
   ably.channels.release(getWebRTCChannelName(userId1, userId2));
 }
 
-// ---------------------------------------------------------------------------
-// رویدادها (Publish / Subscribe)
-// ---------------------------------------------------------------------------
+// تابع جدید برای قطع اتصال (جایگزین disconnect)
+export function disconnectAbly() {
+  ably.close();
+}
+
 export function publishEvent(channelName, eventName, data) {
   const channel = getChannel(channelName);
-  // در Ably نیازی به پیشوند client- نیست، مگر اینکه بخواهید محدودیت دسترسی بگذارید.
-  // اما برای سازگاری با کد فعلی، همان نام رویداد را ارسال می‌کنیم.
   return channel.publish(eventName, data);
 }
 
 export function bindEvent(channelName, eventName, callback) {
   const channel = getChannel(channelName);
   channel.subscribe(eventName, callback);
-  return callback; // برگرداندن برای امکان unbind
+  return callback;
 }
 
 export function unbindEvent(channelName, eventName, callback) {
@@ -169,16 +164,13 @@ export function unbindEvent(channelName, eventName, callback) {
   channel.unsubscribe(eventName, callback);
 }
 
-// ---------------------------------------------------------------------------
-// ابزارهای Presence (حضور کاربران)
-// ---------------------------------------------------------------------------
 export async function getChannelMembers(channelName) {
   const channel = getChannel(channelName);
   try {
     const members = await channel.presence.get();
     return members.map(m => ({
       user_id: m.clientId,
-      user_info: m.data // در Ably می‌توانیم داده‌های اضافی را در m.data ذخیره کنیم
+      user_info: m.data
     }));
   } catch (err) {
     console.error('[Ably] Failed to get presence members:', err);
