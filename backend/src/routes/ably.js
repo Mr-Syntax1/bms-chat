@@ -5,6 +5,9 @@ import { verifyToken } from '../utils/jwt.js';
 export const ablyRouter = express.Router();
 
 const authMiddleware = (req, res, next) => {
+  console.log('[Ably Auth Debug] Cookies:', req.cookies);
+  console.log('[Ably Auth Debug] Auth Header:', req.headers.authorization);
+
   let token = req.cookies?.token;
   
   if (!token && req.headers.authorization) {
@@ -14,13 +17,20 @@ const authMiddleware = (req, res, next) => {
     }
   }
 
-  if (!token) return res.status(401).json({ error: 'توکن یافت نشد' });
+  if (!token) {
+    console.log('[Ably Auth Debug] ❌ No token found!');
+    return res.status(401).json({ error: 'توکن یافت نشد' });
+  }
 
   const decoded = verifyToken(token);
-  if (!decoded) return res.status(401).json({ error: 'توکن نامعتبر' });
+  if (!decoded) {
+    console.log('[Ably Auth Debug] ❌ Invalid token!');
+    return res.status(401).json({ error: 'توکن نامعتبر' });
+  }
 
   req.userId = String(decoded.id);
   req.username = decoded.username;
+  console.log('[Ably Auth Debug] ✅ Token verified for user:', req.userId);
   next();
 };
 
