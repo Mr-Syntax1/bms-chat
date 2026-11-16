@@ -113,7 +113,6 @@ export default function ChatInput({ onSend, onTyping }) {
     []
   );
 
-  // ارتفاع میله‌های موج صوتی (ثابت بین رندرها)
   const bars = useMemo(
     () => Array.from({ length: 28 }, (_, i) => ({
       h: 25 + ((i * 37) % 70),
@@ -122,16 +121,14 @@ export default function ChatInput({ onSend, onTyping }) {
     []
   );
 
-  /* ─────────── خطا (به‌جای alert) ─────────── */
   const showError = useCallback((msg) => {
     setError(msg);
     clearTimeout(errorTimer.current);
     errorTimer.current = setTimeout(() => setError(''), 4500);
   }, []);
 
-  /* ─────────── افکت‌ها ─────────── */
   useEffect(() => {
-    if (!isTouch) inputRef.current?.focus(); // روی موبایل کیبورد خودبه‌خود باز نشود
+    if (!isTouch) inputRef.current?.focus();
   }, [isTouch]);
 
   useEffect(() => {
@@ -172,13 +169,10 @@ export default function ChatInput({ onSend, onTyping }) {
     };
   }, []);
 
-  // توقف خودکار ضبط در سقف زمانی
   useEffect(() => {
     if (isRecording && recordingTime >= MAX_RECORD_SECONDS) stopAndSendRecording();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordingTime, isRecording]);
 
-  /* ─────────── متن ─────────── */
   const handleEmojiSelect = (emoji) => {
     const el = inputRef.current;
     if (!el) return setValue((p) => p + emoji);
@@ -216,14 +210,12 @@ export default function ChatInput({ onSend, onTyping }) {
 
   const handleKeyDown = (e) => {
     if (e.nativeEvent.isComposing || isComposing) return;
-    // روی موبایل Enter = خط جدید ، روی دسکتاپ Enter = ارسال
     if (e.key === 'Enter' && !e.shiftKey && !isTouch) {
       e.preventDefault();
       handleSubmit(e);
     }
   };
 
-  /* ─────────── آپلود ─────────── */
   const presignAndUpload = async (blobOrFile, fileName, fileType) => {
     const presignRes = await fetch(`${API_URL}/upload/presign`, {
       method: 'POST',
@@ -280,7 +272,6 @@ export default function ChatInput({ onSend, onTyping }) {
     }
   };
 
-  /* درگ و دراپ */
   const onDragEnter = (e) => {
     if (!e.dataTransfer?.types?.includes('Files')) return;
     dragDepth.current += 1;
@@ -297,7 +288,6 @@ export default function ChatInput({ onSend, onTyping }) {
     uploadFile(e.dataTransfer?.files?.[0]);
   };
 
-  /* ─────────── ضبط صدا ─────────── */
   const pickMimeType = () => {
     const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
     return types.find((t) => window.MediaRecorder?.isTypeSupported?.(t)) || '';
@@ -384,10 +374,8 @@ export default function ChatInput({ onSend, onTyping }) {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       dir="rtl"
-      className="relative w-full px-3 pt-2 sm:px-5 sm:pt-3 lg:px-8
-                 pb-[max(0.75rem,env(safe-area-inset-bottom))]
-                 bg-linear-to-t from-surface-950 via-surface-950/90 to-surface-950/40
-                 backdrop-blur-2xl border-t border-white/[0.06]"
+      // تغییر ۱: حذف پس‌زمینه سنگین و استفاده از bg-transparent برای یکپارچگی در دسکتاپ
+      className="relative w-full px-2 sm:px-4 lg:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-transparent border-t border-white/[0.06]"
     >
       <style>{`
         @keyframes cic-wave { 0%,100% { transform: scaleY(.25) } 50% { transform: scaleY(1) } }
@@ -397,8 +385,8 @@ export default function ChatInput({ onSend, onTyping }) {
         @media (prefers-reduced-motion: reduce) { .cic-anim { animation: none !important } }
       `}</style>
 
-      <div className="mx-auto w-full max-w-4xl">
-        {/* ── پیام خطا ── */}
+      {/* تغییر ۲: حذف max-w-4xl برای فول‌ویدث شدن در دسکتاپ */}
+      <div className="w-full">
         {error && (
           <div
             role="alert"
@@ -419,7 +407,6 @@ export default function ChatInput({ onSend, onTyping }) {
           </div>
         )}
 
-        {/* ── وضعیت آپلود ── */}
         {isUploading && (
           <div
             className="cic-anim mb-2 flex items-center gap-3 rounded-2xl border border-primary-500/20 bg-primary-500/10 px-3 py-2.5"
@@ -436,11 +423,11 @@ export default function ChatInput({ onSend, onTyping }) {
           </div>
         )}
 
-        {/* ── پنل ایموجی: باتم‌شیت در موبایل / پاپ‌آور در دسکتاپ ── */}
+        {/* تغییر ۳: اصلاح کامل موقعیت ایموجی پیکر برای دسکتاپ و موبایل */}
         {showEmojiPicker && (
           <>
             <div
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] sm:hidden"
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
               onClick={() => setShowEmojiPicker(false)}
               aria-hidden="true"
             />
@@ -448,9 +435,10 @@ export default function ChatInput({ onSend, onTyping }) {
               ref={emojiPickerRef}
               role="dialog"
               aria-label="انتخاب ایموجی"
-              className="cic-anim z-50 overflow-hidden border border-white/10 bg-surface-900/95 backdrop-blur-xl shadow-2xl shadow-black/50
+              // در موبایل: از پایین صفحه (fixed). در دسکتاپ: دقیقاً بالای اینپوت و چسبیده به سمت چپ (end-0 در RTL)
+              className="cic-anim z-50 overflow-hidden border border-white/10 bg-surface-900 shadow-2xl shadow-black/60
                          fixed inset-x-0 bottom-0 rounded-t-3xl max-h-[60vh] pb-[env(safe-area-inset-bottom)]
-                         sm:absolute sm:inset-x-auto sm:bottom-full sm:mb-3 sm:right-0 sm:w-[360px] sm:max-h-[400px] sm:rounded-3xl sm:pb-0"
+                         sm:absolute sm:bottom-full sm:end-0 sm:mb-3 sm:w-[360px] sm:max-h-[420px] sm:rounded-2xl sm:pb-0"
               style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
             >
               <div className="sm:hidden flex justify-center pt-2.5 pb-1">
@@ -463,11 +451,10 @@ export default function ChatInput({ onSend, onTyping }) {
           </>
         )}
 
-        {/* ── حالت ضبط صدا ── */}
         {isRecording ? (
           <div
             className="cic-anim flex items-center gap-2 sm:gap-3 rounded-[28px] border border-red-500/25
-                       bg-linear-to-l from-red-500/15 to-red-500/5 p-1.5 shadow-lg shadow-red-950/20"
+                       bg-linear-to-l from-red-500/15 to-red-500/5 p-1.5 shadow-lg shadow-red-950/20 w-full"
             style={{ animation: 'cic-up .25s ease-out' }}
           >
             <IconButton label="لغو ضبط" tone="danger" onClick={cancelAndStopRecording}>
@@ -508,14 +495,12 @@ export default function ChatInput({ onSend, onTyping }) {
             </button>
           </div>
         ) : (
-          /* ── حالت عادی ── */
           <div
-            className={`relative flex items-end gap-1 rounded-[28px] border p-1.5 transition-all duration-300
+            className={`relative flex items-end gap-1 sm:gap-2 rounded-2xl sm:rounded-3xl border p-1.5 sm:p-2 transition-all duration-300 w-full
               ${isFocused
-                ? 'border-primary-500/40 bg-surface-900 shadow-[0_0_0_4px_rgba(99,102,241,0.12),0_10px_40px_-10px_rgba(0,0,0,0.6)]'
-                : 'border-white/[0.08] bg-surface-900/80 shadow-lg shadow-black/30 hover:border-white/15'}`}
+                ? 'border-primary-500/40 bg-surface-900 shadow-[0_0_0_4px_rgba(99,102,241,0.08)]'
+                : 'border-white/[0.08] bg-surface-900/40 hover:bg-surface-900/60 hover:border-white/15'}`}
           >
-            {/* پیوست */}
             <IconButton label="ارسال فایل" disabled={isUploading} onClick={() => fileInputRef.current?.click()}>
               <Icon d={ICONS.clip} />
             </IconButton>
@@ -528,7 +513,6 @@ export default function ChatInput({ onSend, onTyping }) {
               tabIndex={-1}
             />
 
-            {/* متن */}
             <div className="relative min-w-0 flex-1">
               <label htmlFor="message-input" className="sr-only">پیام شما</label>
               <textarea
@@ -567,7 +551,6 @@ export default function ChatInput({ onSend, onTyping }) {
               )}
             </div>
 
-            {/* ایموجی */}
             <IconButton
               label="انتخاب ایموجی"
               buttonRef={emojiButtonRef}
@@ -577,7 +560,6 @@ export default function ChatInput({ onSend, onTyping }) {
               <Icon d={ICONS.smile} />
             </IconButton>
 
-            {/* ارسال ↔ میکروفون */}
             {hasText ? (
               <button
                 key="send"
@@ -612,19 +594,17 @@ export default function ChatInput({ onSend, onTyping }) {
           </div>
         )}
 
-        {/* راهنمای کیبورد (فقط دسکتاپ) */}
-        {!isRecording && !isTouch && (
-          <p className="mt-1.5 hidden px-3 text-[11px] text-surface-500 lg:block">
-            <kbd className="rounded bg-white/5 px-1.5 py-0.5 font-sans">Enter</kbd> ارسال ·{' '}
-            <kbd className="rounded bg-white/5 px-1.5 py-0.5 font-sans">Shift + Enter</kbd> خط جدید
+        {/* {!isRecording && !isTouch && (
+          <p className="mt-2 hidden px-3 text-[11px] text-surface-500 lg:block">
+            <kbd className="rounded bg-white/5 px-1.5 py-0.5 font-sans border border-white/10">Enter</kbd> ارسال ·{' '}
+            <kbd className="rounded bg-white/5 px-1.5 py-0.5 font-sans border border-white/10">Shift + Enter</kbd> خط جدید
           </p>
-        )}
+        )} */}
       </div>
 
-      {/* ── لایه‌ی درگ و دراپ ── */}
       {isDragging && (
         <div
-          className="cic-anim absolute inset-1 z-50 grid place-items-center rounded-3xl border-2 border-dashed
+          className="cic-anim absolute inset-2 z-50 grid place-items-center rounded-3xl border-2 border-dashed
                      border-primary-400/70 bg-surface-950/90 backdrop-blur-md"
           style={{ animation: 'cic-up .2s ease-out' }}
         >
