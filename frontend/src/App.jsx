@@ -1,3 +1,6 @@
+import * as AblyModule from 'ably';
+console.log('🚨 ACTUAL BUNDLED ABLY VERSION:', AblyModule.default.VERSION || AblyModule.VERSION);
+
 import { setAblyAuthToken } from './lib/ably';
 import { setApiToken } from './hooks/useChat';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
