@@ -31,25 +31,19 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
     const capabilities = {
       'presence:room-*': ['subscribe', 'presence'],
       'private:dm-*': ['subscribe', 'publish'],
-      'private:notifications-*': ['subscribe', 'presence'],
+      [`private:notifications-${userId}`]: ['subscribe', 'presence'], // نام دقیق و قطعی
       'private:webrtc-*': ['subscribe', 'publish']
     };
 
-    // 👇 تبدیل حتمی به رشته JSON 👇
-    const capabilityString = JSON.stringify(capabilities);
-
-    // 👇 این لاگ‌ها حیاتی هستند 👇
-    console.log('🔥 [Ably Auth] Generating token for userId:', userId);
-    console.log('🔥 [Ably Auth] Capability String:', capabilityString);
-
     const tokenParams = {
       clientId: userId,
-      capability: capabilityString, // حتماً باید رشته باشد
+      capability: JSON.stringify(capabilities), // حتماً رشته باشد
       ttl: 3600 * 1000
     };
 
+    console.log('🔥 [Ably Auth] Capability String:', tokenParams.capability);
+
     const tokenRequest = await ably.auth.createTokenRequest(tokenParams);
-    
     res.json(tokenRequest);
   } catch (error) {
     console.error('[Ably] Auth error:', error);
