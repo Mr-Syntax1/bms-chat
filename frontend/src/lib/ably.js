@@ -11,6 +11,8 @@ export function setAblyAuthToken(token) {
 
 export const ably = new Ably.Realtime({
   authCallback: (tokenParams, callback) => {
+    console.log('[Ably] authCallback called!', { AUTH_ENDPOINT });
+
     fetch(AUTH_ENDPOINT, {
       method: 'POST',
       credentials: 'include',
@@ -20,11 +22,14 @@ export const ably = new Ably.Realtime({
       },
     })
       .then((res) => {
+        console.log('[Ably] Auth response status:', res.status);
         if (!res.ok) throw new Error(`Auth failed: ${res.status}`);
         return res.json();
       })
       .then((tokenRequest) => {
-        callback(null, tokenRequest);
+        //  این خط حیاتی بود که جا افتاده بود! D
+        console.log('[Ably] Token request received successfully, passing to SDK');
+        callback(null, tokenRequest); 
       })
       .catch((err) => {
         console.error('[Ably] Auth callback error:', err);
