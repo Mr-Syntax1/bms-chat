@@ -37,7 +37,7 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
 
     const tokenParams = {
       clientId: userId,
-      capability: JSON.stringify(capabilities),
+      capability: capabilities,
       ttl: 3600 * 1000
     };
 
