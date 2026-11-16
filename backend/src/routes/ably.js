@@ -31,18 +31,18 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
     const capabilities = {
       'presence:room-*': ['subscribe', 'presence'],
       'private:dm-*': ['subscribe', 'publish'],
-      [`private:notifications-${userId}`]: ['subscribe', 'presence'], // تطابق دقیق
+      'private:notifications-*': ['subscribe', 'presence'],
       'private:webrtc-*': ['subscribe', 'publish']
     };
 
     const tokenParams = {
       clientId: userId,
-      capability: capabilities,
-      ttl: 3600 * 1000 // 1 ساعت
+      capability: JSON.stringify(capabilities),
+      ttl: 3600 * 1000
     };
 
     const tokenRequest = await ably.auth.createTokenRequest(tokenParams);
-    
+
     res.json(tokenRequest);
   } catch (error) {
     console.error('[Ably] Auth error:', error);
