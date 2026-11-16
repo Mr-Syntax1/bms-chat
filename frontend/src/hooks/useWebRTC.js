@@ -53,7 +53,35 @@ const setVideoSenderParameters = async (sender, maxBitrate = 8_000_000) => {
 
 function buildIceServers(custom) {
   if (Array.isArray(custom) && custom.length) return custom;
-  const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+
+  const METERED_USERNAME = import.meta.env.VITE_METERED_USERNAME;
+  const METERED_CREDENTIAL = import.meta.env.VITE_METERED_CREDENTIAL;
+
+  const servers = [
+    {
+      urls: "stun:stun.relay.metered.ca:80",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: METERED_USERNAME,
+      credential: METERED_CREDENTIAL,
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: METERED_USERNAME,
+      credential: METERED_CREDENTIAL,
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: METERED_USERNAME,
+      credential: METERED_CREDENTIAL,
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: METERED_USERNAME,
+      credential: METERED_CREDENTIAL,
+    },
+  ];
   const turnUrl = import.meta.env.VITE_TURN_URL;
   if (turnUrl) {
     servers.push({
@@ -547,7 +575,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       apiRequest('/api/calls/signal', {
         method: 'POST',
         body: JSON.stringify({ type: 'cancel', targetUserId: call.peerId, callId: call.id }),
-      }).catch(() => {});
+      }).catch(() => { });
     }
     if (stateRef.current !== 'incoming') sendSignal('call-end', { reason });
     cleanup(reason);
