@@ -11,6 +11,9 @@ import {
   getNotificationChannelName,
   isChannelSubscribed,
   setAblyAuthToken,
+  subscribeToPresence,
+  unsubscribeFromPresence,
+  // getPresenceChannelName,
   getChannel,
 } from '../lib/ably'; // مسیر را به فایل ably.js جدید تغییر دهید
 
@@ -68,7 +71,7 @@ export async function apiRequest(endpoint, options = {}) {
 
     return data;
   } catch (err) {
-    if (err.name === 'AbortError') throw new Error('زمان درخواست به پایان رسید',err);
+    if (err.name === 'AbortError') throw new Error('زمان درخواست به پایان رسید', err);
     throw err;
   } finally {
     clearTimeout(timer);
@@ -94,8 +97,8 @@ export function useChat() {
   const currentRoomRef = useRef(null);
   const currentUserRef = useRef(null);
   const roomHandlersRef = useRef({}); // roomName -> { channelName, handlers: [[event, fn], ...], presenceHandlers: [...] }
-  const notificationHandlersRef = useRef(null); 
-  const typingMapRef = useRef(new Map()); 
+  const notificationHandlersRef = useRef(null);
+  const typingMapRef = useRef(new Map());
   const typingTimeoutRef = useRef(null);
   const lastTypingSentRef = useRef(0);
   const sysMsgCounterRef = useRef(0);
@@ -105,6 +108,11 @@ export function useChat() {
   const resyncRef = useRef(null);
   const disconnectRef = useRef(null);
 
+
+
+  // -------------------------------------------------------------------------
+  // حضور سراسری: همه کاربران آنلاین (مستقل از اتاق جاری)
+  // -------------------------------------------------------------------------
   // -------------------------------------------------------------------------
   // وضعیت اتصال Ably
   // -------------------------------------------------------------------------
@@ -114,17 +122,68 @@ export function useChat() {
         setConnected(true);
         if (wasConnectedRef.current) resyncRef.current?.();
         wasConnectedRef.current = true;
-      } else if (stateChange.current === 'disconnected' || stateChange.current === 'suspended') {
+      } else if (
+        stateChange.current === 'disconnected' ||
+        stateChange.current === 'suspended'
+      ) {
         setConnected(false);
       }
     };
-    
+
     ably.connection.on(onState);
 
     return () => {
       ably.connection.off(onState);
     };
   }, []);
+
+  // -------------------------------------------------------------------------
+  // حضور سراسری: همه کاربران آنلاین (مستقل از اتاق جاری)
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const userId = currentUserRef.current?.id;
+    if (!connected || !userId) return undefined;
+
+    const channel = subscribeToPresence();
+    const toUser = (m) => ({ id: m.clientId, username: m.data?.name || 'Unknown' });
+
+    const loadAll = async () => {
+      try {
+        const members = await channel.presence.get();
+        setOnlineUsers(members.map(toUser));
+      } catch (err) {
+        console.error('[Chat] presence.get error:', err);
+      }
+    };
+
+    const onEnter = (member) => {
+      setOnlineUsers((prev) =>
+        prev.some((u) => u.id === member.clientId) ? prev : [...prev, toUser(member)]
+      );
+    };
+    const onLeave = (member) => {
+      setOnlineUsers((prev) => prev.filter((u) => u.id !== member.clientId));
+    };
+
+    channel.presence.subscribe('enter', onEnter);
+    channel.presence.subscribe('leave', onLeave);
+
+    const username = currentUserRef.current?.username;
+    channel.presence.enter({ name: username }).catch((err) => {
+      console.warn('[Chat] presence.enter error:', err);
+    });
+
+    if (channel.state === 'attached') loadAll();
+    else channel.on('attached', loadAll);
+
+    return () => {
+      channel.presence.unsubscribe('enter', onEnter);
+      channel.presence.unsubscribe('leave', onLeave);
+      channel.off('attached', loadAll);
+      channel.presence.leave().catch(() => { });
+      unsubscribeFromPresence();
+    };
+  }, [connected]);
 
   // -------------------------------------------------------------------------
   // Typing (سمت گیرنده)
@@ -186,7 +245,7 @@ export function useChat() {
   // هندلرهای اتاق (presence + message + typing)
   // -------------------------------------------------------------------------
   const bindRoomHandlers = useCallback(
-    async (roomName) => {
+    (roomName) => {
       const channelName = getRoomChannelName(roomName);
       const channel = getChannel(channelName);
       if (!channel) {
@@ -195,10 +254,7 @@ export function useChat() {
       }
 
       const handlers = [];
-      const presenceHandlers = [];
-      
       const on = (event, fn) => {
-        // در Ably، callback شیء Message را دریافت می‌کند، ما .data را استخراج می‌کنیم
         const wrappedFn = (message) => fn(message.data);
         channel.subscribe(event, wrappedFn);
         handlers.push([event, wrappedFn]);
@@ -222,13 +278,7 @@ export function useChat() {
         sysMsgCounterRef.current += 1;
         setMessages((prev) => [
           ...prev,
-          {
-            id: `sys-${Date.now()}-${sysMsgCounterRef.current}`,
-            text,
-            sender: 'system',
-            type: 'system',
-            time: '',
-          },
+          { id: `sys-${Date.now()}-${sysMsgCounterRef.current}`, text, sender: 'system', type: 'system', time: '' },
         ]);
       });
 
@@ -263,47 +313,8 @@ export function useChat() {
         syncTyping();
       });
 
-      // ---- presence (فقط اتاق‌های عادی، نه DM) ----
-      if (!isDmRoom(roomName)) {
-        setOnlineUsers([]);
-
-        const toUser = (m) => ({ 
-          id: m.clientId, 
-          username: m.data?.name || 'Unknown' 
-        });
-
-        const loadMembers = async () => {
-          try {
-            const members = await channel.presence.get();
-            setOnlineUsers(members.map(toUser));
-          } catch (err) {
-            console.error('[Chat] Failed to load presence members:', err);
-          }
-        };
-
-        const onEnter = (member) => {
-          setOnlineUsers((prev) =>
-            prev.some((u) => u.id === member.clientId) ? prev : [...prev, toUser(member)]
-          );
-        };
-
-        const onLeave = (member) => {
-          setOnlineUsers((prev) => prev.filter((u) => u.id !== member.clientId));
-        };
-
-        channel.presence.subscribe('enter', onEnter);
-        channel.presence.subscribe('leave', onLeave);
-        presenceHandlers.push(['enter', onEnter], ['leave', onLeave]);
-
-        // ورود خودکار کاربر فعلی به Presence
-        if (currentUserRef.current) {
-          channel.presence.enter({ name: currentUserRef.current.username });
-        }
-
-        loadMembers();
-      }
-
-      roomHandlersRef.current[roomName] = { channelName, handlers, presenceHandlers };
+      // 👇 حضور (presence) حالا سراسری است و اینجا حذف شد 👇
+      roomHandlersRef.current[roomName] = { channelName, handlers };
     },
     [clearTypingUser, clearTypingByUsername, syncTyping]
   );
@@ -316,11 +327,6 @@ export function useChat() {
       for (const [event, fn] of entry.handlers) {
         channel.unsubscribe(event, fn);
       }
-      for (const [event, fn] of entry.presenceHandlers) {
-        channel.presence.unsubscribe(event, fn);
-      }
-      // خروج از Presence
-      channel.presence.leave();
     }
     delete roomHandlersRef.current[roomName];
   }, []);
@@ -340,7 +346,7 @@ export function useChat() {
       } catch (err) {
         console.warn('[Chat] Unsubscribe room error:', err);
       }
-      setOnlineUsers([]);
+      // 👇 setOnlineUsers([]) حذف شد — onlineUsers سراسری است و نباید با تغییر اتاق خالی شود
     },
     [unbindRoomHandlers]
   );

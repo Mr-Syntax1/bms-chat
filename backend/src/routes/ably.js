@@ -28,18 +28,21 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
   try {
     const userId = req.userId;
 
-    // 👇 آزمون نهایی: درخواست دسترسی مطلق به همه کانال‌ها و عملیات 👇
     const capabilities = {
-      "*": ["*"]
+      'presence:room-*': ['subscribe', 'presence'],
+      'private:dm-*': ['subscribe', 'publish'],
+      'private:notifications-*': ['subscribe', 'presence'],
+      'private:webrtc-*': ['subscribe', 'publish'],
+      'presence:online': ['subscribe', 'presence'], // 👇 کانال حضور سراسری 👇
     };
 
     const capabilityString = JSON.stringify(capabilities);
-    console.log('🔥 [Backend] Sending NUCLEAR capabilities:', capabilityString);
+    console.log('✅ [Backend] Capability String:', capabilityString);
 
     const tokenParams = {
       clientId: userId,
       capability: capabilityString,
-      ttl: 3600 * 1000
+      ttl: 3600 * 1000,
     };
 
     const tokenRequest = await ably.auth.createTokenRequest(tokenParams);

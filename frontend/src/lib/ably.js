@@ -29,7 +29,6 @@ export const ably = createClient({
       }
 
       const tokenRequest = await res.json();
-
       console.log('✅ [Frontend] Token received. Capabilities:', tokenRequest.capability);
 
       callback(null, tokenRequest);
@@ -101,6 +100,11 @@ export function getWebRTCChannelName(userId1, userId2) {
   return pairChannelName('private:webrtc-', userId1, userId2);
 }
 
+// 👇 کانال حضور سراسری: همه کاربران آنلاین در آن enter می‌کنند 👇
+export function getPresenceChannelName() {
+  return assertValidChannelName('presence:online');
+}
+
 // ---------------------------------------------------------------------------
 // مدیریت کانال‌ها و رویدادها
 // ---------------------------------------------------------------------------
@@ -112,6 +116,7 @@ export function subscribeToRoom(roomName) { return getChannel(getRoomChannelName
 export function subscribeToDM(userId1, userId2) { return getChannel(getDMChannelName(userId1, userId2)); }
 export function subscribeToNotifications(userId) { return getChannel(getNotificationChannelName(userId)); }
 export function subscribeToWebRTC(userId1, userId2) { return getChannel(getWebRTCChannelName(userId1, userId2)); }
+export function subscribeToPresence() { return getChannel(getPresenceChannelName()); }
 
 function safeReleaseChannel(channelName) {
   const channel = ably.channels.get(channelName);
@@ -127,6 +132,7 @@ export function unsubscribeFromRoom(roomName) { safeReleaseChannel(getRoomChanne
 export function unsubscribeFromDM(userId1, userId2) { safeReleaseChannel(getDMChannelName(userId1, userId2)); }
 export function unsubscribeFromNotifications(userId) { safeReleaseChannel(getNotificationChannelName(userId)); }
 export function unsubscribeFromWebRTC(userId1, userId2) { safeReleaseChannel(getWebRTCChannelName(userId1, userId2)); }
+export function unsubscribeFromPresence() { safeReleaseChannel(getPresenceChannelName()); }
 
 export function disconnectAbly() {
   ably.close();
@@ -137,8 +143,7 @@ export function publishEvent(channelName, eventName, data) {
   return channel.publish(eventName, data);
 }
 
-// 👇 اصلاح حیاتی: callback پیام کامل (message) را می‌گیرد، نه data استخراج‌شده 👇
-// این دقیقاً با انتظارات useWebRTC.js (که خودش message.data را می‌خواند) سازگار است.
+// 👇 callback پیام کامل (message) را می‌گیرد (سازگار با useWebRTC) 👇
 export function bindEvent(channelName, eventName, callback) {
   const channel = getChannel(channelName);
   channel.subscribe(eventName, callback);
