@@ -374,8 +374,8 @@ export default function ChatInput({ onSend, onTyping }) {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       dir="rtl"
-      // تغییر ۱: حذف پس‌زمینه سنگین و استفاده از bg-transparent برای یکپارچگی در دسکتاپ
-      className="relative w-full px-2 sm:px-4 lg:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-transparent border-t border-white/[0.06]"
+      className="relative w-full px-2 sm:px-4 lg:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-linear-to-t from-surface-950 via-surface-950/80 to-surface-950/40 border-t border-white/[0.08]"
+
     >
       <style>{`
         @keyframes cic-wave { 0%,100% { transform: scaleY(.25) } 50% { transform: scaleY(1) } }
@@ -424,31 +424,22 @@ export default function ChatInput({ onSend, onTyping }) {
         )}
 
         {/* تغییر ۳: اصلاح کامل موقعیت ایموجی پیکر برای دسکتاپ و موبایل */}
+        {/* ── پنل ایموجی: کانتینر شفاف، بدون bg/border/shadow/overlay ── */}
         {showEmojiPicker && (
-          <>
-            <div
-              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
-              onClick={() => setShowEmojiPicker(false)}
-              aria-hidden="true"
-            />
-            <div
-              ref={emojiPickerRef}
-              role="dialog"
-              aria-label="انتخاب ایموجی"
-              // در موبایل: از پایین صفحه (fixed). در دسکتاپ: دقیقاً بالای اینپوت و چسبیده به سمت چپ (end-0 در RTL)
-              className="cic-anim z-50 overflow-hidden border border-white/10 bg-surface-900 shadow-2xl shadow-black/60
-                         fixed inset-x-0 bottom-0 rounded-t-3xl max-h-[60vh] pb-[env(safe-area-inset-bottom)]
-                         sm:absolute sm:bottom-full sm:end-0 sm:mb-3 sm:w-[360px] sm:max-h-[420px] sm:rounded-2xl sm:pb-0"
-              style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
-            >
-              <div className="sm:hidden flex justify-center pt-2.5 pb-1">
-                <span className="h-1.5 w-10 rounded-full bg-white/20" />
-              </div>
-              <Suspense fallback={<EmojiPickerFallback />}>
-                <EmojiPickerPanel onEmojiSelect={handleEmojiSelect} />
-              </Suspense>
-            </div>
-          </>
+          <div
+            ref={emojiPickerRef}
+            role="dialog"
+            aria-label="انتخاب ایموجی"
+            className="cic-anim z-50 overflow-y-auto
+                       fixed inset-x-0 bottom-0 max-h-[60vh] pb-[env(safe-area-inset-bottom)]
+                       sm:absolute sm:inset-x-auto sm:bottom-full sm:end-0 sm:mb-3
+                       sm:w-[360px] sm:max-h-[420px] sm:pb-0"
+            style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
+          >
+            <Suspense fallback={<EmojiPickerFallback />}>
+              <EmojiPickerPanel onEmojiSelect={handleEmojiSelect} />
+            </Suspense>
+          </div>
         )}
 
         {isRecording ? (
@@ -499,7 +490,7 @@ export default function ChatInput({ onSend, onTyping }) {
             className={`relative flex items-end gap-1 sm:gap-2 rounded-2xl sm:rounded-3xl border p-1.5 sm:p-2 transition-all duration-300 w-full
               ${isFocused
                 ? 'border-primary-500/40 bg-surface-900 shadow-[0_0_0_4px_rgba(99,102,241,0.08)]'
-                : 'border-white/[0.08] bg-surface-900/40 hover:bg-surface-900/60 hover:border-white/15'}`}
+                : 'border-white/10 bg-surface-900/85 hover:bg-surface-900 hover:border-white/20'}`}
           >
             <IconButton label="ارسال فایل" disabled={isUploading} onClick={() => fileInputRef.current?.click()}>
               <Icon d={ICONS.clip} />
