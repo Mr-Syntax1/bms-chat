@@ -35,14 +35,21 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
       'private:webrtc-*': ['subscribe', 'publish']
     };
 
+    // 👇 تبدیل حتمی به رشته JSON 👇
+    const capabilityString = JSON.stringify(capabilities);
+
+    // 👇 این لاگ‌ها حیاتی هستند 👇
+    console.log('🔥 [Ably Auth] Generating token for userId:', userId);
+    console.log('🔥 [Ably Auth] Capability String:', capabilityString);
+
     const tokenParams = {
       clientId: userId,
-      capability: capabilities,
+      capability: capabilityString, // حتماً باید رشته باشد
       ttl: 3600 * 1000
     };
 
     const tokenRequest = await ably.auth.createTokenRequest(tokenParams);
-
+    
     res.json(tokenRequest);
   } catch (error) {
     console.error('[Ably] Auth error:', error);
