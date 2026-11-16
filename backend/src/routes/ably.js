@@ -28,29 +28,21 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
   try {
     const userId = req.userId;
 
-    // استفاده از نام دقیق کانال برای کاربر فعلی + Wildcard برای اتاق‌ها
+    // 👇 آزمون نهایی: درخواست دسترسی مطلق به همه کانال‌ها و عملیات 👇
     const capabilities = {
-      'presence:room-*': ['subscribe', 'presence'],
-      'private:dm-*': ['subscribe', 'publish'],
-      [`private:notifications-${userId}`]: ['subscribe', 'presence'], // نام دقیق و قطعی
-      'private:webrtc-*': ['subscribe', 'publish']
+      "*": ["*"]
     };
 
-    // تبدیل حتمی به رشته JSON (الزامی در Ably v3)
     const capabilityString = JSON.stringify(capabilities);
-    
-    // این لاگ حیاتی است تا در Suga ببینیم چه چیزی ارسال می‌شود
-    console.log('🔥 [Backend] Generating token for user:', userId);
-    console.log('🔥 [Backend] Capability String:', capabilityString);
+    console.log('🔥 [Backend] Sending NUCLEAR capabilities:', capabilityString);
 
     const tokenParams = {
       clientId: userId,
       capability: capabilityString,
-      ttl: 3600 * 1000 // 1 ساعت
+      ttl: 3600 * 1000
     };
 
     const tokenRequest = await ably.auth.createTokenRequest(tokenParams);
-    
     res.json(tokenRequest);
   } catch (error) {
     console.error('[Ably] Auth error:', error);
