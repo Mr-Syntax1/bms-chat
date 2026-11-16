@@ -28,16 +28,17 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
   try {
     const userId = req.userId;
 
+    // 👇 تغییر حیاتی: استفاده از نام دقیق کانال به جای * برای نوتیفیکیشن 👇
     const capabilities = {
       'presence:room-*': ['subscribe', 'presence'],
       'private:dm-*': ['subscribe', 'publish'],
-      'private:notifications-*': ['subscribe', 'presence'],
-      'private:webrtc-*': ['subscribe', 'publish'], // این خط برای تماس حیاتی است
+      [`private:notifications-${userId}`]: ['subscribe', 'presence'], // تطابق ۱۰۰٪ دقیق و امن
+      'private:webrtc-*': ['subscribe', 'publish'],
       'presence:online': ['subscribe', 'presence']
     };
 
     const capabilityString = JSON.stringify(capabilities);
-    console.log('✅ [Backend] Capability String:', capabilityString);
+    console.log('✅ [Backend] Secure Capability String:', capabilityString);
 
     const tokenParams = {
       clientId: userId,
