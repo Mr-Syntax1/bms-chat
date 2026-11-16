@@ -30,7 +30,6 @@ export const ably = createClient({
       
       const tokenRequest = await res.json();
       
-      // 👇 این لاگ حیاتی است: دقیقاً نشان می‌دهد چه دسترسی‌هایی از بک‌اند آمده 👇
       console.log('✅ [Frontend] Token received. Capabilities:', tokenRequest.capability);
       
       // تحویل توکن به SDK نسخه ۳
@@ -115,10 +114,24 @@ export function subscribeToDM(userId1, userId2) { return getChannel(getDMChannel
 export function subscribeToNotifications(userId) { return getChannel(getNotificationChannelName(userId)); }
 export function subscribeToWebRTC(userId1, userId2) { return getChannel(getWebRTCChannelName(userId1, userId2)); }
 
-export function unsubscribeFromRoom(roomName) { ably.channels.release(getRoomChannelName(roomName)); }
-export function unsubscribeFromDM(userId1, userId2) { ably.channels.release(getDMChannelName(userId1, userId2)); }
-export function unsubscribeFromNotifications(userId) { ably.channels.release(getNotificationChannelName(userId)); }
-export function unsubscribeFromWebRTC(userId1, userId2) { ably.channels.release(getWebRTCChannelName(userId1, userId2)); }
+// 👇 تابع حیاتی برای جلوگیری از خطای release در حالت attached 👇
+function safeReleaseChannel(channelName) {
+  const channel = ably.channels.get(channelName);
+  if (channel) {
+    // اگر کانال هنوز متصل یا در حال اتصال است، ابتدا آن را detach کن
+    if (channel.state === 'attached' || channel.state === 'attaching') {
+      channel.detach();
+    }
+    // سپس آن را به طور کامل آزاد (release) کن
+    ably.channels.release(channelName);
+  }
+}
+
+// استفاده از تابع ایمن به جای release مستقیم
+export function unsubscribeFromRoom(roomName) { safeReleaseChannel(getRoomChannelName(roomName)); }
+export function unsubscribeFromDM(userId1, userId2) { safeReleaseChannel(getDMChannelName(userId1, userId2)); }
+export function unsubscribeFromNotifications(userId) { safeReleaseChannel(getNotificationChannelName(userId)); }
+export function unsubscribeFromWebRTC(userId1, userId2) { safeReleaseChannel(getWebRTCChannelName(userId1, userId2)); }
 
 export function disconnectAbly() {
   ably.close();
