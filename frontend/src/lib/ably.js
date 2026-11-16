@@ -9,10 +9,11 @@ export function setAblyAuthToken(token) {
   authToken = token;
 }
 
-// در نسخه ۳، به جای new Ably.Realtime از createClient استفاده می‌شود
 export const ably = createClient({
   authCallback: async (tokenParams, callback) => {
     try {
+      console.log('[Ably v3] Requesting token from:', AUTH_ENDPOINT);
+      
       const res = await fetch(AUTH_ENDPOINT, {
         method: 'POST',
         credentials: 'include',
@@ -22,13 +23,20 @@ export const ably = createClient({
         },
       });
       
-      if (!res.ok) throw new Error(`Auth failed: ${res.status}`);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Auth failed: ${res.status} - ${errText}`);
+      }
+      
       const tokenRequest = await res.json();
+      
+      // 👇 این لاگ حیاتی است: دقیقاً نشان می‌دهد چه دسترسی‌هایی از بک‌اند آمده 👇
+      console.log('✅ [Frontend] Token received. Capabilities:', tokenRequest.capability);
       
       // تحویل توکن به SDK نسخه ۳
       callback(null, tokenRequest);
     } catch (err) {
-      console.error('[Ably v3] Auth callback error:', err);
+      console.error('❌ [Ably v3] Auth callback error:', err);
       callback(err);
     }
   },
@@ -37,7 +45,7 @@ export const ably = createClient({
 });
 
 // ---------------------------------------------------------------------------
-// نام‌گذاری کانال‌ها (بدون تغییر)
+// نام‌گذاری کانال‌ها
 // ---------------------------------------------------------------------------
 const MAX_CHANNEL_LENGTH = 164;
 const CHANNEL_RE = /^[A-Za-z0-9_\-=@,.;:]{1,164}$/;
@@ -96,7 +104,7 @@ export function getWebRTCChannelName(userId1, userId2) {
 }
 
 // ---------------------------------------------------------------------------
-// مدیریت کانال‌ها و رویدادها (سازگار با v3)
+// مدیریت کانال‌ها و رویدادها
 // ---------------------------------------------------------------------------
 export function getChannel(channelName) {
   return ably.channels.get(channelName);
@@ -123,8 +131,10 @@ export function publishEvent(channelName, eventName, data) {
 
 export function bindEvent(channelName, eventName, callback) {
   const channel = getChannel(channelName);
-  // در v3، callback شیء Message را می‌گیرد، ما data را استخراج می‌کنیم
-  const wrappedFn = (message) => callback(message); 
+  const wrappedFn = (message) => {
+    // در v3، آبجکت Message برگردانده می‌شود. داده اصلی در message.data است.
+    callback(message.data !== undefined ? message.data : message);
+  };
   channel.subscribe(eventName, wrappedFn);
   return wrappedFn;
 }
