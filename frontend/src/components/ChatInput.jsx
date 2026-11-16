@@ -400,7 +400,7 @@ export default function ChatInput({ onSend, onTyping }) {
               type="button"
               onClick={() => setError('')}
               aria-label="بستن"
-              className="grid place-items-center size-7 -m-0.5 rounded-full text-red-300/70 hover:bg-red-500/20 hover:text-red-200 transition"
+              className="grid place-items-center size-7 -m-0.5 rounded-full text-red-300/70 hover:bg-red-500/20 hover:text-red-200 transition cursor-pointer"
             >
               <Icon d={ICONS.close} className="size-4" />
             </button>
@@ -424,18 +424,23 @@ export default function ChatInput({ onSend, onTyping }) {
         )}
 
         {/* تغییر ۳: اصلاح کامل موقعیت ایموجی پیکر برای دسکتاپ و موبایل */}
-        {/* ── پنل ایموجی: کانتینر شفاف، بدون bg/border/shadow/overlay ── */}
         {showEmojiPicker && (
           <div
             ref={emojiPickerRef}
             role="dialog"
             aria-label="انتخاب ایموجی"
-            className="cic-anim z-50 overflow-y-auto
-                       fixed inset-x-0 bottom-0 max-h-[60vh] pb-[env(safe-area-inset-bottom)]
-                       sm:absolute sm:inset-x-auto sm:bottom-full sm:end-0 sm:mb-3
-                       sm:w-[360px] sm:max-h-[420px] sm:pb-0 bg-surface-950 sm:bg-transparent cursor-pointer"
+            className="cic-anim z-50 overflow-hidden
+                       fixed inset-x-0 bottom-0 max-h-[60vh] pb-[env(safe-area-inset-bottom)] rounded-t-2xl
+                       sm:absolute sm:inset-x-auto sm:bottom-full sm:end-0 sm:mb-3 sm:rounded-2xl
+                       sm:w-[360px] sm:max-h-[420px] sm:pb-0 
+                       bg-gray-900 border border-white/10 shadow-2xl shadow-black/50"
             style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
           >
+            {/* یک خط کوچک تزئینی برای موبایل تا حس Bottom Sheet بدهد */}
+            <div className="sm:hidden flex justify-center pt-2.5 pb-1">
+              <span className="h-1.5 w-10 rounded-full bg-white/20" />
+            </div>
+
             <Suspense fallback={<EmojiPickerFallback />}>
               <EmojiPickerPanel onEmojiSelect={handleEmojiSelect} />
             </Suspense>
@@ -478,7 +483,7 @@ export default function ChatInput({ onSend, onTyping }) {
               type="button"
               onClick={stopAndSendRecording}
               aria-label="پایان ضبط و ارسال"
-              className="grid place-items-center size-12 shrink-0 rounded-full bg-linear-to-br from-red-500 to-rose-600 text-white
+              className="grid place-items-center size-12 shrink-0 rounded-full bg-linear-to-br from-red-500 to-rose-600 text-white cursor-pointer
                          shadow-lg shadow-red-500/30 transition active:scale-90 hover:brightness-110 outline-none
                          focus-visible:ring-2 focus-visible:ring-red-300/60 touch-manipulation"
             >
@@ -557,7 +562,7 @@ export default function ChatInput({ onSend, onTyping }) {
                 type="submit"
                 disabled={isUploading}
                 aria-label="ارسال پیام"
-                className="cic-anim grid place-items-center size-11 shrink-0 rounded-full text-white outline-none touch-manipulation
+                className="cic-anim grid place-items-center size-11 shrink-0 rounded-full text-white outline-none touch-manipulation cursor-pointer
                            bg-linear-to-br from-primary-500 via-primary-600 to-accent-600
                            shadow-lg shadow-primary-500/30 transition-all duration-200
                            hover:shadow-primary-500/50 hover:brightness-110 active:scale-90
@@ -573,7 +578,7 @@ export default function ChatInput({ onSend, onTyping }) {
                 onClick={startRecording}
                 disabled={isUploading}
                 aria-label="ضبط پیام صوتی"
-                className="cic-anim grid place-items-center size-11 shrink-0 rounded-full outline-none touch-manipulation
+                className="cic-anim grid place-items-center size-11 shrink-0 rounded-full outline-none touch-manipulation cursor-pointer
                            bg-white/[0.06] text-surface-200 transition-all duration-200
                            hover:bg-red-500/15 hover:text-red-300 active:scale-90
                            focus-visible:ring-2 focus-visible:ring-red-400/60 disabled:opacity-40"
