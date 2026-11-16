@@ -32,8 +32,8 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
       'presence:room-*': ['subscribe', 'presence'],
       'private:dm-*': ['subscribe', 'publish'],
       'private:notifications-*': ['subscribe', 'presence'],
-      'private:webrtc-*': ['subscribe', 'publish'],
-      'presence:online': ['subscribe', 'presence'], // 👇 کانال حضور سراسری 👇
+      'private:webrtc-*': ['subscribe', 'publish'], // این خط برای تماس حیاتی است
+      'presence:online': ['subscribe', 'presence']
     };
 
     const capabilityString = JSON.stringify(capabilities);
