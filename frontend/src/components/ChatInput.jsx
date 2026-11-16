@@ -49,7 +49,7 @@ function IconButton({ label, onClick, disabled, active, tone = 'primary', childr
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={`group relative grid place-items-center shrink-0 size-11 rounded-full
+      className={`group relative grid place-items-center shrink-0 size-11 rounded-full cursor-pointer
         transition-all duration-200 outline-none select-none touch-manipulation
         focus-visible:ring-2 focus-visible:ring-primary-400/60
         disabled:opacity-40 disabled:pointer-events-none
@@ -433,7 +433,7 @@ export default function ChatInput({ onSend, onTyping }) {
             className="cic-anim z-50 overflow-y-auto
                        fixed inset-x-0 bottom-0 max-h-[60vh] pb-[env(safe-area-inset-bottom)]
                        sm:absolute sm:inset-x-auto sm:bottom-full sm:end-0 sm:mb-3
-                       sm:w-[360px] sm:max-h-[420px] sm:pb-0"
+                       sm:w-[360px] sm:max-h-[420px] sm:pb-0 bg-surface-950 sm:bg-transparent cursor-pointer"
             style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
           >
             <Suspense fallback={<EmojiPickerFallback />}>
@@ -527,7 +527,7 @@ export default function ChatInput({ onSend, onTyping }) {
                 enterKeyHint={isTouch ? 'enter' : 'send'}
                 autoComplete="off"
                 spellCheck={false}
-                className="block w-full resize-none bg-transparent px-2 py-[11px] text-[16px] sm:text-[15px] leading-[22px]
+                className="block w-full resize-none bg-transparent px-2 py-[11px] text-[16px] sm:text-[15px] placeholder:text-right leading-[22px]
                            text-surface-50 placeholder:text-surface-500 outline-none
                            max-h-40 overflow-y-auto scrollbar-thin"
               />
