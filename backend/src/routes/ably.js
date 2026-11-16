@@ -31,7 +31,7 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
     const capabilities = {
       'presence:room-*': ['subscribe', 'presence'],
       'private:dm-*': ['subscribe', 'publish'],
-      'private:notifications-*': ['subscribe', 'presence'], // اضافه کردن presence برای اطمینان
+      [`private:notifications-${userId}`]: ['subscribe', 'presence'], // تطابق دقیق
       'private:webrtc-*': ['subscribe', 'publish']
     };
 
@@ -42,7 +42,7 @@ ablyRouter.post('/auth', authMiddleware, async (req, res) => {
     };
 
     const tokenRequest = await ably.auth.createTokenRequest(tokenParams);
-
+    
     res.json(tokenRequest);
   } catch (error) {
     console.error('[Ably] Auth error:', error);
