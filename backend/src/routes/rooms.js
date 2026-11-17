@@ -166,6 +166,7 @@ roomsRouter.post('/join', async (req, res) => {
       fileSize: m.fileSize,
       createdAt: m.createdAt,
       time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+      readBy: m.readBy || [],
     }));
 
     res.json({ success: true, room: roomName, history: formattedHistory });
@@ -298,6 +299,7 @@ roomsRouter.post('/open-dm', async (req, res) => {
       fileSize: m.fileSize,
       createdAt: m.createdAt,
       time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+      readBy: m.readBy || [],
     }));
 
     res.json({

@@ -112,6 +112,7 @@ messagesRouter.post('/send', async (req, res) => {
       fileName: saved.fileName, fileType: saved.fileType, fileSize: saved.fileSize,
       room, createdAt: saved.createdAt.toISOString(),
       time: new Date(saved.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+      readBy: [],
     };
 
     const channelName = getChannelName(room);
@@ -163,6 +164,7 @@ messagesRouter.post('/edit', async (req, res) => {
       fileName: message.fileName, fileType: message.fileType, fileSize: message.fileSize,
       room: message.room, createdAt: message.createdAt.toISOString(),
       time: new Date(message.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+      readBy: message.readBy || [],
     };
 
     const channelName = getChannelName(message.room);

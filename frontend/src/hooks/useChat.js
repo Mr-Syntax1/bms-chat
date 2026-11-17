@@ -282,11 +282,12 @@ export function useChat() {
 
       on('messages-read', (data) => {
         console.log('📥 [Ably] Received messages-read event:', data);
-        const { userId, messageIds } = data;
+        const { userId, messageIds, all } = data;
 
         setMessages(prev => prev.map(msg => {
-          // اگر پیام جزو لیست خوانده‌شده‌ها بود و هنوز من (فرستنده) در readBy نبودم
-          if (messageIds?.includes(msg._id) && !msg.readBy?.includes(userId)) {
+          // اگر all=true تمام پیام‌ها آپدیت شوند، وگرنه فقط messageIds
+          const shouldUpdate = all || messageIds?.includes(msg.id);
+          if (shouldUpdate && !msg.readBy?.includes(userId)) {
             console.log('🔄 [State] Updating message readBy for:', msg.id);
             return { ...msg, readBy: [...(msg.readBy || []), userId] };
           }
