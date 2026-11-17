@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 import { sileo } from 'sileo';
-import { useChat } from '../hooks/useChat';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -112,10 +111,9 @@ function SettingsSkeleton() {
 // ----------------------------
 // Main Component
 // ----------------------------
-export default function Settings({ currentUser }) { // 👈 دریافت currentUser از App.jsx
+export default function Settings({ currentUser, onLogout }) {
     const navigate = useNavigate();
-    const chat = useChat();
-    const [user, setUser] = useState(currentUser); // 👈 مقداردهی اولیه با currentUser (جلوگیری از صفحه سفید)
+    const [user, setUser] = useState(currentUser); //مقداردهی اولیه با currentUser (جلوگیری از صفحه سفید)
     const [loading, setLoading] = useState(!currentUser);
 
     const [settings, setSettings] = useState({
@@ -157,14 +155,17 @@ export default function Settings({ currentUser }) { // 👈 دریافت current
         });
     };
 
-    const handleLogout = async () => {
-        try {
-            await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
-            sileo.success({ title: 'خروج موفق', description: 'به امید دیدار!' });
-            await chat.logout();
-        } catch (err) {
-            sileo.error({ title: 'خطا', description: 'مشکلی در خروج پیش آمد.' }, err);
-        }
+    const handleLocalLogout = async () => {
+        sileo.success({
+            title: 'خروج موفق',
+            description: 'به امید دیدار!'
+        });
+
+        // فراخوانی تابع اصلی و قدرتمند خروج که در App.jsx تعریف شده
+        await onLogout();
+
+        // هدایت به صفحه لاگین (با replace:true تا کاربر نتواند با دکمه Back برگردد)
+        navigate('/login', { replace: true });
     };
 
     if (loading) return <SettingsSkeleton />;
@@ -244,7 +245,7 @@ export default function Settings({ currentUser }) { // 👈 دریافت current
 
                     <Section title="حساب کاربری">
                         <button
-                            onClick={handleLogout}
+                            onClick={handleLocalLogout}
                             className="w-full flex items-center justify-between gap-4 p-3 rounded-xl bg-red-500/5 ring-1 ring-red-500/20 
                          hover:bg-red-500/10 hover:ring-red-500/40 transition-all group text-right cursor-pointer"
                         >

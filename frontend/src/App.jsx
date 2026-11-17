@@ -137,7 +137,7 @@ function App() {
               path="/settings"
               element={
                 authUser ? (
-                  <Settings currentUser={authUser} />
+                  <Settings currentUser={authUser} onLogout={handleLogout} />
                 ) : (
                   <Navigate to="/login" replace />
                 )
