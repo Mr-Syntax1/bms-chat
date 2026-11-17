@@ -221,32 +221,48 @@ messagesRouter.post('/system', async (req, res) => {
 });
 
 
-messagesRouter.post('/mark-read', authMiddleware, async (req, res) => {
+messagesRouter.post('/mark-read', async (req, res) => {
   try {
     const { roomName, messageIds } = req.body;
     const userId = req.userId;
 
-    if (!roomName) return res.status(400).json({ error: 'Room name is required' });
+    if (!roomName) {
+      return res.status(400).json({ error: 'نام اتاق الزامی است' });
+    }
 
-    // ۱. آپدیت دیتابیس: اضافه کردن userId به readBy پیام‌هایی که هنوز نخوانده
+    // ۱. ساخت کوئری آپدیت
+    const updateQuery = {
+      room: roomName,
+      readBy: { $ne: userId } // فقط پیام‌هایی که توسط این کاربر خوانده نشده‌اند
+    };
+
+    // اگر لیست خاصی از پیام‌ها ارسال شده باشد، فقط آن‌ها را آپدیت کن
+    if (messageIds && Array.isArray(messageIds) && messageIds.length > 0) {
+      updateQuery._id = { $in: messageIds };
+    }
+
+    // ۲. آپدیت دیتابیس با $addToSet (جلوگیری از تکراری شدن ID در آرایه)
     const updateResult = await Message.updateMany(
-      {
-        room: roomName,
-        _id: { $in: messageIds || [] }, // اگر messageIds خالی بود، همه را آپدیت کن (یا فقط unseenها)
-        readBy: { $ne: userId } // فقط اگر قبلا نخوانده
-      },
-      { $push: { readBy: userId } }
+      updateQuery,
+      { $addToSet: { readBy: userId } }
     );
-    // ۲. ارسال رویداد به Ably تا فرستنده بلافاصله تیک دوم را ببیند
-    const channelName = getRoomChannelName(roomName);
-    publishEvent(channelName, 'messages-read', {
-      messageIds: messageIds, // یا لیست آی‌دی‌های آپدیت شده
+
+    // ۳. ارسال رویداد به Ably تا فرستنده بلافاصله تیک دوم را ببیند
+    // استفاده از getChannelName که در بالای همین فایل تعریف شده است
+    const channelName = getChannelName(roomName);
+    
+    await ably.channels.get(channelName).publish('messages-read', {
+      messageIds: messageIds,
       userId: userId,
     });
 
-    res.json({ success: true, count: updateResult.modifiedCount });
+    res.json({ 
+      success: true, 
+      count: updateResult.modifiedCount 
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    // 👇 این لاگ دقیقاً به شما می‌گوید اگر باز هم خطایی رخ داد، مشکل از کجاست 👇
+    console.error('❌ [Backend] /api/messages/mark-read ERROR:', err);
+    res.status(500).json({ error: err.message || 'خطای داخلی سرور' });
   }
 });
