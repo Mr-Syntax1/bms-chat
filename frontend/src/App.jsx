@@ -10,6 +10,7 @@ import { useChat } from './hooks/useChat';
 import ToastProvider from './providers/ToastProvider';
 import HalloweenBackground from './components/HalloweenBackground';
 import Settings from './pages/Settings';
+import { loadUiPrefs, applyUiPrefs, subscribeUiPrefs } from './lib/uiPrefs';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -17,6 +18,14 @@ function App() {
   const [authUser, setAuthUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const chat = useChat();
+  const [uiPrefs, setUiPrefs] = useState(loadUiPrefs);
+
+
+
+  useEffect(() => {
+    applyUiPrefs(uiPrefs);
+    return subscribeUiPrefs(setUiPrefs);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // بررسی احراز هویت هنگام بارگذاری صفحه
   useEffect(() => {
@@ -34,6 +43,14 @@ function App() {
       })
       .catch(() => setAuthLoading(false));
   }, []);
+
+  const handleUserUpdate = (user, token) => {
+    setAuthUser(user);
+    if (token) {
+      setAblyAuthToken(token);
+      setApiToken(token);
+    }
+  };
 
   const handleAuth = (userData, token) => {
     setAuthUser(userData);
@@ -69,7 +86,7 @@ function App() {
     return (
       <ToastProvider>
         <div className="min-h-screen flex items-center justify-center bg-aurora text-white relative overflow-hidden">
-          <HalloweenBackground />
+          {uiPrefs.animatedBackground && <HalloweenBackground />}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-1/4 left-1/4 w-72 h-72 rounded-full bg-gradient-to-br from-primary-500/20 to-accent-500/20 blur-3xl animate-blob" />
             <div className="absolute bottom-1/4 right-1/4 w-60 h-60 rounded-full bg-gradient-to-br from-cyan-500/15 to-primary-500/15 blur-3xl animate-blob animation-delay-2000" />
@@ -89,7 +106,7 @@ function App() {
 
   return (
     <div className="">
-      <HalloweenBackground />
+      {uiPrefs.animatedBackground && <HalloweenBackground />}
       <ToastProvider>
         <BrowserRouter>
           <Routes>
@@ -137,7 +154,7 @@ function App() {
               path="/settings"
               element={
                 authUser ? (
-                  <Settings currentUser={authUser} onLogout={handleLogout} />
+                  <Settings currentUser={authUser} onLogout={handleLogout} onUserUpdate={handleUserUpdate} />
                 ) : (
                   <Navigate to="/login" replace />
                 )

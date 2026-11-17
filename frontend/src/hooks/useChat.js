@@ -16,6 +16,7 @@ import {
   // getPresenceChannelName,
   getChannel,
 } from '../lib/ably'; // مسیر را به فایل ably.js جدید تغییر دهید
+import { notifyIncomingMessage } from '../lib/notify';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -23,7 +24,7 @@ const REQUEST_TIMEOUT = 15000; // ms
 const MAX_MESSAGES = 500;
 const TYPING_SEND_INTERVAL = 1500; // حداقل فاصله‌ی ارسال رویداد typing
 const TYPING_STOP_DELAY = 2000; // چند ms بعد از آخرین کلید، «توقف تایپ» ارسال شود
-const TYPING_TTL = 4000; // سمت گیرنده: اگر رویداد توقف نرسید، بعد از این مدت حذف شود
+// const TYPING_TTL = 4000; // سمت گیرنده: اگر رویداد توقف نرسید، بعد از این مدت حذف شود
 
 const isDmRoom = (name) => typeof name === 'string' && name.startsWith('dm_');
 
@@ -260,61 +261,36 @@ export function useChat() {
         handlers.push([event, wrappedFn]);
       };
 
+
       // ---- پیام‌ها ----
+            // ---- پیام‌ها ----
       on('new-message', (msg) => {
+        const currentUserId = currentUserRef.current?.id;
+        const senderId = msg.senderId ?? msg.userId;
+
+        // 👇 ۱. اولویت اول: بررسی و پخش اعلان (حتی اگر در اتاق دیگری هستیم)
+        if (senderId && currentUserId && String(senderId) !== String(currentUserId)) {
+          notifyIncomingMessage({
+            sender: msg.sender || msg.username || 'کاربر ناشناس',
+            text: msg.text || (msg.type === 'file' ? 'فایل جدید' : 'پیام جدید'),
+          });
+        }
+
+        // 👇 ۲. اگر پیام مربوط به اتاق فعلی نیست، فقط اعلان بده و از آپدیت state صرف‌نظر کن
         if (msg.room && msg.room !== currentRoomRef.current) return;
+
+        // 👇 ۳. اضافه کردن پیام به لیست (فقط برای اتاق جاری)
         setMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
           const next = [...prev, msg];
           return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
         });
+
         const senderKey = msg.senderId ?? msg.userId;
         if (senderKey != null) clearTypingUser(String(senderKey));
         else if (msg.sender) clearTypingByUsername(msg.sender);
       });
 
-      on('system-message', ({ text, room }) => {
-        if (room !== currentRoomRef.current) return;
-        sysMsgCounterRef.current += 1;
-        setMessages((prev) => [
-          ...prev,
-          { id: `sys-${Date.now()}-${sysMsgCounterRef.current}`, text, sender: 'system', type: 'system', time: '' },
-        ]);
-      });
-
-      on('message-deleted', ({ messageId }) => {
-        setMessages((prev) => prev.filter((m) => m.id !== messageId));
-      });
-
-      on('message-edited', (editedMsg) => {
-        setMessages((prev) => prev.map((m) => (m.id === editedMsg.id ? { ...m, ...editedMsg } : m)));
-      });
-
-      // ---- typing ----
-      on('typing', (data) => {
-        const { username, userId, isTyping } = data || {};
-        const key = String(userId ?? username ?? '');
-        if (!key) return;
-
-        const me = currentUserRef.current;
-        if (me && (userId != null ? String(userId) === String(me.id) : username === me.username)) {
-          return;
-        }
-
-        if (!isTyping) {
-          clearTypingUser(key);
-          return;
-        }
-
-        const existing = typingMapRef.current.get(key);
-        if (existing) clearTimeout(existing.timer);
-        const timer = setTimeout(() => clearTypingUser(key), TYPING_TTL);
-        typingMapRef.current.set(key, { username: username || 'Unknown', timer });
-        syncTyping();
-      });
-
-      // 👇 حضور (presence) حالا سراسری است و اینجا حذف شد 👇
-      roomHandlersRef.current[roomName] = { channelName, handlers };
     },
     [clearTypingUser, clearTypingByUsername, syncTyping]
   );
