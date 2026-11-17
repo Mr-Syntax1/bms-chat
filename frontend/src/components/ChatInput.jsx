@@ -28,7 +28,7 @@ const ICONS = {
   clip: 'M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48',
   smile: 'M12 21a9 9 0 100-18 9 9 0 000 18zM8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01',
   mic: 'M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3zM19 11a7 7 0 01-14 0M12 18v3M8 21h8',
-  send: 'M12 19V5M5 12l7-7 7 7',
+  send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
   close: 'M6 18L18 6M6 6l12 12',
   trash: 'M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6M10 11v6M14 11v6',
   alert: 'M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
@@ -175,15 +175,29 @@ export default function ChatInput({ onSend, onTyping }) {
 
   const handleEmojiSelect = (emoji) => {
     const el = inputRef.current;
-    if (!el) return setValue((p) => p + emoji);
+
+    // اگر المان اینپوت در دسترس نبود، فقط مقدار را اضافه کن
+    if (!el) {
+      setValue((prev) => prev + emoji);
+      return;
+    }
+
     const start = el.selectionStart ?? value.length;
     const end = el.selectionEnd ?? value.length;
     const next = value.slice(0, start) + emoji + value.slice(end);
+
+    // ۱. آپدیت استیت
     setValue(next);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(start + emoji.length, start + emoji.length);
-    });
+
+    // ۲. بازگرداندن فوکوس و مکان نما با روش مطمئن برای موبایل
+    // استفاده از setTimeout(0) به جای requestAnimationFrame برای پایداری بیشتر در iOS/Android
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const newPos = start + emoji.length;
+        inputRef.current.setSelectionRange(newPos, newPos);
+      }
+    }, 0);
   };
 
   const emitTyping = () => {
@@ -429,20 +443,29 @@ export default function ChatInput({ onSend, onTyping }) {
             ref={emojiPickerRef}
             role="dialog"
             aria-label="انتخاب ایموجی"
-            className="cic-anim z-50 overflow-y-auto h-fit max-h-[60vh]
-                       fixed inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)] rounded-t-2xl
-                       sm:absolute sm:inset-x-auto sm:bottom-full sm:end-0 sm:mb-3 sm:rounded-2xl
-                       sm:w-[360px] sm:max-h-[420px] sm:pb-0 
-                       bg-gray-900 border border-white/10 shadow-2xl shadow-black/50"
+            onMouseDown={(e) => e.preventDefault()}
+            //  لایه‌ی بیرونی: فقط موقعیت‌دهی، بدون هیچ bg
+            className="cic-anim z-50 fixed bottom-0 start-0 end-0 flex justify-end p-2 sm:ml-3
+                       sm:absolute sm:bottom-full sm:right-auto sm:start-0 sm:mb-3 sm:block sm:w-[360px]"
             style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
           >
-            <div className="sm:hidden flex justify-center pt-2.5 pb-1">
-              <span className="h-1.5 w-10 rounded-full bg-white/20" />
-            </div>
+            {/*  لایه‌ی داخلی: بک‌گراند دقیقاً به اندازه‌ی محتوا (w-fit) */}
+            <div className="w-fit max-w-[calc(100vw-1rem)]
+                           bg-surface-900 border border-white/10 shadow-2xl shadow-black/50
+                           rounded-t-2xl sm:rounded-2xl
+                           flex flex-col overflow-hidden
+                           max-h-[60vh] sm:max-h-[420px]
+                           pb-[env(safe-area-inset-bottom)] sm:pb-0">
+              <div className="sm:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+                <span className="h-1.5 w-10 rounded-full bg-white/20" />
+              </div>
 
-            <Suspense fallback={<EmojiPickerFallback />}>
-              <EmojiPickerPanel onEmojiSelect={handleEmojiSelect} />
-            </Suspense>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <Suspense fallback={<EmojiPickerFallback />}>
+                  <EmojiPickerPanel onEmojiSelect={handleEmojiSelect} />
+                </Suspense>
+              </div>
+            </div>
           </div>
         )}
 
@@ -527,7 +550,7 @@ export default function ChatInput({ onSend, onTyping }) {
                 onKeyDown={handleKeyDown}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
-                placeholder="پیام خود را بنویسید..."
+                placeholder="...پیام خود را بنویسید"
                 enterKeyHint={isTouch ? 'enter' : 'send'}
                 autoComplete="off"
                 spellCheck={false}
