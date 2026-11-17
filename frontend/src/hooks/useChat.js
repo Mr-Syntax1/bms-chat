@@ -118,8 +118,6 @@ export function useChat() {
       return;
     }
 
-    console.log('📤 [Frontend] Sending mark-read for:', roomName, messageIds); // 👈 این خط
-
     try {
       await apiRequest('/api/messages/mark-read', {
         method: 'POST',

@@ -120,8 +120,6 @@ export default function Chat({ chat, user, onLogout }) {
         .map(m => m.id || m._id)
         .filter(id => id);
 
-      console.log('📤 [Frontend] Sending mark-read for:', currentRoom, unseenIds);
-
       if (unseenIds.length > 0) {
         chat.markMessagesAsRead(currentRoom, unseenIds);
       }

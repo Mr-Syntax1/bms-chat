@@ -143,9 +143,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     ? msg.readBy?.some(id => id !== msg.senderId)
     : msg.readBy?.includes(currentUserId);
   
-  if (isMine) {
-    console.log('👁️ [Bubble] Message ID:', msg.id, '| readBy:', msg.readBy, '| senderId:', msg.senderId, '| currentUserId:', currentUserId, '| isRead:', isRead);
-  }
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
   const [menuItems, setMenuItems] = useState([]);
   const [editing, setEditing] = useState(false);
