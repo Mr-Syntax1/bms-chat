@@ -364,7 +364,7 @@ export default function Profile({ onClose, currentUser }) {
                              hover:bg-surface-800 hover:ring-white/25 active:scale-95 transition-all whitespace-nowrap"
                 >
                   <Icon name="edit" className="w-4 h-4" />
-                  ویرایش پروفایل
+                  تنظیمات پروفایل
                 </button>
               ) : (
                 <button
