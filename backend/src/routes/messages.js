@@ -220,7 +220,6 @@ messagesRouter.post('/system', async (req, res) => {
   }
 });
 
-
 messagesRouter.post('/mark-read', async (req, res) => {
   try {
     const { roomName, messageIds } = req.body;
@@ -230,42 +229,47 @@ messagesRouter.post('/mark-read', async (req, res) => {
       return res.status(400).json({ error: 'نام اتاق الزامی است' });
     }
 
-    // ۱. ساخت کوئری آپدیت
+    // 👇 فیلتر کردن messageIds نامعتبر 👇
+    const validIds = Array.isArray(messageIds)
+      ? messageIds.filter((id) => typeof id === 'string' && id.length > 0)
+      : [];
+
     const updateQuery = {
       room: roomName,
-      readBy: { $ne: userId } // فقط پیام‌هایی که توسط این کاربر خوانده نشده‌اند
+      senderId: { $ne: userId }, // پیام‌های خود کاربر را علامت نزن
+      readBy: { $ne: userId },
     };
 
-    // اگر لیست خاصی از پیام‌ها ارسال شده باشد، فقط آن‌ها را آپدیت کن
-    if (messageIds && Array.isArray(messageIds) && messageIds.length > 0) {
-      updateQuery._id = { $in: messageIds };
+    // اگر لیست معتبر وجود دارد، فقط آن‌ها؛ وگرنه همه پیام‌های خوانده‌نشده‌ی اتاق
+    if (validIds.length > 0) {
+      updateQuery._id = { $in: validIds };
     }
 
-    // ۲. آپدیت دیتابیس با $addToSet (جلوگیری از تکراری شدن ID در آرایه)
     const updateResult = await Message.updateMany(
       updateQuery,
       { $addToSet: { readBy: userId } }
     );
 
-    // ۳. ارسال رویداد به Ably تا فرستنده بلافاصله تیک دوم را ببیند
-    // استفاده از getChannelName که در بالای همین فایل تعریف شده است
-    const channelName = getChannelName(roomName);
+    console.log(`✅ [Backend] mark-read | room: ${roomName} | validIds: ${validIds.length} | modified: ${updateResult.modifiedCount}`);
 
-    await ably.channels.get(channelName).publish('messages-read', {
-      messageIds: messageIds,
-      userId: userId,
-    });
+    // ارسال رویداد به Ably (فقط اگر چیزی آپدیت شده)
+    if (updateResult.modifiedCount > 0) {
+      try {
+        const channelName = getChannelName(roomName);
+        await ably.channels.get(channelName).publish('messages-read', {
+          userId,
+          roomName,
+          all: validIds.length === 0, // اگر true، فرانت‌اند همه پیام‌ها را آپدیت می‌کند
+          messageIds: validIds,
+        });
+      } catch (ablyErr) {
+        console.warn('[Ably] publish messages-read failed:', ablyErr.message);
+      }
+    }
 
-    res.json({
-      success: true,
-      count: updateResult.modifiedCount
-    });
-
-    console.log(`✅ [Backend] Marked as read. Modified count: ${updateResult.modifiedCount}`);
-
+    res.json({ success: true, count: updateResult.modifiedCount });
   } catch (err) {
-    // 👇 این لاگ دقیقاً به شما می‌گوید اگر باز هم خطایی رخ داد، مشکل از کجاست 👇
-    console.error('❌ [Backend] /api/messages/mark-read ERROR:', err);
+    console.error('❌ [Backend] /mark-read ERROR:', err);
     res.status(500).json({ error: err.message || 'خطای داخلی سرور' });
   }
 });

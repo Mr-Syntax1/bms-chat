@@ -116,13 +116,18 @@ export default function Chat({ chat, user, onLogout }) {
     if (currentRoom && messages.length > 0 && user?.id) {
       const unseenIds = messages
         .filter(m => m.senderId !== user.id && !m.readBy?.includes(user.id))
-        .map(m => m._id); // یا m.id بسته به ساختار دیتابیس شما
+        // 👇 تغییر مهم: از m.id یا m._id استفاده کن و undefinedها را فیلتر کن 👇
+        .map(m => m.id || m._id)
+        .filter(id => id);
+
+      console.log('📤 [Frontend] Sending mark-read for:', currentRoom, unseenIds);
 
       if (unseenIds.length > 0) {
-        markMessagesAsRead(currentRoom, unseenIds); // استفاده مستقیم از تابع
+        chat.markMessagesAsRead(currentRoom, unseenIds);
       }
     }
-  }, [messages, currentRoom, user?.id, markMessagesAsRead]); //  آرایه کامل شد
+  }, [messages, currentRoom, user?.id, chat.markMessagesAsRead]);
+
 
   const handleOpenNotifications = useCallback(() => {
     setShowNotifications((prev) => {
