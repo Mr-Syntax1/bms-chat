@@ -138,7 +138,9 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
 
   //  منطق بررسی خوانده شدن پیام 
   const isRead = msg.readBy?.includes(currentUserId);
-
+  if (isMine) {
+    console.log('👁️ [Bubble] Message ID:', msg.id, '| readBy:', msg.readBy, '| currentUserId:', currentUserId, '| isRead:', isRead);
+  }
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
   const [menuItems, setMenuItems] = useState([]);
   const [editing, setEditing] = useState(false);
@@ -251,9 +253,9 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
 
   const time = msg.createdAt
     ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+      hour: '2-digit',
+      minute: '2-digit',
+    })
     : '';
 
   return (
@@ -344,13 +346,12 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
             <time className={`text-[10px] ${isMine ? 'text-primary-100/80' : 'text-surface-500'}`}>
               {time}
             </time>
-            
+
             {/* منطق نمایش تیک */}
             {isMine && (
               <svg
-                className={`w-4 h-4 transition-colors duration-300 ${
-                  isRead ? 'text-white' : 'text-primary-100/60'
-                }`}
+                className={`w-4 h-4 transition-colors duration-300 ${isRead ? 'text-white' : 'text-primary-100/60'
+                  }`}
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={2.5}

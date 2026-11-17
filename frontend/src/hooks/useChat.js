@@ -112,14 +112,13 @@ export function useChat() {
 
 
   const markMessagesAsRead = useCallback(async (roomName, messageIds = []) => {
-    //  چک کردن تنظیمات کاربر از currentUserRef
     const userSettings = currentUserRef.current?.settings;
-
-    // اگر کاربر خواندن پیام را خاموش کرده باشد، هیچ کاری نکن (تیک دوم برای دیگران نمی‌رود)
     if (userSettings?.readReceipts === false) {
-      console.log('[Chat] Read receipts disabled by user settings.');
+      console.log('🚫 Read receipts disabled');
       return;
     }
+
+    console.log('📤 [Frontend] Sending mark-read for:', roomName, messageIds); // 👈 این خط
 
     try {
       await apiRequest('/api/messages/mark-read', {
@@ -130,7 +129,6 @@ export function useChat() {
       console.error('[Chat] Mark read error:', err);
     }
   }, []);
-
 
   // -------------------------------------------------------------------------
   // حضور سراسری: همه کاربران آنلاین (مستقل از اتاق جاری)
@@ -283,11 +281,13 @@ export function useChat() {
       };
 
       on('messages-read', (data) => {
+        console.log('📥 [Ably] Received messages-read event:', data);
         const { userId, messageIds } = data;
 
         setMessages(prev => prev.map(msg => {
           // اگر پیام جزو لیست خوانده‌شده‌ها بود و هنوز من (فرستنده) در readBy نبودم
           if (messageIds?.includes(msg._id) && !msg.readBy?.includes(userId)) {
+            console.log('🔄 [State] Updating message readBy for:', msg.id);
             return { ...msg, readBy: [...(msg.readBy || []), userId] };
           }
           return msg;

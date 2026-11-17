@@ -250,16 +250,19 @@ messagesRouter.post('/mark-read', async (req, res) => {
     // ۳. ارسال رویداد به Ably تا فرستنده بلافاصله تیک دوم را ببیند
     // استفاده از getChannelName که در بالای همین فایل تعریف شده است
     const channelName = getChannelName(roomName);
-    
+
     await ably.channels.get(channelName).publish('messages-read', {
       messageIds: messageIds,
       userId: userId,
     });
 
-    res.json({ 
-      success: true, 
-      count: updateResult.modifiedCount 
+    res.json({
+      success: true,
+      count: updateResult.modifiedCount
     });
+
+    console.log(`✅ [Backend] Marked as read. Modified count: ${updateResult.modifiedCount}`);
+
   } catch (err) {
     // 👇 این لاگ دقیقاً به شما می‌گوید اگر باز هم خطایی رخ داد، مشکل از کجاست 👇
     console.error('❌ [Backend] /api/messages/mark-read ERROR:', err);
