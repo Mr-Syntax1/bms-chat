@@ -137,9 +137,14 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
   const isFile = msg.type === 'file';
 
   //  منطق بررسی خوانده شدن پیام 
-  const isRead = msg.readBy?.includes(currentUserId);
+  // برای پیام‌های ارسالی (isMine): چک کن که گیرنده (هر کسی غیر از senderId) خوانده باشد
+  // برای پیام‌های دریافتی: چک کن که کاربر جاری (currentUserId) خوانده باشد
+  const isRead = isMine
+    ? msg.readBy?.some(id => id !== msg.senderId)
+    : msg.readBy?.includes(currentUserId);
+  
   if (isMine) {
-    console.log('👁️ [Bubble] Message ID:', msg.id, '| readBy:', msg.readBy, '| currentUserId:', currentUserId, '| isRead:', isRead);
+    console.log('👁️ [Bubble] Message ID:', msg.id, '| readBy:', msg.readBy, '| senderId:', msg.senderId, '| currentUserId:', currentUserId, '| isRead:', isRead);
   }
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
   const [menuItems, setMenuItems] = useState([]);
