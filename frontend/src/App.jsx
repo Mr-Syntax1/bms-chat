@@ -9,6 +9,7 @@ import Profile from './pages/Profile';
 import { useChat } from './hooks/useChat';
 import ToastProvider from './providers/ToastProvider';
 import HalloweenBackground from './components/HalloweenBackground';
+import Settings from './pages/Settings';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -127,6 +128,16 @@ function App() {
             <Route path="/profile/:username"
               element={
                 authUser ? (<Profile currentUser={authUser} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                authUser ? (
+                  <Settings currentUser={authUser} />
                 ) : (
                   <Navigate to="/login" replace />
                 )
