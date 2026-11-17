@@ -15,6 +15,7 @@ export default function Chat({ chat, user, onLogout }) {
   const {
     messages,
     onlineUsers,
+    markMessagesAsRead,
     typingUsers,
     rooms,
     currentRoom,
@@ -69,6 +70,7 @@ export default function Chat({ chat, user, onLogout }) {
     setSidebar((prev) => (prev === panel ? null : panel));
   }, []);
 
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -108,6 +110,19 @@ export default function Chat({ chat, user, onLogout }) {
     },
     [navigate]
   );
+
+  // وقتی اتاق عوض شد یا پیام جدید آمد
+  useEffect(() => {
+    if (currentRoom && messages.length > 0 && user?.id) {
+      const unseenIds = messages
+        .filter(m => m.senderId !== user.id && !m.readBy?.includes(user.id))
+        .map(m => m._id); // یا m.id بسته به ساختار دیتابیس شما
+
+      if (unseenIds.length > 0) {
+        markMessagesAsRead(currentRoom, unseenIds); // استفاده مستقیم از تابع
+      }
+    }
+  }, [messages, currentRoom, user?.id, markMessagesAsRead]); //  آرایه کامل شد
 
   const handleOpenNotifications = useCallback(() => {
     setShowNotifications((prev) => {

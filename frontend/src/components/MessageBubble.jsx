@@ -21,42 +21,6 @@ function getFileIcon(fileType, fileName) {
   return 'file';
 }
 
-// function formatMessageDate(dateString) {
-//   if (!dateString) return '';
-
-//   const date = new Date(dateString);
-//   if (isNaN(date.getTime())) return '';
-//   console.log("ورودی:", dateString);
-//   console.log("بعد از new Date:", new Date(dateString));
-
-//   const now = new Date();
-//   const yesterday = new Date(now);
-//   yesterday.setDate(yesterday.getDate() - 1);
-
-//   const isToday = date.toDateString() === now.toDateString();
-//   const isYesterday = date.toDateString() === yesterday.toDateString();
-
-//   //  ساعت
-//   const time = date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-
-//   if (isToday) {
-//     return time;
-//   } else if (isYesterday) {
-//     return `دیروز، ${time}`;
-//   } else {
-//     //  تاریخ شمسی دقیق (روز/ماه/سال)
-//     const dateStr = new Intl.DateTimeFormat('fa-IR', {
-//       calendar: 'persian', //  اجبار به تقویم شمسی
-//       year: 'numeric',
-//       month: '2-digit',
-//       day: '2-digit',
-//     }).format(date);
-
-//     return `${dateStr}، ${time}`;
-//   }
-// }
-
-//  اضافه کردن پراپ onImageClick به FilePreview
 function FilePreview({ msg, isMine, onImageClick }) {
   const isImage = msg.fileType?.startsWith('image/');
   const isAudio = msg.fileType?.startsWith('audio/') || msg.fileName?.endsWith('.webm');
@@ -86,7 +50,6 @@ function FilePreview({ msg, isMine, onImageClick }) {
   if (isImage) {
     return (
       <div className="block">
-        {/*  تغییر: کلیک روی عکس، تابع onImageClick را صدا می‌زند */}
         <button
           type="button"
           onClick={() => onImageClick?.({ src: msg.fileUrl, alt: msg.fileName || 'Image' })}
@@ -166,11 +129,15 @@ function EditIcon() {
   );
 }
 
-export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage, onEditMessage }) {
+
+export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage, onEditMessage, currentUserId }) {
   const navigate = useNavigate();
 
   const isSystem = msg.type === 'system';
   const isFile = msg.type === 'file';
+
+  //  منطق بررسی خوانده شدن پیام 
+  const isRead = msg.readBy?.includes(currentUserId);
 
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
   const [menuItems, setMenuItems] = useState([]);
@@ -179,18 +146,14 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
   const bubbleRef = useRef(null);
   const editInputRef = useRef(null);
 
-  // استیت‌های Lightbox
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [lightboxAlt, setLightboxAlt] = useState('');
 
-  // بستن Lightbox با کلید Escape و قفل کردن اسکرول
   useEffect(() => {
     if (!lightboxSrc) return;
-
     const handleKey = (e) => {
       if (e.key === 'Escape') setLightboxSrc(null);
     };
-
     document.addEventListener('keydown', handleKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -271,7 +234,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     setMenuItems(buildMenuItems());
   }, [isSystem, isMine, buildMenuItems]);
 
-  //  تابع باز کردن Lightbox
   const handleImageClick = ({ src, alt }) => {
     setLightboxSrc(src);
     setLightboxAlt(alt);
@@ -287,12 +249,11 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     );
   }
 
-  // const time = msg.createdAt ? formatMessageDate(msg.createdAt) : formatMessageDate(new Date());
   const time = msg.createdAt
     ? new Date(msg.createdAt).toLocaleTimeString('fa-IR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+        hour: '2-digit',
+        minute: '2-digit',
+      })
     : '';
 
   return (
@@ -305,7 +266,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
         <div className="w-10 shrink-0 flex justify-start items-end pb-1">
           {showHeader && (
             <button
-              onClick={() => navigate(`/profile/${msg.sender}`)} //  این خط
+              onClick={() => navigate(`/profile/${msg.sender}`)}
               className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-full"
               title={`مشاهده پروفایل ${msg.sender}`}
             >
@@ -324,12 +285,12 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
         <div
           ref={bubbleRef}
           className={`
-  relative px-4 py-2.5 text-sm rounded-2xl max-w-full min-w-0 overflow-hidden
-  ${isMine
+            relative px-4 py-2.5 text-sm rounded-2xl max-w-full min-w-0 overflow-hidden
+            ${isMine
               ? 'bg-linear-to-br from-primary-600 to-primary-700 text-white shadow-lg rounded-tr-sm'
               : 'bg-surface-800 text-surface-50 shadow-md border border-surface-700 rounded-tl-sm'
             }
-`}
+          `}
         >
           {editing ? (
             <div className="flex flex-col gap-2 min-w-[250px] sm:min-w-[300px] animate-fade-in">
@@ -349,11 +310,8 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
                 autoFocus
                 placeholder="پیام خود را ویرایش کنید..."
               />
-
               <div className="flex items-center justify-center">
-
                 <div className="flex gap-2">
-                  {/* دکمه انصراف */}
                   <button
                     onClick={handleCancelEdit}
                     className="px-3 py-1.5 text-xs font-medium text-surface-300 bg-surface-800/50 hover:bg-surface-700 rounded-lg transition-colors flex items-center gap-1.5"
@@ -363,8 +321,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
                     </svg>
                     انصراف
                   </button>
-
-                  {/* دکمه ذخیره */}
                   <button
                     onClick={handleSaveEdit}
                     className="px-4 py-1.5 text-xs font-bold text-white bg-primary-600 hover:bg-primary-500 rounded-lg shadow-sm shadow-primary-500/20 transition-all flex items-center gap-1.5 active:scale-95"
@@ -378,26 +334,36 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
               </div>
             </div>
           ) : isFile ? (
-            //  پاس دادن handleImageClick به FilePreview
             <FilePreview msg={msg} isMine={isMine} onImageClick={handleImageClick} />
           ) : (
             <p className="whitespace-pre-wrap wrap-break-word">{msg.text}</p>
           )}
 
-          <div className="flex items-center justify-end gap-2 mt-1.5">
-            <time className={`text-[10px] ${isMine ? 'text-primary-100' : 'text-surface-500'}`}>
+          {/*  بخش زمان و تیک خوانده‌شدن  */}
+          <div className="flex items-center justify-end gap-1.5 mt-1.5 select-none">
+            <time className={`text-[10px] ${isMine ? 'text-primary-100/80' : 'text-surface-500'}`}>
               {time}
             </time>
+            
+            {/* منطق نمایش تیک */}
             {isMine && (
               <svg
-                className="w-4 h-4 text-primary-100/70"
+                className={`w-4 h-4 transition-colors duration-300 ${
+                  isRead ? 'text-white' : 'text-primary-100/60'
+                }`}
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={2.5}
                 viewBox="0 0 24 24"
                 aria-hidden="true"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                {isRead ? (
+                  // آیکون دو تیک (خوانده شده)
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 6L7 17l-5-5M22 10l-7.5 7.5L13 16" />
+                ) : (
+                  // آیکون تک تیک (ارسال شده)
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                )}
               </svg>
             )}
           </div>
@@ -411,7 +377,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
         onClose={closeContextMenu}
       />
 
-      {/*  Lightbox Overlay */}
       {lightboxSrc && (
         <div
           className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
@@ -422,7 +387,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
               src={lightboxSrc}
               alt={lightboxAlt}
               className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl animate-scale-in"
-              onClick={(e) => e.stopPropagation()} // جلوگیری از بسته شدن با کلیک روی خود عکس
+              onClick={(e) => e.stopPropagation()}
             />
             <button
               onClick={() => setLightboxSrc(null)}

@@ -102,13 +102,34 @@ export function useChat() {
   const typingMapRef = useRef(new Map());
   const typingTimeoutRef = useRef(null);
   const lastTypingSentRef = useRef(0);
-  const sysMsgCounterRef = useRef(0);
+  // const sysMsgCounterRef = useRef(0);
   const switchSeqRef = useRef(0);
   const connectSeqRef = useRef(0);
   const wasConnectedRef = useRef(false);
   const resyncRef = useRef(null);
   const disconnectRef = useRef(null);
 
+
+
+  const markMessagesAsRead = useCallback(async (roomName, messageIds = []) => {
+    //  چک کردن تنظیمات کاربر از currentUserRef
+    const userSettings = currentUserRef.current?.settings;
+
+    // اگر کاربر خواندن پیام را خاموش کرده باشد، هیچ کاری نکن (تیک دوم برای دیگران نمی‌رود)
+    if (userSettings?.readReceipts === false) {
+      console.log('[Chat] Read receipts disabled by user settings.');
+      return;
+    }
+
+    try {
+      await apiRequest('/api/messages/mark-read', {
+        method: 'POST',
+        body: JSON.stringify({ roomName, messageIds }),
+      });
+    } catch (err) {
+      console.error('[Chat] Mark read error:', err);
+    }
+  }, []);
 
 
   // -------------------------------------------------------------------------
@@ -261,14 +282,24 @@ export function useChat() {
         handlers.push([event, wrappedFn]);
       };
 
+      on('messages-read', (data) => {
+        const { userId, messageIds } = data;
+
+        setMessages(prev => prev.map(msg => {
+          // اگر پیام جزو لیست خوانده‌شده‌ها بود و هنوز من (فرستنده) در readBy نبودم
+          if (messageIds?.includes(msg._id) && !msg.readBy?.includes(userId)) {
+            return { ...msg, readBy: [...(msg.readBy || []), userId] };
+          }
+          return msg;
+        }));
+      });
 
       // ---- پیام‌ها ----
-            // ---- پیام‌ها ----
       on('new-message', (msg) => {
         const currentUserId = currentUserRef.current?.id;
         const senderId = msg.senderId ?? msg.userId;
 
-        // 👇 ۱. اولویت اول: بررسی و پخش اعلان (حتی اگر در اتاق دیگری هستیم)
+        //  ۱. اولویت اول: بررسی و پخش اعلان (حتی اگر در اتاق دیگری هستیم)
         if (senderId && currentUserId && String(senderId) !== String(currentUserId)) {
           notifyIncomingMessage({
             sender: msg.sender || msg.username || 'کاربر ناشناس',
@@ -276,10 +307,10 @@ export function useChat() {
           });
         }
 
-        // 👇 ۲. اگر پیام مربوط به اتاق فعلی نیست، فقط اعلان بده و از آپدیت state صرف‌نظر کن
+        //  ۲. اگر پیام مربوط به اتاق فعلی نیست، فقط اعلان بده و از آپدیت state صرف‌نظر کن
         if (msg.room && msg.room !== currentRoomRef.current) return;
 
-        // 👇 ۳. اضافه کردن پیام به لیست (فقط برای اتاق جاری)
+        //  ۳. اضافه کردن پیام به لیست (فقط برای اتاق جاری)
         setMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
           const next = [...prev, msg];
@@ -807,6 +838,7 @@ export function useChat() {
     rooms,
     currentRoom,
     error,
+    markMessagesAsRead,
     connected,
     connectSocket,
     disconnectSocket,

@@ -219,3 +219,34 @@ messagesRouter.post('/system', async (req, res) => {
     res.status(500).json({ error: 'خطای سرور' });
   }
 });
+
+
+messagesRouter.post('/mark-read', authMiddleware, async (req, res) => {
+  try {
+    const { roomName, messageIds } = req.body;
+    const userId = req.userId;
+
+    if (!roomName) return res.status(400).json({ error: 'Room name is required' });
+
+    // ۱. آپدیت دیتابیس: اضافه کردن userId به readBy پیام‌هایی که هنوز نخوانده
+    const updateResult = await Message.updateMany(
+      {
+        room: roomName,
+        _id: { $in: messageIds || [] }, // اگر messageIds خالی بود، همه را آپدیت کن (یا فقط unseenها)
+        readBy: { $ne: userId } // فقط اگر قبلا نخوانده
+      },
+      { $push: { readBy: userId } }
+    );
+    // ۲. ارسال رویداد به Ably تا فرستنده بلافاصله تیک دوم را ببیند
+    const channelName = getRoomChannelName(roomName);
+    publishEvent(channelName, 'messages-read', {
+      messageIds: messageIds, // یا لیست آی‌دی‌های آپدیت شده
+      userId: userId,
+    });
+
+    res.json({ success: true, count: updateResult.modifiedCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});

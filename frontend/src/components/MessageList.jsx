@@ -52,7 +52,7 @@ function DateSeparator({ label }) {
   );
 }
 
-export default function MessageList({ messages, currentUsername, onDeleteMessage, onEditMessage }) {
+export default function MessageList({ messages, currentUsername, onDeleteMessage, onEditMessage , currentUserId}) {
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -162,11 +162,10 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
     <div className="relative flex-1 min-h-0">
       {/* کادر شناور تاریخ (مشابه تلگرام) */}
       <div
-        className={`absolute top-3 left-1/2 ml-1 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none ${
-          isFloatingVisible
+        className={`absolute top-3 left-1/2 ml-1 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none ${isFloatingVisible
             ? 'opacity-100 -translate-y-0'
             : 'opacity-0 -translate-y-2'
-        }`}
+          }`}
       >
         <div className="px-4 py-1.5 rounded-full bg-surface-800/90 backdrop-blur-md border border-white/10 shadow-lg text-xs font-medium text-surface-200 whitespace-nowrap">
           {floatingDate}
@@ -207,6 +206,7 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
             >
               <MessageBubble
                 msg={item}
+                currentUserId={currentUserId}
                 isMine={item.sender === currentUsername}
                 showHeader={item.showHeader}
                 onDeleteMessage={onDeleteMessage}

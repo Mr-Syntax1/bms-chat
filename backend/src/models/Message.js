@@ -6,7 +6,7 @@ const messageSchema = new mongoose.Schema({
         required: true,
         maxlength: 500
     },
-    
+
     sender: {
         type: String,
         required: true
@@ -39,7 +39,7 @@ const messageSchema = new mongoose.Schema({
     room: {
         type: String,
         required: true,
-        index: true 
+        index: true
     },
 
     deletedFor: [{
@@ -51,11 +51,13 @@ const messageSchema = new mongoose.Schema({
         default: false
     },
 
+    readBy: [{ type: String }], // آرایه‌ای از ID کاربرانی که پیام را خوانده‌اند
+
     createdAt: {
         type: Date,
         default: Date.now
     },
-});
+}, { timestamps: true })
 
 // ایندکس برای مرتب‌سازی سریع پیام‌ها
 messageSchema.index({ createdAt: -1 });
