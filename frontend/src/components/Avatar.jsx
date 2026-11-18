@@ -3,7 +3,6 @@ const AVATAR_COLORS = [
   '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b',
 ];
 
-
 const AVATAR_IMAGES = [
   '/avatars/red.png',
   '/avatars/orange.png',
@@ -27,20 +26,22 @@ function getAvatarIndex(username) {
 }
 
 export default function Avatar({ username, color, size = 'md', status, className = '', speaking = false }) {
+  //  سایزها به شکل محسوسی بزرگ‌تر شدند 
   const sizes = {
-    xs: 'w-6 h-6 text-[10px]',
-    sm: 'w-8 h-8 text-xs',
-    md: 'w-10 h-10 text-sm',
-    lg: 'w-12 h-12 text-base',
-    xl: 'w-16 h-16 text-lg',
+    xs: 'w-8 h-8',       // قبلاً 24px بود، الان 32px
+    sm: 'w-10 h-10',     // قبلاً 32px بود، الان 40px
+    md: 'w-14 h-14',     // قبلاً 40px بود، الان 56px (سایز پیش‌فرض)
+    lg: 'w-16 h-16',     // قبلاً 48px بود، الان 64px
+    xl: 'w-24 h-24',     // قبلاً 64px بود، الان 96px (عالی برای هدر پروفایل)
   };
 
+  //  سایز دایره‌ی وضعیت هم متناسب با آواتار بزرگ‌تر شد 
   const statusSizes = {
-    xs: 'w-1.5 h-1.5',
-    sm: 'w-2 h-2',
-    md: 'w-2.5 h-2.5',
-    lg: 'w-3 h-3',
-    xl: 'w-4 h-4',
+    xs: 'w-2 h-2',       // قبلاً 6px بود، الان 8px
+    sm: 'w-2.5 h-2.5',   // قبلاً 8px بود، الان 10px
+    md: 'w-3.5 h-3.5',   // قبلاً 10px بود، الان 14px
+    lg: 'w-4 h-4',       // قبلاً 12px بود، الان 16px
+    xl: 'w-5 h-5',       // قبلاً 16px بود، الان 20px
   };
 
   const colorIndex = color ? AVATAR_COLORS.indexOf(color) : getAvatarIndex(username);
@@ -52,27 +53,32 @@ export default function Avatar({ username, color, size = 'md', status, className
   return (
     <div className={`relative inline-flex ${className}`}>
       <div
-        className={`${sizes[size]} relative rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-lg ring-1 ring-white/10 transition-transform duration-200 hover:scale-105 overflow-hidden ${
+        className={`${sizes[size]} relative rounded-full flex items-center justify-center shrink-0 shadow-lg ring-1 ring-white/10 transition-transform duration-200 hover:scale-105 overflow-hidden ${
           speaking ? 'speaking' : ''
         }`}
         style={{ backgroundColor: finalColor }}
       >
+        {/* لایه‌ی عکس اصلی */}
         <img
           src={avatarImage}
           alt={username || 'Avatar'}
           className="w-full h-full object-cover"
           onError={(e) => {
-            // این خط به شما در کنسول می‌گوید دقیقاً چه مسیری را درخواست کرده که شکست خورده
-            console.warn(`Avatar image failed to load: ${avatarImage}`);
             e.target.style.display = 'none';
+            const fallback = e.target.parentElement.querySelector('.fallback-icon');
+            if (fallback) fallback.classList.remove('hidden');
           }}
         />
         
-        <span className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-          {username?.charAt(0).toUpperCase()}
-        </span>
+        {/* آیکون پیش‌فرض (فقط در صورتی نمایش داده می‌شود که عکس لود نشود) */}
+        <div className="fallback-icon hidden w-full h-full items-center justify-center text-white/70">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3/5 h-3/5">
+            <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+          </svg>
+        </div>
       </div>
 
+      {/* نشانگر وضعیت */}
       {status && (
         <span
           className={`
