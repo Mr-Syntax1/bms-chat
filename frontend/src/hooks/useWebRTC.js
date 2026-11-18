@@ -423,7 +423,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
         // در حالت اشتراک صفحه: آخرین track ویدیو
         activeVideo = video[video.length - 1];
       } else {
-        //  تغییر کلیدی: فقط track های غیر muted (دوربین فعال) انتخاب شوند
+        // تغییر کلیدی: فقط track های غیر muted (دوربین فعال) انتخاب شوند
         const unmuted = video.filter((t) => !t.muted);
         activeVideo = unmuted.length > 0 ? unmuted[0] : null;
       }
@@ -662,6 +662,36 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
           }
         }
       }, 1000);
+    }
+  }
+
+  // ✅ اضافه شده: ارسال سیگنال مطمئن هنگام بسته شدن تب (Beacon API)
+  function signalViaBeacon(type, extra = {}) {
+    const me = userRef.current;
+    const call = callRef.current;
+    if (!me?.id || !call) return;
+    const body = JSON.stringify({
+      type,
+      targetUserId: call.peerId,
+      callId: call.id,
+      from: me.id,
+      ...extra,
+    });
+    try {
+      fetch('/api/calls/signal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+        credentials: 'include',
+      }).catch(() => {});
+    } catch {
+      try {
+        navigator.sendBeacon?.(
+          '/api/calls/signal',
+          new Blob([body], { type: 'application/json' })
+        );
+      } catch {}
     }
   }
 
@@ -1026,7 +1056,14 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     }
 
     setState('incoming');
-    ringTimerRef.current = setTimeout(() => cleanup('missed'), ringTimeout);
+    // ✅ اصلاح شده: ارسال سیگنال no-answer قبل از پاک‌سازی
+    ringTimerRef.current = setTimeout(() => {
+      const call = callRef.current;
+      if (call) {
+        sendOneShot(call.peerId, call.id, 'call-reject', { reason: 'no-answer' });
+      }
+      cleanup('missed');
+    }, ringTimeout);
   }
 
   function onCancelled(data) {
@@ -1040,9 +1077,17 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   // -------------------------------------------------------------------------
   const isCurrent = (data) => Boolean(callRef.current) && data?.callId === callRef.current.id;
 
+  // ✅ اصلاح کلیدی: فیلتر کردن پیام‌های ارسالی از سمت خود کاربر (جلوگیری از Echo)
+  const isFromPeer = (data) => {
+    const me = userRef.current;
+    if (!me?.id) return false;
+    if (!isCurrent(data)) return false;
+    return data.from != null && String(data.from) !== String(me.id);
+  };
+
   async function onAccepted(data) {
     const call = callRef.current;
-    if (!isCurrent(data) || call.role !== 'caller' || stateRef.current !== 'calling') return;
+    if (!isFromPeer(data) || call.role !== 'caller' || stateRef.current !== 'calling') return;
 
     clearTimeout(ringTimerRef.current);
     ringTimerRef.current = null;
@@ -1076,7 +1121,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   async function onOffer(data) {
     const call = callRef.current;
     const pc = pcRef.current;
-    if (!isCurrent(data) || !pc || !data.sdp) return;
+    if (!isFromPeer(data) || !pc || !data.sdp) return;
 
     const neg = negotiationRef.current;
     const polite = call.role === 'callee';
@@ -1118,7 +1163,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   async function onAnswer(data) {
     const call = callRef.current;
     const pc = pcRef.current;
-    if (!isCurrent(data) || !pc || !data.sdp) return;
+    if (!isFromPeer(data) || !pc || !data.sdp) return;
     if (pc.signalingState !== 'have-local-offer') return;
 
     try {
@@ -1134,7 +1179,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   }
 
   async function onIceCandidates(data) {
-    if (!isCurrent(data) || !Array.isArray(data.candidates)) return;
+    if (!isFromPeer(data) || !Array.isArray(data.candidates)) return;
     const pc = pcRef.current;
 
     for (const candidate of data.candidates) {
@@ -1151,7 +1196,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   }
 
   function onSignalChunk(data) {
-    if (!isCurrent(data)) return;
+    if (!isFromPeer(data)) return;
     const handlerName = CHUNKABLE[data.event];
     if (
       !handlerName ||
@@ -1205,23 +1250,23 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
 
   function onReject(data) {
     const call = callRef.current;
-    if (!isCurrent(data) || call.role !== 'caller') return;
+    if (!isFromPeer(data) || call.role !== 'caller') return;
     cleanup(data.reason === 'busy' ? 'busy' : 'rejected');
   }
 
   function onRemoteEnd(data) {
-    if (!isCurrent(data)) return;
+    if (!isFromPeer(data)) return;
     cleanup('remote-ended');
   }
 
   function onStreamUpdated(data) {
-    if (!isCurrent(data)) return;
+    if (!isFromPeer(data)) return;
     resyncSoon();
     runPendingRenegotiation();
-}
+  }
 
   function onMediaState(data) {
-    if (!isCurrent(data)) return;
+    if (!isFromPeer(data)) return;
     const screen = Boolean(data.screenSharing);
     remoteScreenSharingRef.current = screen;
     setRemoteScreenSharing(screen);
@@ -1250,12 +1295,12 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
           : prev
       );
     }
-    //  resync فوری (بدون تاخیر) + آزادسازی renegotiation معوقه
+    // resync فوری (بدون تاخیر) + آزادسازی renegotiation معوقه
     if (!screen) {
       resyncSoon();
       runPendingRenegotiation();
     }
-}
+  }
 
   useEffect(() => {
     actionsRef.current = {
@@ -1327,8 +1372,21 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     if (userId == null) actionsRef.current.endCall?.('local-ended');
   }, [userId]);
 
+  // ✅ اصلاح کلیدی: استفاده از Beacon API برای تضمین ارسال سیگنال هنگام بسته شدن تب
   useEffect(() => {
-    const onPageHide = () => actionsRef.current.endCall?.('local-ended');
+    const onPageHide = () => {
+      const call = callRef.current;
+      if (call && stateRef.current !== 'idle') {
+        if (call.role === 'caller' && stateRef.current === 'calling') {
+          signalViaBeacon('cancel');
+        } else if (stateRef.current === 'incoming') {
+          signalViaBeacon('reject', { reason: 'no-answer' });
+        } else {
+          signalViaBeacon('end', { reason: 'local-ended' });
+        }
+      }
+      actionsRef.current.endCall?.('local-ended');
+    };
     window.addEventListener('pagehide', onPageHide);
     return () => {
       window.removeEventListener('pagehide', onPageHide);
