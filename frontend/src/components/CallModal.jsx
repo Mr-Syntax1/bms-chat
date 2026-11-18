@@ -335,30 +335,23 @@ const Spinner = ({ className = 'w-5 h-5' }) => (
 // اجزای پایه
 // ===========================================================================
 
-// 👇 کامپوننت Avatar به‌روزرسانی‌شده برای پشتیبانی از avatarIndex 👇
-function Avatar({ name, avatarIndex, src, className = 'w-24 h-24 text-3xl', speaking = false }) {
-  const [broken, setBroken] = useState(false);
-  useEffect(() => setBroken(false), [src]);
-
+// 👇 کامپوننت Avatar ساده‌شده (فقط avatarIndex + fallback) 👇
+function Avatar({ name, avatarIndex, className = 'w-24 h-24 text-3xl', speaking = false }) {
   const finalIndex = (avatarIndex !== undefined && avatarIndex !== null) ? avatarIndex : getAvatarIndex(name);
   const safeIndex = (finalIndex >= 0 && finalIndex < 10) ? finalIndex : 5;
-  const fallbackImg = AVATAR_IMAGES[safeIndex];
-
-  const displaySrc = (src && !broken) ? src : fallbackImg;
+  const avatarImage = AVATAR_IMAGES[safeIndex];
 
   return (
     <div
       className={`relative shrink-0 select-none rounded-full grid place-items-center overflow-hidden font-bold text-white shadow-xl ring-1 ring-white/10 transition-shadow ${speaking ? 'cm-speaking' : ''} ${className}`}
-      style={{ background: displaySrc ? '#1f2227' : gradientOf(name) }}
+      style={{ backgroundColor: AVATAR_COLORS[safeIndex] }}
       aria-hidden="true"
     >
       <img
-        src={displaySrc}
-        key={displaySrc}
-        alt=""
+        src={avatarImage}
+        alt={name || 'Avatar'}
         className="w-full h-full object-cover"
         onError={(e) => {
-          setBroken(true);
           e.target.style.display = 'none';
           const fallback = e.target.parentElement.querySelector('.initials-fallback');
           if (fallback) fallback.classList.remove('hidden');
@@ -470,7 +463,6 @@ function StatusIcons({ micOff, deafened }) {
 /** کاشی هر شرکت‌کننده */
 function Tile({
   name,
-  avatarSrc,
   avatarIndex,
   stream,
   showVideo,
@@ -505,8 +497,7 @@ function Tile({
         <div className="absolute inset-0 grid place-items-center">
           <Avatar
             name={name}
-            avatarIndex={avatarIndex} // 👈 پاس داده شد
-            src={avatarSrc}
+            avatarIndex={avatarIndex}
             speaking={speaking}
             className={compact ? 'w-14 h-14 text-xl' : 'w-24 h-24 text-3xl md:w-32 md:h-32 md:text-5xl'}
           />
@@ -551,8 +542,7 @@ function Tile({
 function RingingScreen({
   mode,
   name,
-  avatarIndex, // 👈 اضافه شد
-  avatarSrc,
+  avatarIndex,
   callType,
   localStream,
   onAccept,
@@ -610,7 +600,7 @@ function RingingScreen({
               style={{ animationDelay: `${delay}s` }}
             />
           ))}
-          <Avatar name={name} avatarIndex={avatarIndex} src={avatarSrc} className="w-36 h-36 text-5xl md:w-44 md:h-44 md:text-6xl" />
+          <Avatar name={name} avatarIndex={avatarIndex} className="w-36 h-36 text-5xl md:w-44 md:h-44 md:text-6xl" />
         </div>
         <h2 className="mt-8 max-w-[80vw] truncate text-2xl font-bold md:text-3xl">{name}</h2>
         <p className="mt-2 flex items-center gap-2 text-sm text-white/65">
@@ -694,8 +684,7 @@ function RingingScreen({
 // ===========================================================================
 function MiniCall({
   name,
-  avatarIndex, // 👈 اضافه شد
-  avatarSrc,
+  avatarIndex,
   stream,
   showVideo,
   speaking,
@@ -723,7 +712,7 @@ function MiniCall({
           <StreamVideo stream={stream} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <span className="absolute inset-0 grid place-items-center bg-[#16181c]">
-            <Avatar name={name} avatarIndex={avatarIndex} src={avatarSrc} speaking={speaking} className="w-16 h-16 text-2xl" />
+            <Avatar name={name} avatarIndex={avatarIndex} speaking={speaking} className="w-16 h-16 text-2xl" />
           </span>
         )}
         <span className="absolute start-2 top-2 rounded-full bg-black/55 p-1.5 backdrop-blur">
@@ -808,8 +797,8 @@ export default function CallModal({ call, user, title }) {
   const remoteP = participants.find((p) => !p.isLocal);
   const peerName = peer?.username || remoteP?.username || 'کاربر';
   const myName = user?.username || 'شما';
-  const peerAvatar = remoteP?.avatar || remoteP?.avatarUrl || peer?.avatar || peer?.avatarUrl;
-  const myAvatar = user?.avatar || user?.avatarUrl || user?.profileImage;
+  const peerAvatarIndex = remoteP?.avatarIndex ?? peer?.avatarIndex ?? null;
+  const myAvatarIndex = user?.avatarIndex ?? null;
 
   const remoteSpeaking = useSpeaking(remoteStream, connected);
   const localSpeaking = useSpeaking(localStream, connected && !isMuted);
@@ -967,8 +956,7 @@ export default function CallModal({ call, user, title }) {
       id: 'remote',
       name: peerName,
       you: false,
-      avatar: peerAvatar,
-      avatarIndex: remoteP?.avatarIndex ?? peer?.avatarIndex,
+      avatarIndex: peerAvatarIndex,
       muted: Boolean(remoteP?.muted),
       video: showRemoteCamera,
       screen: remoteScreenSharing,
@@ -978,8 +966,7 @@ export default function CallModal({ call, user, title }) {
       id: 'me',
       name: myName,
       you: true,
-      avatar: myAvatar,
-      avatarIndex: user?.avatarIndex,
+      avatarIndex: myAvatarIndex,
       muted: isMuted,
       video: showLocalCamera,
       screen: isScreenSharing,
@@ -991,8 +978,7 @@ export default function CallModal({ call, user, title }) {
     <Tile
       key="remote"
       name={peerName}
-      avatarSrc={peerAvatar}
-      avatarIndex={remoteP?.avatarIndex ?? peer?.avatarIndex} // 👈 پاس داده شد
+      avatarIndex={peerAvatarIndex}
       stream={remoteStream}
       showVideo={showRemoteCamera}
       speaking={remoteSpeaking}
@@ -1007,8 +993,7 @@ export default function CallModal({ call, user, title }) {
     <Tile
       key="local"
       name={myName}
-      avatarSrc={myAvatar}
-      avatarIndex={user?.avatarIndex} // 👈 پاس داده شد
+      avatarIndex={myAvatarIndex}
       stream={localStream}
       showVideo={showLocalCamera}
       mirror
@@ -1049,8 +1034,7 @@ export default function CallModal({ call, user, title }) {
         <RingingScreen
           mode="incoming"
           name={peerName}
-          avatarIndex={remoteP?.avatarIndex ?? peer?.avatarIndex} // 👈 پاس داده شد
-          avatarSrc={peerAvatar}
+          avatarIndex={peerAvatarIndex}
           callType={callType}
           onAccept={(type) => acceptCall?.(type)}
           onDecline={() => rejectCall?.()}
@@ -1062,8 +1046,7 @@ export default function CallModal({ call, user, title }) {
         <RingingScreen
           mode="outgoing"
           name={peerName}
-          avatarIndex={remoteP?.avatarIndex ?? peer?.avatarIndex} // 👈 پاس داده شد
-          avatarSrc={peerAvatar}
+          avatarIndex={peerAvatarIndex}
           callType={callType}
           localStream={localStream}
           onCancel={() => endCall?.()}
@@ -1074,8 +1057,7 @@ export default function CallModal({ call, user, title }) {
       {inCall && minimized && (
         <MiniCall
           name={peerName}
-          avatarIndex={remoteP?.avatarIndex ?? peer?.avatarIndex} // 👈 پاس داده شد
-          avatarSrc={peerAvatar}
+          avatarIndex={peerAvatarIndex}
           stream={remoteStream}
           showVideo={showRemoteCamera || showRemoteScreen}
           speaking={remoteSpeaking}
@@ -1264,7 +1246,7 @@ export default function CallModal({ call, user, title }) {
                         className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition ${r.speaking ? 'bg-emerald-400/10' : 'hover:bg-white/5'
                           }`}
                       >
-                        <Avatar name={r.name} avatarIndex={r.avatarIndex} src={r.avatar} speaking={r.speaking} className="w-10 h-10 text-sm" />
+                        <Avatar name={r.name} avatarIndex={r.avatarIndex} speaking={r.speaking} className="w-10 h-10 text-sm" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">
                             {r.name}

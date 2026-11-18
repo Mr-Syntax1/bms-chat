@@ -314,6 +314,8 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       muted: audio ? !audio.enabled : false,
       video: isVideoOnRef.current,
       screenSharing: isScreenSharingDuringCallRef.current,
+      username: userRef.current?.username ?? null,
+      avatarIndex: userRef.current?.avatarIndex ?? null,
     });
   }
 
@@ -321,10 +323,10 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     setParticipants((prev) => prev.map((p) => (p.isLocal ? { ...p, ...patch } : p)));
   }
 
-  function beginCall({ id, peerId, peerName, type, role }) {
+  function beginCall({ id, peerId, peerName, peerAvatarIndex = null, type, role }) {
     const me = userRef.current;
     const channelName = getWebRTCChannelName(me.id, peerId);
-    callRef.current = { id, peerId: String(peerId), peerName, type, role, channelName, bound: [] };
+    callRef.current = { id, peerId: String(peerId), peerName, peerAvatarIndex, type, role, channelName, bound: [] };
 
     pendingRemoteCandidatesRef.current = [];
     outboundCandidatesRef.current = [];
@@ -338,7 +340,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     isDeafenedRef.current = false;
     remoteScreenSharingRef.current = false;
 
-    setPeer({ id: String(peerId), username: peerName });
+    setPeer({ id: String(peerId), username: peerName, avatarIndex: peerAvatarIndex ?? null });
     setCallType(type);
     setError(null);
     setEndReason(null);
@@ -351,8 +353,26 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     setRemoteStream(null);
 
     setParticipants([
-      { id: me.id, username: me.username, isLocal: true, muted: false, video: type === 'video', screenSharing: false, speaking: false },
-      { id: peerId, username: peerName, isLocal: false, muted: false, video: false, screenSharing: false, speaking: false },
+      {
+        id: me.id,
+        username: me.username,
+        avatarIndex: me.avatarIndex ?? null,
+        isLocal: true,
+        muted: false,
+        video: type === 'video',
+        screenSharing: false,
+        speaking: false,
+      },
+      {
+        id: peerId,
+        username: peerName,
+        avatarIndex: peerAvatarIndex ?? null,
+        isLocal: false,
+        muted: false,
+        video: false,
+        screenSharing: false,
+        speaking: false,
+      },
     ]);
   }
 
@@ -692,7 +712,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   // -------------------------------------------------------------------------
   // اقدام‌های کاربر
   // -------------------------------------------------------------------------
-  async function startCall(targetUserId, targetUsername, type = 'audio') {
+  async function startCall(targetUserId, targetUsername, type = 'audio', targetAvatarIndex = null) {
     const me = userRef.current;
     console.debug('[WebRTC] startCall', { me: me?.id, targetUserId, type, state: stateRef.current });
 
@@ -704,7 +724,14 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
 
     const callId = newCallId();
     try {
-      beginCall({ id: callId, peerId: targetUserId, peerName: targetUsername, type, role: 'caller' });
+      beginCall({
+        id: callId,
+        peerId: targetUserId,
+        peerName: targetUsername,
+        peerAvatarIndex: targetAvatarIndex,
+        type,
+        role: 'caller',
+      });
       setState('calling');
 
       await prepareLocalMedia(callId, type);
@@ -743,7 +770,10 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
       await prepareLocalMedia(call.id, effectiveType);
       await openChannel(call.id);
       createPeerConnection();
-      sendSignal('call-accepted');
+      sendSignal('call-accepted', {
+        avatarIndex: userRef.current?.avatarIndex ?? null,
+        username: userRef.current?.username ?? null,
+      });
       return { success: true };
     } catch (err) {
       const result = failCall(call.id, err);
@@ -972,7 +1002,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   function onIncoming(data) {
     const me = userRef.current;
     if (!me?.id || !data) return;
-    const { callId, callerId, callerName, callType: type } = data;
+    const { callId, callerId, callerName, callerAvatarIndex, callType: type } = data;
     if (typeof callId !== 'string' || callerId == null) return;
     if (String(callerId) === String(me.id)) return;
 
@@ -986,6 +1016,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
         id: callId,
         peerId: callerId,
         peerName: callerName || 'Unknown',
+        peerAvatarIndex: callerAvatarIndex ?? null,
         type: type === 'video' ? 'video' : 'audio',
         role: 'callee',
       });
@@ -1016,6 +1047,22 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     clearTimeout(ringTimerRef.current);
     ringTimerRef.current = null;
     setState('connecting');
+
+    if (data.avatarIndex != null) {
+      setPeer((prev) =>
+        prev
+          ? {
+              ...prev,
+              avatarIndex: data.avatarIndex,
+            }
+          : prev
+      );
+      setParticipants((prev) =>
+        prev.map((p) =>
+          p.isLocal ? p : { ...p, avatarIndex: data.avatarIndex }
+        )
+      );
+    }
 
     try {
       createPeerConnection();
@@ -1180,9 +1227,29 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
     setRemoteScreenSharing(screen);
     setParticipants((prev) =>
       prev.map((p) =>
-        p.isLocal ? p : { ...p, muted: Boolean(data.muted), video: Boolean(data.video) || screen, screenSharing: screen }
+        p.isLocal
+          ? p
+          : {
+              ...p,
+              muted: Boolean(data.muted),
+              video: Boolean(data.video) || screen,
+              screenSharing: screen,
+              username: data.username ?? p.username,
+              avatarIndex: data.avatarIndex ?? p.avatarIndex ?? null,
+            }
       )
     );
+    if (data.username || data.avatarIndex != null) {
+      setPeer((prev) =>
+        prev
+          ? {
+              ...prev,
+              username: data.username ?? prev.username,
+              avatarIndex: data.avatarIndex ?? prev.avatarIndex ?? null,
+            }
+          : prev
+      );
+    }
     //  resync فوری (بدون تاخیر) + آزادسازی renegotiation معوقه
     if (!screen) {
       resyncSoon();

@@ -1,6 +1,7 @@
 import express from 'express';
 import ably from '../config/ably.js';
 import { verifyToken } from '../utils/jwt.js';
+import { User } from '../models/User.js';
 
 export const callsRouter = express.Router();
 
@@ -120,10 +121,12 @@ callsRouter.post('/signal', requireAuth, rateLimit, async (req, res) => {
       pendingCalls.set(callId, { callerId: me.id, targetId: target, createdAt: Date.now() });
 
       try {
+        const caller = await User.findById(me.id).select('avatarIndex').lean();
         await ably.channels.get(channel).publish('incoming-call', {
           callId,
           callerId: me.id,
           callerName: me.username,
+          callerAvatarIndex: caller?.avatarIndex ?? null,
           callType: callType === 'video' ? 'video' : 'audio',
         });
       } catch (err) {

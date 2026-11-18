@@ -31,6 +31,7 @@ export default function ChatHeader({
     ? {
       userId: currentRoomObj.dmPartnerId,
       username: currentRoomObj.dmPartnerUsername,
+      avatarIndex: currentRoomObj.avatarIndex ?? null,
       isOnline: onlineUsers.some((u) => u.username === currentRoomObj.dmPartnerUsername),
     }
     : null;
@@ -49,7 +50,7 @@ export default function ChatHeader({
   const handleGroupCall = () => {
     if (onlineMembers.length > 0) {
       const firstMember = onlineMembers[0];
-      onStartCall(firstMember.id, firstMember.username);
+      onStartCall(firstMember.id, firstMember.username, undefined, firstMember.avatarIndex ?? null);
     }
     setShowCallMenu(false);
   };
@@ -134,7 +135,7 @@ export default function ChatHeader({
         {/* تماس خصوصی */}
         {dmPartner && (
           <button
-            onClick={() => onStartCall(dmPartner.userId, dmPartner.username)}
+            onClick={() => onStartCall(dmPartner.userId, dmPartner.username, undefined, dmPartner.avatarIndex ?? null)}
             className="btn-ghost p-2 sm:p-2.5 rounded-lg sm:rounded-xl text-green-400 hover:text-green-300 hover:bg-green-500/10 transition-colors cursor-pointer"
             title={`تماس با ${dmPartner.username}`}
             aria-label="تماس تصویری"
@@ -172,7 +173,7 @@ export default function ChatHeader({
                         <button
                           key={member.id}
                           onClick={() => {
-                            onStartCall(member.id, member.username);
+                            onStartCall(member.id, member.username, undefined, member.avatarIndex ?? null);
                             setShowCallMenu(false);
                           }}
                           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-surface-300 hover:bg-white/5 hover:text-white transition-colors"
