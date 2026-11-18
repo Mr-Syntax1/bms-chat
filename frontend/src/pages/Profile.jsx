@@ -7,7 +7,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // ----------------------------
 // Helpers
-//  ---------------------------
+// ---------------------------
 const formatPersianDate = (dateString) => {
   if (!dateString) return '—';
   const date = new Date(dateString);
@@ -43,16 +43,50 @@ const relativeFromNow = (dateString) => {
   return 'همین الان';
 };
 
-const hashHue = (str = '') => {
-  let h = 0;
-  for (let i = 0; i < str.length; i += 1) h = (h * 31 + str.charCodeAt(i)) % 360;
-  return h;
-};
+// ----------------------------
+// هماهنگ‌سازی رنگ آواتار و بنر (جایگزین هوشمند hashHue)
+// ----------------------------
+const AVATAR_COLORS = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
+  '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b',
+];
+
+function getAvatarIndex(username) {
+  if (!username) return 5; 
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % AVATAR_COLORS.length;
+}
+
+function hexToHSL(H) {
+  let r = 0, g = 0, b = 0;
+  if (H.length === 4) {
+    r = "0x" + H[1] + H[1]; g = "0x" + H[2] + H[2]; b = "0x" + H[3] + H[3];
+  } else if (H.length === 7) {
+    r = "0x" + H[1] + H[2]; g = "0x" + H[3] + H[4]; b = "0x" + H[5] + H[6];
+  }
+  r /= 255; g /= 255; b /= 255;
+  let cmin = Math.min(r,g,b), cmax = Math.max(r,g,b), delta = cmax - cmin;
+  let h = 0, s = 0, l = 0;
+  if (delta === 0) h = 0;
+  else if (cmax === r) h = ((g - b) / delta) % 6;
+  else if (cmax === g) h = (b - r) / delta + 2;
+  else h = (r - g) / delta + 4;
+  h = Math.round(h * 60);
+  if (h < 0) h += 360;
+  l = (cmax + cmin) / 2;
+  s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+  s = +(s * 100).toFixed(1);
+  l = +(l * 100).toFixed(1);
+  return { h, s, l };
+}
 
 // ----------------------------
-// Toast
-//  ---------------------------
-
+// Icons
+// ----------------------------
+// ... (بقیه کد شامل PATHS و کامپوننت‌ها بدون تغییر ادامه پیدا می‌کند)
 // ----------------------------
 // Icons
 //  ---------------------------
@@ -245,13 +279,26 @@ export default function Profile({ onClose, currentUser }) {
   };
 
   const banner = useMemo(() => {
-    const h = hashHue(profile?.username);
-    const h2 = (h + 55) % 360;
+    // ۱. گرفتن ایندکس و رنگ دقیق آواتار کاربر
+    const colorIndex = getAvatarIndex(profile?.username);
+    const baseHex = AVATAR_COLORS[colorIndex];
+
+    // ۲. تبدیل به HSL برای کنترل نور و اشباع
+    const { h, s, l } = hexToHSL(baseHex);
+
+    // ۳. ساخت گرادینت مدرن و عمیق بر اساس همان Hue (h)
     return {
-      background: `radial-gradient(120% 140% at 15% 0%, hsl(${h} 80% 60% / .85), transparent 60%),
-                   radial-gradient(100% 120% at 100% 100%, hsl(${h2} 85% 55% / .75), transparent 55%),
-                   linear-gradient(135deg, hsl(${h} 50% 22%), hsl(${h2} 50% 16%))`,
-      accent: `hsl(${h} 85% 70%)`,
+      background: `
+        /* لایه‌ی درخشش بالایی (روشن‌تر) */
+        radial-gradient(120% 140% at 15% 0%, hsla(${h}, ${s}%, ${Math.min(l + 20, 90)}%, 0.85), transparent 60%),
+        /* لایه‌ی درخشش پایینی (کمی تیره‌تر) */
+        radial-gradient(100% 120% at 100% 100%, hsla(${h}, ${s}%, ${Math.max(l - 10, 20)}%, 0.75), transparent 55%),
+        /* لایه‌ی پایه‌ی تیره برای هماهنگی با تم دارک */
+        linear-gradient(135deg, hsl(${h}, ${s}%, ${Math.max(l - 30, 15)}%), hsl(${h}, ${s}%, ${Math.max(l - 45, 10)}%))
+      `,
+      // رنگ تاکیدی برای بج "شما" (روشن‌تر و زنده‌تر)
+      accent: `hsl(${h}, ${s}%, ${Math.min(l + 25, 90)}%)`,
+      hex: baseHex
     };
   }, [profile?.username]);
 
