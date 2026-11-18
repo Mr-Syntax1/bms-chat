@@ -3,15 +3,28 @@ const AVATAR_COLORS = [
   '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b',
 ];
 
-// تابع تولید رنگ یکسان بر اساس نام کاربری
-function getConsistentColor(username) {
-  if (!username) return AVATAR_COLORS[5]; // رنگ پیش‌فرض
+// 👇 آرایه‌ی تصاویر که دقیقاً به ترتیب با AVATAR_COLORS هماهنگ است 👇
+const AVATAR_IMAGES = [
+  '/avatars/Vibrant Red (#ef4444).png',
+  '/avatars/Bright Orange (#f97316).png',
+  '/avatars/Warm Yellow (#eab308).png',
+  '/avatars/Fresh Green (#22c55e).png',
+  '/avatars/Soft Teal (#14b8a6).png',
+  '/avatars/Sky Blue (#3b82f6).png',
+  '/avatars/Rich Indigo (#6366f1).png',
+  '/avatars/Magical Purple (#a855f7).png',
+  '/avatars/Sweet Pink (#ec4899).png',
+  '/avatars/Cool Slate Gray (#64748b).png',
+];
+
+// تابع تولید ایندکس یکسان بر اساس نام کاربری
+function getAvatarIndex(username) {
+  if (!username) return 5; // ایندکس پیش‌فرض (Sky Blue)
   let hash = 0;
   for (let i = 0; i < username.length; i++) {
     hash = username.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const index = Math.abs(hash) % AVATAR_COLORS.length;
-  return AVATAR_COLORS[index];
+  return Math.abs(hash) % AVATAR_COLORS.length;
 }
 
 export default function Avatar({ username, color, size = 'md', status, className = '', speaking = false }) {
@@ -31,27 +44,41 @@ export default function Avatar({ username, color, size = 'md', status, className
     xl: 'w-4 h-4',
   };
 
-  //  اگر پراپ color پاس داده نشده بود، خودش رنگ ثابت رو انتخاب میکنه
-  const finalColor = color || getConsistentColor(username);
+  // ۱. اگر پراپ color پاس داده شده بود، ایندکس آن را پیدا کن. در غیر این صورت از نام کاربری محاسبه کن.
+  const colorIndex = color ? AVATAR_COLORS.indexOf(color) : getAvatarIndex(username);
+  
+  // ۲. اگر رنگ پاس داده شده نامعتبر بود، fallback به ایندکس ۵ (Sky Blue)
+  const safeIndex = colorIndex !== -1 ? colorIndex : 5;
 
-  // برای ساختن گرادیانت، رنگ اصلی و یک نسخه تیره‌تر از اون رو لازم داریم
-  const baseColor = finalColor;
-  // یک ترفند ساده برای تیره‌تر کردن: اگر هگز بود، یک درجه تیره‌ترش میکنیم
-  // (برای سادگی از همون رنگ به عنوان گرادیانت استفاده میکنیم یا رنگ ثانیه رو ثابت می‌ذاریم)
-  const gradientColor = finalColor;
+  const finalColor = AVATAR_COLORS[safeIndex];
+  const avatarImage = AVATAR_IMAGES[safeIndex];
 
   return (
     <div className={`relative inline-flex ${className}`}>
       <div
-        className={`${sizes[size]} rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-lg ring-1 ring-white/10 transition-transform duration-200 hover:scale-105 ${
+        className={`${sizes[size]} relative rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-lg ring-1 ring-white/10 transition-transform duration-200 hover:scale-105 overflow-hidden ${
           speaking ? 'speaking' : ''
         }`}
-        style={{ 
-          backgroundImage: `linear-gradient(to bottom right, ${baseColor}, ${gradientColor})`,
-        }}
+        style={{ backgroundColor: finalColor }} // رنگ پس‌زمینه به عنوان فال‌بک
       >
-        {username?.charAt(0).toUpperCase()}
+        {/* لایه‌ی تصویر */}
+        <img
+          src={avatarImage}
+          alt={username || 'Avatar'}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            // اگر عکس لود نشد، آن را مخفی کن تا حرف اول اسم (لایه‌ی زیرین) نمایش داده شود
+            e.target.style.display = 'none';
+          }}
+        />
+        
+        {/* لایه‌ی فال‌بک (حرف اول اسم) - فقط وقتی عکس لود نشود دیده می‌شود */}
+        <span className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          {username?.charAt(0).toUpperCase()}
+        </span>
       </div>
+
+      {/* نشانگر وضعیت (آنلاین/آفلاین) */}
       {status && (
         <span
           className={`
