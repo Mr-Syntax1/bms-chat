@@ -29,11 +29,13 @@ function clearTokenCookie(res) {
 }
 
 // خروجی استاندارد کاربر (برای خودِ کاربر: با تنظیمات خصوصی)
+// خروجی استاندارد کاربر (برای خودِ کاربر: با تنظیمات خصوصی)
 function serializeUser(user, { self = false } = {}) {
   const base = {
     id: user._id.toString(),
     username: user.username,
     bio: user.bio || '',
+    avatarIndex: user.avatarIndex ?? null,
     createdAt: user.createdAt,
   };
   if (self) {
@@ -68,7 +70,7 @@ async function authMiddleware(req, res, next) {
     }
 
     // کاربر باید هنوز وجود داشته باشد (مثلاً حساب حذف نشده باشد)
-    const user = await User.findById(decoded.id).select('username tokensValidAfter').lean();
+    const user = await User.findById(decoded.id).select('username tokensValidAfter avatarIndex').lean();
     if (!user) {
       return res.status(401).json({ error: 'کاربر یافت نشد' });
     }
@@ -139,7 +141,7 @@ authRouter.post('/logout', (req, res) => {
 // بررسی احراز هویت (برای persistence login)
 authRouter.get('/me', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('username bio settings createdAt');
+    const user = await User.findById(req.userId).select('username bio settings createdAt avatarIndex');
     if (!user) {
       return res.status(404).json({ error: 'کاربر یافت نشد' });
     }
@@ -154,7 +156,7 @@ authRouter.get('/me', authMiddleware, async (req, res) => {
 // پروفایل کاربر
 authRouter.get('/profile', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('username bio settings createdAt');
+    const user = await User.findById(req.userId).select('username bio settings createdAt avatarIndex');
     if (!user) {
       return res.status(404).json({ success: false, error: 'کاربر یافت نشد' });
     }
@@ -172,7 +174,7 @@ authRouter.get('/profile', authMiddleware, async (req, res) => {
 // برای دیدن پروفایل دیگران (تنظیمات خصوصی هرگز برگردانده نمی‌شود)
 authRouter.get('/profile/:username', async (req, res) => {
   try {
-    const user = await User.findOne({ username: req.params.username }).select('username bio createdAt');
+    const user = await User.findOne({ username: req.params.username }).select('username bio createdAt avatarIndex');
     if (!user) {
       return res.status(404).json({ success: false, error: 'کاربر پیدا نشد.' });
     }
