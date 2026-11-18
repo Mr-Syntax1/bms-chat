@@ -2,6 +2,7 @@ import express from 'express';
 import { Message } from '../models/Message.js';
 import { Room } from '../models/Room.js';
 import { Notification } from '../models/Notification.js';
+import { User } from '../models/User.js';
 import { verifyToken } from '../utils/jwt.js';
 import ably from '../config/ably.js';
 
@@ -100,6 +101,10 @@ messagesRouter.post('/send', async (req, res) => {
     if (!safeText && !isFileMessage) return res.status(400).json({ error: 'پیام خالی است.' });
     if (safeText.length > 500) return res.status(400).json({ error: 'پیام طولانی است.' });
 
+    // Fetch sender's avatarIndex for real-time payload
+    const sender = await User.findById(req.userId).select('avatarIndex').lean();
+    const senderAvatarIndex = sender?.avatarIndex ?? null;
+
     const saved = await Message.create({
       text: safeText, sender: req.username, senderId: req.userId,
       type: isFileMessage ? 'file' : 'message', fileUrl: safeFileUrl,
@@ -113,6 +118,7 @@ messagesRouter.post('/send', async (req, res) => {
       room, createdAt: saved.createdAt.toISOString(),
       time: new Date(saved.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
       readBy: [],
+      avatarIndex: senderAvatarIndex,
     };
 
     const channelName = getChannelName(room);

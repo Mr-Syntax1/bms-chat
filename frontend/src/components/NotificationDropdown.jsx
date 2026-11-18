@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Avatar from './Avatar';
 
 export default function NotificationDropdown({
   notifications,
@@ -134,14 +135,11 @@ export default function NotificationDropdown({
                   onClick={() => handleNotifClick(notif)}
                 >
                   <div className="flex items-start gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
-                      style={{
-                        backgroundImage: `linear-gradient(to bottom right, ${notif.avatarColor || '#3b82f6'}, ${notif.avatarColor || '#3b82f6'})`,
-                      }}
-                    >
-                      {notif.senderName?.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar
+                      username={notif.senderName}
+                      avatarIndex={notif.avatarIndex}
+                      size="sm"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className={`text-sm font-medium ${notif.isRead ? 'text-surface-300' : 'text-white'}`}>

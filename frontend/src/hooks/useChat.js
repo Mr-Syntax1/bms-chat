@@ -163,7 +163,7 @@ export function useChat() {
     if (!connected || !userId) return undefined;
 
     const channel = subscribeToPresence();
-    const toUser = (m) => ({ id: m.clientId, username: m.data?.name || 'Unknown' });
+    const toUser = (m) => ({ id: m.clientId, username: m.data?.name || 'Unknown', avatarIndex: m.data?.avatarIndex ?? null });
 
     const loadAll = async () => {
       try {
@@ -187,7 +187,8 @@ export function useChat() {
     channel.presence.subscribe('leave', onLeave);
 
     const username = currentUserRef.current?.username;
-    channel.presence.enter({ name: username }).catch((err) => {
+    const avatarIndex = currentUserRef.current?.avatarIndex ?? null;
+    channel.presence.enter({ name: username, avatarIndex }).catch((err) => {
       console.warn('[Chat] presence.enter error:', err);
     });
 

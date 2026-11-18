@@ -279,8 +279,10 @@ export default function Profile({ onClose, currentUser }) {
   };
 
   const banner = useMemo(() => {
-    // ۱. گرفتن ایندکس و رنگ دقیق آواتار کاربر
-    const colorIndex = getAvatarIndex(profile?.username);
+    // ۱. اولویت با avatarIndex دستی کاربر، fallback به username hash
+    const colorIndex = (profile?.avatarIndex !== undefined && profile?.avatarIndex !== null)
+      ? profile.avatarIndex
+      : getAvatarIndex(profile?.username);
     const baseHex = AVATAR_COLORS[colorIndex];
 
     // ۲. تبدیل به HSL برای کنترل نور و اشباع
@@ -300,7 +302,7 @@ export default function Profile({ onClose, currentUser }) {
       accent: `hsl(${h}, ${s}%, ${Math.min(l + 25, 90)}%)`,
       hex: baseHex
     };
-  }, [profile?.username]);
+  }, [profile?.username, profile?.avatarIndex]);
 
   if (loading) return <ProfileSkeleton />;
 

@@ -47,7 +47,7 @@ roomsRouter.get('/search', async (req, res) => {
       Room.find({ isPrivate: false, name: regex }).limit(20).lean(),
       // جستجوی بهینه فقط بر اساس username
       User.find({ _id: { $ne: req.userId }, username: regex })
-        .select('username')
+        .select('username avatarIndex')
         .limit(20)
         .lean(),
     ]);
@@ -63,6 +63,7 @@ roomsRouter.get('/search', async (req, res) => {
       users: users.map((u) => ({
         id: u._id.toString(),
         username: u.username,
+        avatarIndex: u.avatarIndex ?? null,
         isOnline: false, // وضعیت آنلاین از طریق Presence مدیریت می‌شود
       })),
     });
@@ -88,9 +89,10 @@ roomsRouter.get('/list', async (req, res) => {
       if (r.isPrivate) {
         const otherId = r.members?.find(m => m.toString() !== req.userId);
         if (otherId) {
-          const otherUser = await User.findById(otherId).select('username').lean();
+          const otherUser = await User.findById(otherId).select('username avatarIndex').lean();
           result.dmPartnerUsername = otherUser?.username || 'کاربر حذف شده';
           result.dmPartnerId = otherId.toString();
+          result.avatarIndex = otherUser?.avatarIndex ?? null;
         }
       }
       return result;
@@ -154,6 +156,11 @@ roomsRouter.post('/join', async (req, res) => {
     }).sort({ createdAt: -1 }).limit(100).lean();
     history.reverse();
 
+    // Fetch avatarIndex for each unique sender in history
+    const senderIds = [...new Set(history.map(m => m.senderId?.toString()).filter(Boolean))];
+    const senders = await User.find({ _id: { $in: senderIds } }).select('avatarIndex').lean();
+    const avatarIndexMap = Object.fromEntries(senders.map(u => [u._id.toString(), u.avatarIndex ?? null]));
+
     const formattedHistory = history.map((m) => ({
       id: m._id.toString(),
       text: m.text,
@@ -167,6 +174,7 @@ roomsRouter.post('/join', async (req, res) => {
       createdAt: m.createdAt,
       time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
       readBy: m.readBy || [],
+      avatarIndex: m.senderId ? avatarIndexMap[m.senderId.toString()] ?? null : null,
     }));
 
     res.json({ success: true, room: roomName, history: formattedHistory });
@@ -246,10 +254,11 @@ roomsRouter.post('/open-dm', async (req, res) => {
     if (!mongoose.isValidObjectId(String(targetUserId))) {
       return res.status(400).json({ error: 'کاربر پیدا نشد.' });
     }
-    const dbUser = await User.findById(targetUserId).select('username').lean();
+    const dbUser = await User.findById(targetUserId).select('username avatarIndex').lean();
     if (!dbUser) return res.status(404).json({ error: 'کاربر پیدا نشد.' });
     const targetDbId = dbUser._id.toString();
     const targetUsername = dbUser.username;
+    const targetAvatarIndex = dbUser.avatarIndex ?? null;
 
     if (targetDbId === req.userId) {
       return res.status(400).json({ error: 'نمی‌توانید با خودتان چت کنید.' });
@@ -287,6 +296,11 @@ roomsRouter.post('/open-dm', async (req, res) => {
       .lean();
     history.reverse();
 
+    // Fetch avatarIndex for each unique sender in history
+    const senderIds = [...new Set(history.map(m => m.senderId?.toString()).filter(Boolean))];
+    const senders = await User.find({ _id: { $in: senderIds } }).select('avatarIndex').lean();
+    const avatarIndexMap = Object.fromEntries(senders.map(u => [u._id.toString(), u.avatarIndex ?? null]));
+
     const formattedHistory = history.map((m) => ({
       id: m._id.toString(),
       text: m.text,
@@ -300,13 +314,14 @@ roomsRouter.post('/open-dm', async (req, res) => {
       createdAt: m.createdAt,
       time: new Date(m.createdAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
       readBy: m.readBy || [],
+      avatarIndex: m.senderId ? avatarIndexMap[m.senderId.toString()] ?? null : null,
     }));
 
     res.json({
       success: true,
       room: dmRoomName,
       history: formattedHistory,
-      targetUser: { id: targetDbId, username: targetUsername, isOnline: false },
+      targetUser: { id: targetDbId, username: targetUsername, avatarIndex: targetAvatarIndex, isOnline: false },
     });
   } catch (err) {
     console.error('Open DM error:', err);
