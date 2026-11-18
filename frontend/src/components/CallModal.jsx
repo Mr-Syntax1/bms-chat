@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { END_REASON_TEXT } from '../hooks/useWebRTC';
+// import Avatar from './Avatar';
 
 /*
  * استفاده در Chat.jsx:
@@ -93,10 +94,10 @@ function initialsOf(name = '') {
 }
 
 const hasLiveVideo = (stream) =>
-  !!stream?.getVideoTracks?.().some((t) => t.enabled && t.readyState === 'live');
+  !!stream?.getVideoTracks?.().some((t) => t.enabled && !t.muted && t.readyState === 'live');
 
 const hasAnyVideo = (stream) =>
-  !!stream?.getVideoTracks?.().some((t) => t.readyState === 'live');
+  !!stream?.getVideoTracks?.().some((t) => !t.muted && t.readyState === 'live');
 
 const isEditable = (el) =>
   !!el &&
@@ -353,6 +354,7 @@ function Avatar({ name, avatarIndex, src, className = 'w-24 h-24 text-3xl', spea
     >
       <img
         src={displaySrc}
+        key={displaySrc}
         alt=""
         className="w-full h-full object-cover"
         onError={(e) => {
@@ -469,7 +471,7 @@ function StatusIcons({ micOff, deafened }) {
 function Tile({
   name,
   avatarSrc,
-  avatarIndex, // 👈 اضافه شد
+  avatarIndex,
   stream,
   showVideo,
   mirror,
@@ -959,14 +961,14 @@ export default function CallModal({ call, user, title }) {
   const connecting = callState === 'connecting';
   const headerTitle = title || peerName;
 
-  // 👇 به‌روزرسانی آرایه rows برای شامل کردن avatarIndex 👇
+
   const rows = [
     {
       id: 'remote',
       name: peerName,
       you: false,
       avatar: peerAvatar,
-      avatarIndex: remoteP?.avatarIndex ?? peer?.avatarIndex, // 👈 اضافه شد
+      avatarIndex: remoteP?.avatarIndex ?? peer?.avatarIndex,
       muted: Boolean(remoteP?.muted),
       video: showRemoteCamera,
       screen: remoteScreenSharing,
@@ -977,7 +979,7 @@ export default function CallModal({ call, user, title }) {
       name: myName,
       you: true,
       avatar: myAvatar,
-      avatarIndex: user?.avatarIndex, // 👈 اضافه شد
+      avatarIndex: user?.avatarIndex,
       muted: isMuted,
       video: showLocalCamera,
       screen: isScreenSharing,

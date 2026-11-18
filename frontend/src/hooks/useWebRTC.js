@@ -399,12 +399,13 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
 
     let activeVideo = null;
     if (video.length > 0) {
-      if (isScreenSharingDuringCallRef.current) {
-        activeVideo = video[0];
-      } else if (remoteScreenSharingRef.current) {
+      if (remoteScreenSharingRef.current) {
+        // در حالت اشتراک صفحه: آخرین track ویدیو
         activeVideo = video[video.length - 1];
       } else {
-        activeVideo = video[0];
+        //  تغییر کلیدی: فقط track های غیر muted (دوربین فعال) انتخاب شوند
+        const unmuted = video.filter((t) => !t.muted);
+        activeVideo = unmuted.length > 0 ? unmuted[0] : null;
       }
     }
 
@@ -1169,7 +1170,8 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
   function onStreamUpdated(data) {
     if (!isCurrent(data)) return;
     resyncSoon();
-  }
+    runPendingRenegotiation();
+}
 
   function onMediaState(data) {
     if (!isCurrent(data)) return;
@@ -1181,8 +1183,12 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
         p.isLocal ? p : { ...p, muted: Boolean(data.muted), video: Boolean(data.video) || screen, screenSharing: screen }
       )
     );
-    if (!screen) setTimeout(resyncSoon, 200);
-  }
+    //  resync فوری (بدون تاخیر) + آزادسازی renegotiation معوقه
+    if (!screen) {
+      resyncSoon();
+      runPendingRenegotiation();
+    }
+}
 
   useEffect(() => {
     actionsRef.current = {
@@ -1229,7 +1235,7 @@ export function useWebRTC({ currentUser, connected = true, iceServers, ringTimeo
 
     const handleIncoming = (message) => actionsRef.current.onIncoming?.(message.data);
     const handleCancelled = (message) => actionsRef.current.onCancelled?.(message.data);
-    
+
     bindEvent(channelName, 'incoming-call', handleIncoming);
     bindEvent(channelName, 'call-cancelled', handleCancelled);
 
