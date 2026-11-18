@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Avatar from './Avatar';
 import ContextMenu from './ContextMenu';
 import { useNavigate } from 'react-router-dom';
+import VoiceMessage from './VoiceMessage';
 
 function formatBytes(bytes) {
   if (bytes === 0) return '0 Bytes';
@@ -28,23 +29,7 @@ function FilePreview({ msg, isMine, onImageClick }) {
   const size = msg.fileSize ? formatBytes(msg.fileSize) : '';
 
   if (isAudio) {
-    return (
-      <div className={`flex flex-col gap-2 p-3 rounded-xl min-w-[250px] ${isMine ? 'bg-primary-800/50' : 'bg-surface-800'}`}>
-        <audio
-          controls
-          src={msg.fileUrl}
-          className="w-full h-10"
-          style={{ filter: 'invert(1) hue-rotate(180deg)' }}
-        />
-        <div className="flex items-center gap-2 text-xs opacity-70">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-          <span>پیام صوتی</span>
-          {size && <span>• {size}</span>}
-        </div>
-      </div>
-    );
+    return <VoiceMessage msg={msg} isMine={isMine} size={size} />;
   }
 
   if (isImage) {
@@ -142,7 +127,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
   const isRead = isMine
     ? msg.readBy?.some(id => id !== msg.senderId)
     : msg.readBy?.includes(currentUserId);
-  
+
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
   const [menuItems, setMenuItems] = useState([]);
   const [editing, setEditing] = useState(false);
