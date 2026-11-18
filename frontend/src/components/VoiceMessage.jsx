@@ -277,7 +277,7 @@ export default function VoiceMessage({ msg, isMine, size }) {
         onClick={togglePlay}
         disabled={error}
         aria-label={playing ? 'توقف پیام صوتی' : 'پخش پیام صوتی'}
-        className={`relative shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 ${styles.ring} disabled:opacity-40 disabled:cursor-not-allowed ${styles.button}`}
+        className={`relative shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 focus:outline-none focus-visible:ring-2 cursor-pointer ${styles.ring} disabled:opacity-40 disabled:cursor-not-allowed ${styles.button}`}
       >
         {playing && (
           <span className={`absolute inset-0 rounded-full ring-2 ${styles.ring} animate-ping opacity-60`} />
@@ -345,7 +345,7 @@ export default function VoiceMessage({ msg, isMine, size }) {
                   type="button"
                   onClick={cycleSpeed}
                   aria-label={`سرعت پخش ${toFa(speed)}`}
-                  className={`shrink-0 px-1.5 py-1 rounded-full font-bold tabular-nums transition-colors active:scale-95 focus:outline-none focus-visible:ring-2 ${styles.ring} ${styles.pill}`}
+                  className={`shrink-0 px-1.5 py-1 rounded-full font-bold tabular-nums transition-colors active:scale-95 focus:outline-none focus-visible:ring-2 cursor-pointer ${styles.ring} ${styles.pill}`}
                 >
                   {toFa(speed)}×
                 </button>
