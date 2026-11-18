@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { sileo } from 'sileo';
 import { END_REASON_TEXT } from '../hooks/useWebRTC';
-// import Avatar from './Avatar';
 
 /*
  * استفاده در Chat.jsx:
@@ -335,7 +335,6 @@ const Spinner = ({ className = 'w-5 h-5' }) => (
 // اجزای پایه
 // ===========================================================================
 
-// 👇 کامپوننت Avatar ساده‌شده (فقط avatarIndex + fallback) 👇
 function Avatar({ name, avatarIndex, className = 'w-24 h-24 text-3xl', speaking = false }) {
   const finalIndex = (avatarIndex !== undefined && avatarIndex !== null) ? avatarIndex : getAvatarIndex(name);
   const safeIndex = (finalIndex >= 0 && finalIndex < 10) ? finalIndex : 5;
@@ -364,7 +363,6 @@ function Avatar({ name, avatarIndex, className = 'w-24 h-24 text-3xl', speaking 
   );
 }
 
-/** ویدیو با مدیریت srcObject (حتی اگر element بعداً mount شود) */
 function StreamVideo({ stream, muted = true, mirror = false, className = '' }) {
   const ref = useRef(null);
 
@@ -430,8 +428,7 @@ function ControlButton({ label, hint, onClick, variant = 'default', disabled, bu
         title={title}
         aria-label={label}
         aria-pressed={pressed}
-        className={`grid place-items-center w-12 h-12 sm:w-14 sm:h-14 rounded-full transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-white/80 active:scale-90 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-          } ${variants[variant]}`}
+        className={`grid place-items-center w-12 h-12 sm:w-14 sm:h-14 rounded-full transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-white/80 active:scale-90 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${variants[variant]}`}
       >
         {busy ? <Spinner /> : children}
       </button>
@@ -460,7 +457,6 @@ function StatusIcons({ micOff, deafened }) {
   );
 }
 
-/** کاشی هر شرکت‌کننده */
 function Tile({
   name,
   avatarIndex,
@@ -624,7 +620,7 @@ function RingingScreen({
                 onClick={onDecline}
                 aria-label="رد تماس"
                 title="رد تماس"
-                className="grid h-16 w-16 place-items-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="grid h-16 w-16 place-items-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
               >
                 <PhoneIcon className="h-7 w-7 rotate-[135deg]" />
               </button>
@@ -638,7 +634,7 @@ function RingingScreen({
                   onClick={() => onAccept('audio')}
                   aria-label="پاسخ صوتی"
                   title="پاسخ فقط با صدا (دوربین روشن نمی‌شود)"
-                  className="grid h-16 w-16 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition hover:scale-105 hover:bg-white/25 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="grid h-16 w-16 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition hover:scale-105 hover:bg-white/25 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
                 >
                   <VolumeIcon className="h-7 w-7" />
                 </button>
@@ -653,7 +649,7 @@ function RingingScreen({
                 onClick={() => onAccept(isVideo ? 'video' : 'audio')}
                 aria-label={isVideo ? 'پاسخ تصویری' : 'پاسخ'}
                 title={isVideo ? 'پاسخ تصویری' : 'پاسخ'}
-                className="grid h-16 w-16 place-items-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition hover:scale-105 hover:bg-emerald-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="grid h-16 w-16 place-items-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition hover:scale-105 hover:bg-emerald-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
               >
                 {isVideo ? <VideoIcon className="h-7 w-7" /> : <PhoneIcon className="h-7 w-7" />}
               </button>
@@ -667,7 +663,7 @@ function RingingScreen({
               onClick={onCancel}
               aria-label="لغو تماس"
               title="لغو تماس"
-              className="grid h-16 w-16 place-items-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="grid h-16 w-16 place-items-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
             >
               <PhoneIcon className="h-7 w-7 rotate-[135deg]" />
             </button>
@@ -731,8 +727,7 @@ function MiniCall({
           onClick={onToggleMute}
           aria-label={isMuted ? 'روشن کردن میکروفون' : 'بی‌صدا کردن'}
           aria-pressed={isMuted}
-          className={`grid h-9 w-9 place-items-center rounded-full transition ${isMuted ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-white/20'
-            }`}
+          className={`grid h-9 w-9 place-items-center rounded-full transition cursor-pointer ${isMuted ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-white/20'}`}
         >
           {isMuted ? <MicOffIcon className="h-4 w-4" /> : <MicIcon className="h-4 w-4" />}
         </button>
@@ -740,7 +735,7 @@ function MiniCall({
           type="button"
           onClick={onEnd}
           aria-label="قطع تماس"
-          className="grid h-9 w-9 place-items-center rounded-full bg-rose-500 text-white transition hover:bg-rose-400"
+          className="grid h-9 w-9 place-items-center rounded-full bg-rose-500 text-white transition hover:bg-rose-400 cursor-pointer"
         >
           <PhoneIcon className="h-4 w-4 rotate-[135deg]" />
         </button>
@@ -782,7 +777,6 @@ export default function CallModal({ call, user, title }) {
 
   const [minimized, setMinimized] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [toast, setToast] = useState(null);
   const [dismissedError, setDismissedError] = useState(null);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -816,9 +810,6 @@ export default function CallModal({ call, user, title }) {
   const [onToggleVideo, videoBusy] = useBusyAction(toggleVideoFn);
   const [onToggleScreen, screenBusy] = useBusyAction(toggleScreenShare);
 
-  // ---------------------------------------------------------------------
-  // صدای طرف مقابل (element جدا؛ ویدیوها muted هستند تا صدا دوبار پخش نشود)
-  // ---------------------------------------------------------------------
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -866,25 +857,30 @@ export default function CallModal({ call, user, title }) {
     };
   }, []);
 
-  // ---------------------------------------------------------------------
-  // وضعیت UI
-  // ---------------------------------------------------------------------
   useEffect(() => {
     if (!inCall) setMinimized(false);
     if (!active) setPanelOpen(false);
   }, [inCall, active]);
 
   useEffect(() => {
-    if (callState !== 'idle') {
-      setToast(null);
-      return undefined;
-    }
-    const text = error || (endReason && !QUIET_END_REASONS.has(endReason) ? END_REASON_TEXT[endReason] : null);
-    if (!text) return undefined;
+    if (callState === 'idle' && (error || (endReason && !QUIET_END_REASONS.has(endReason)))) {
+      const message = error || END_REASON_TEXT[endReason];
+      const isErr = Boolean(error) || ERROR_END_REASONS.has(endReason);
 
-    setToast({ text, tone: error || ERROR_END_REASONS.has(endReason) ? 'error' : 'info' });
-    const t = setTimeout(() => setToast(null), 4500);
-    return () => clearTimeout(t);
+      if (isErr) {
+        sileo.error({
+          title: 'خطا در تماس',
+          description: message,
+          duration: 4500,
+        });
+      } else {
+        sileo.info({
+          title: 'پایان تماس',
+          description: message,
+          duration: 4500,
+        });
+      }
+    }
   }, [callState, error, endReason]);
 
   useEffect(() => {
@@ -944,12 +940,8 @@ export default function CallModal({ call, user, title }) {
 
   if (!call) return null;
 
-  // ---------------------------------------------------------------------
-  // اجزای داخلی صفحه‌ی تماس
-  // ---------------------------------------------------------------------
   const connecting = callState === 'connecting';
   const headerTitle = title || peerName;
-
 
   const rows = [
     {
@@ -1012,24 +1004,6 @@ export default function CallModal({ call, user, title }) {
       <style>{CSS}</style>
       <audio ref={audioRef} autoPlay className="hidden" aria-hidden="true" />
 
-      {/* ---------- پیام پایان تماس / خطا ---------- */}
-      {toast && (
-        <div
-          dir="rtl"
-          role="status"
-          aria-live="polite"
-          className={`cm-drop fixed start-1/2 top-4 z-[110] flex max-w-[90vw] items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium shadow-2xl ring-1 backdrop-blur-xl ${toast.tone === 'error'
-            ? 'bg-rose-600/90 text-white ring-rose-300/30'
-            : 'bg-[#1b1d22]/95 text-white ring-white/10'
-            }`}
-          style={{ transform: 'translateX(-50%)' }}
-        >
-          <PhoneIcon className="h-4 w-4 shrink-0 rotate-[135deg]" />
-          <span>{toast.text}</span>
-        </div>
-      )}
-
-      {/* ---------- تماس ورودی ---------- */}
       {callState === 'incoming' && (
         <RingingScreen
           mode="incoming"
@@ -1041,7 +1015,6 @@ export default function CallModal({ call, user, title }) {
         />
       )}
 
-      {/* ---------- تماس خروجی ---------- */}
       {callState === 'calling' && (
         <RingingScreen
           mode="outgoing"
@@ -1053,7 +1026,6 @@ export default function CallModal({ call, user, title }) {
         />
       )}
 
-      {/* ---------- پنجره‌ی کوچک ---------- */}
       {inCall && minimized && (
         <MiniCall
           name={peerName}
@@ -1070,7 +1042,6 @@ export default function CallModal({ call, user, title }) {
         />
       )}
 
-      {/* ---------- صفحه‌ی اصلی تماس ---------- */}
       {inCall && !minimized && (
         <div
           ref={rootRef}
@@ -1080,7 +1051,6 @@ export default function CallModal({ call, user, title }) {
           aria-label={`تماس با ${peerName}`}
           className="cm-fade fixed inset-0 z-[100] flex flex-col bg-[#0b0c0f] text-white"
         >
-          {/* ----- نوار بالا ----- */}
           <header className="flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <button
@@ -1088,7 +1058,7 @@ export default function CallModal({ call, user, title }) {
                 onClick={() => setMinimized(true)}
                 title="کوچک کردن تماس (بازگشت به چت)"
                 aria-label="کوچک کردن تماس"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20 outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20 outline-none focus-visible:ring-2 focus-visible:ring-white/80 cursor-pointer"
               >
                 <MinimizeIcon className="h-5 w-5" />
               </button>
@@ -1124,14 +1094,13 @@ export default function CallModal({ call, user, title }) {
                 onClick={toggleFullscreen}
                 title={isFullscreen ? 'خروج از تمام‌صفحه' : 'تمام‌صفحه'}
                 aria-label={isFullscreen ? 'خروج از تمام‌صفحه' : 'تمام‌صفحه'}
-                className="hidden h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20 outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:grid"
+                className="hidden h-10 w-10 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20 outline-none focus-visible:ring-2 focus-visible:ring-white/80 md:grid cursor-pointer"
               >
                 <FullscreenIcon className="h-5 w-5" />
               </button>
             </div>
           </header>
 
-          {/* ----- پیام خطا ----- */}
           {error && error !== dismissedError && (
             <div
               role="alert"
@@ -1142,18 +1111,16 @@ export default function CallModal({ call, user, title }) {
                 type="button"
                 onClick={() => setDismissedError(error)}
                 aria-label="بستن پیام"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/10"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/10 cursor-pointer"
               >
                 <XIcon className="h-4 w-4" />
               </button>
             </div>
           )}
 
-          {/* ----- محتوا ----- */}
           <main className="relative flex min-h-0 flex-1 gap-3 px-3 pb-2 md:px-4">
             {presenting ? (
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 lg:flex-row">
-                {/* صحنه‌ی اشتراک صفحه */}
                 <section className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-3xl bg-black ring-1 ring-white/10">
                   {remoteScreenSharing ? (
                     <>
@@ -1190,7 +1157,7 @@ export default function CallModal({ call, user, title }) {
                           type="button"
                           onClick={onToggleScreen}
                           disabled={screenBusy}
-                          className="mt-6 flex items-center gap-2 rounded-full bg-rose-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-400 active:scale-95 disabled:opacity-60"
+                          className="mt-6 flex items-center gap-2 rounded-full bg-rose-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-400 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
                         >
                           {screenBusy ? <Spinner className="h-4 w-4" /> : <ScreenOffIcon className="h-4 w-4" />}
                           توقف اشتراک
@@ -1200,7 +1167,6 @@ export default function CallModal({ call, user, title }) {
                   )}
                 </section>
 
-                {/* کاشی‌ها کنار صحنه */}
                 <div className="cm-scroll flex shrink-0 gap-3 overflow-x-auto lg:w-64 lg:flex-col lg:overflow-y-auto xl:w-72">
                   {remoteTile(true, 'aspect-video w-40 shrink-0 sm:w-52 lg:w-full')}
                   {localTile(true, 'aspect-video w-40 shrink-0 sm:w-52 lg:w-full')}
@@ -1213,14 +1179,13 @@ export default function CallModal({ call, user, title }) {
               </div>
             )}
 
-            {/* ----- پنل شرکت‌کنندگان ----- */}
             {panelOpen && (
               <>
                 <button
                   type="button"
                   aria-label="بستن فهرست شرکت‌کنندگان"
                   onClick={() => setPanelOpen(false)}
-                  className="cm-fade fixed inset-0 z-10 bg-black/50 md:hidden"
+                  className="cm-fade fixed inset-0 z-10 bg-black/50 md:hidden cursor-pointer"
                 />
                 <aside
                   aria-label="شرکت‌کنندگان"
@@ -1234,7 +1199,7 @@ export default function CallModal({ call, user, title }) {
                       type="button"
                       onClick={() => setPanelOpen(false)}
                       aria-label="بستن"
-                      className="grid h-8 w-8 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
+                      className="grid h-8 w-8 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white cursor-pointer"
                     >
                       <XIcon className="h-4 w-4" />
                     </button>
@@ -1243,8 +1208,7 @@ export default function CallModal({ call, user, title }) {
                     {rows.map((r) => (
                       <li
                         key={r.id}
-                        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition ${r.speaking ? 'bg-emerald-400/10' : 'hover:bg-white/5'
-                          }`}
+                        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition ${r.speaking ? 'bg-emerald-400/10' : 'hover:bg-white/5'}`}
                       >
                         <Avatar name={r.name} avatarIndex={r.avatarIndex} speaking={r.speaking} className="w-10 h-10 text-sm" />
                         <div className="min-w-0 flex-1">
@@ -1267,12 +1231,11 @@ export default function CallModal({ call, user, title }) {
               </>
             )}
 
-            {/* ----- صدا بلاک شده ----- */}
             {audioBlocked && connected && (
               <button
                 type="button"
                 onClick={() => audioRef.current?.play().then(() => setAudioBlocked(false)).catch(() => { })}
-                className="cm-rise absolute bottom-3 start-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400"
+                className="cm-rise absolute bottom-3 start-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 cursor-pointer"
               >
                 <VolumeIcon className="h-4 w-4" />
                 برای پخش صدا کلیک کنید
@@ -1280,7 +1243,6 @@ export default function CallModal({ call, user, title }) {
             )}
           </main>
 
-          {/* ----- نوار کنترل ----- */}
           <footer className="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 md:px-6">
             <div className="flex items-end justify-center gap-4 md:justify-between">
               <div className="hidden w-24 md:block" aria-hidden="true" />
@@ -1342,14 +1304,13 @@ export default function CallModal({ call, user, title }) {
                     onClick={() => endCall?.()}
                     title="قطع تماس"
                     aria-label="قطع تماس"
-                    className="grid h-12 w-16 place-items-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:bg-rose-400 active:scale-90 outline-none focus-visible:ring-2 focus-visible:ring-white sm:h-14 sm:w-20"
+                    className="grid h-12 w-16 place-items-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:bg-rose-400 active:scale-90 outline-none focus-visible:ring-2 focus-visible:ring-white sm:h-14 sm:w-20 cursor-pointer"
                   >
                     <PhoneIcon className="h-6 w-6 rotate-[135deg]" />
                   </button>
                   <span className="hidden text-[11px] leading-none text-white/70 sm:block">قطع تماس</span>
                 </div>
 
-                {/* دکمه‌ی شرکت‌کنندگان در موبایل */}
                 <div className="md:hidden">
                   <ControlButton
                     label="شرکت‌کنندگان"
@@ -1362,7 +1323,6 @@ export default function CallModal({ call, user, title }) {
                 </div>
               </div>
 
-              {/* دکمه‌ی شرکت‌کنندگان در دسکتاپ */}
               <div className="hidden w-24 justify-end md:flex">
                 <ControlButton
                   label="شرکت‌کنندگان"
