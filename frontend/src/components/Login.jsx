@@ -30,8 +30,7 @@ const PATHS = {
   chat: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
   send: 'M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5',
   eye: 'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z',
-  eyeOff:
-    'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L3 3m18 18L3 3',
+  eyeOff: 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L3 3m18 18L3 3',
   alert: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
   check: 'M5 13l4 4L19 7',
   checks: 'M18 6L7 17l-5-5M22 10l-7.5 7.5L13 16',
@@ -47,13 +46,15 @@ const Icon = ({ name, className = 'w-5 h-5', strokeWidth = 1.8 }) => (
 
 /* ───────────────────────── اجزای گفتگو ───────────────────────── */
 
+// 👇 تغییر ۱: استفاده از تصویر pwa-192x192.png به جای آیکون 👇
 function BotAvatar({ className = 'w-8 h-8' }) {
   return (
-    <span
-      className={`shrink-0 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-md shadow-primary-500/30 ${className}`}
-    >
-      <Icon name="chat" className="w-1/2 h-1/2 text-white" strokeWidth={2.2} />
-    </span>
+    <img
+      src="/pwa-192x192.png"
+      alt="Bot Avatar"
+      draggable={false}
+      className={`shrink-0 rounded-full object-cover shadow-md shadow-primary-500/30 ${className}`}
+    />
   );
 }
 
@@ -101,11 +102,12 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
     return (
       <div dir="ltr" className="flex justify-end login-msg origin-bottom-right">
         {editable ? (
+          // 👇 تغییر ۲: اضافه شدن cursor-pointer 👇
           <button
             type="button"
             onClick={onEdit}
             aria-label="ویرایش نام کاربری"
-            className="text-start rounded-2xl rounded-tr-sm max-w-[80%] hover:brightness-110 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+            className="text-start rounded-2xl rounded-tr-sm max-w-[80%] hover:brightness-110 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 cursor-pointer"
           >
             {body}
           </button>
@@ -137,8 +139,9 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
   );
 }
 
+// 👇 تغییر ۲: اضافه شدن cursor-pointer به کلاس پایه چیپ‌ها 👇
 const chipClass =
-  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium text-surface-100 border border-surface-700 bg-white/[0.04] hover:bg-white/[0.09] hover:border-primary-500/60 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500';
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium text-surface-100 border border-surface-700 bg-white/[0.04] hover:bg-white/[0.09] hover:border-primary-500/60 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer';
 
 /* ───────────────────────── صفحه ورود ───────────────────────── */
 
@@ -318,8 +321,9 @@ export default function Login({ onAuth }) {
   const canSend = !locked && activeValue.trim().length > 0;
   const lastMineIdx = messages.reduce((acc, m, i) => (m.from === 'me' && m.kind === 'username' ? i : acc), -1);
 
+  // 👇 تغییر ۳: اضافه شدن placeholder:text-right به کلاس اینپوت 👇
   const inputClass =
-    'flex-1 min-w-0 bg-transparent outline-none text-sm sm:text-base text-surface-50 placeholder:text-surface-500 py-2.5 disabled:opacity-60';
+    'flex-1 min-w-0 bg-transparent outline-none text-sm sm:text-base text-surface-50 placeholder:text-surface-500 placeholder:text-right py-2.5 disabled:opacity-60';
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center sm:p-6 relative overflow-hidden">
@@ -483,22 +487,24 @@ export default function Login({ onAuth }) {
               />
 
               {step === 'password' && (
+                // 👇 تغییر ۲: اضافه شدن cursor-pointer 👇
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'مخفی کردن رمز' : 'نمایش رمز'}
                   aria-pressed={showPassword}
-                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-50 hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-50 hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer"
                 >
                   <Icon name={showPassword ? 'eyeOff' : 'eye'} />
                 </button>
               )}
 
+              {/* 👇 تغییر ۲: اضافه شدن cursor-pointer 👇 */}
               <button
                 type="submit"
                 disabled={!canSend}
                 aria-label={step === 'username' ? 'ادامه' : 'ورود'}
-                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-105 active:scale-90 disabled:opacity-35 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-105 active:scale-90 disabled:opacity-35 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 cursor-pointer"
               >
                 {loading ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
