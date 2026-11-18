@@ -1,7 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { sileo } from 'sileo';
 
@@ -24,137 +22,199 @@ const loginSchema = yup.object({
 
 const currentYear = new Date().getFullYear();
 
+const formatTime = (d) => d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+
 /* ───────────────────────── آیکن‌ها ───────────────────────── */
 
-const Icon = ({ d, className = 'w-5 h-5', strokeWidth = 1.8 }) => (
-  <svg className={className} fill="none" stroke="currentColor" strokeWidth={strokeWidth} viewBox="0 0 24 24" aria-hidden="true">
-    <path strokeLinecap="round" strokeLinejoin="round" d={d} />
-  </svg>
-);
-
-const ICONS = {
+const PATHS = {
   chat: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
-  user: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-  lock: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
+  send: 'M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5',
   eye: 'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z',
   eyeOff:
     'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L3 3m18 18L3 3',
   alert: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
   check: 'M5 13l4 4L19 7',
+  checks: 'M18 6L7 17l-5-5M22 10l-7.5 7.5L13 16',
   userPlus: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
-  arrow: 'M10 19l-7-7m0 0l7-7m-7 7h18',
-  mic: 'M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z',
-  bolt: 'M13 10V3L4 14h7v7l9-11h-7z',
-  shield: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+  pencil: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
 };
 
-/* ───────────────────────── پنل معرفی (فقط دسکتاپ) ───────────────────────── */
+const Icon = ({ name, className = 'w-5 h-5', strokeWidth = 1.8 }) => (
+  <svg className={className} fill="none" stroke="currentColor" strokeWidth={strokeWidth} viewBox="0 0 24 24" aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d={PATHS[name]} />
+  </svg>
+);
 
-const FEATURES = [
-  { icon: ICONS.bolt, title: 'پیام‌رسانی لحظه‌ای', text: 'ارسال و دریافت آنی پیام بدون هیچ تأخیری' },
-  { icon: ICONS.mic, title: 'پیام صوتی و فایل', text: 'صدا، تصویر و فایل را در یک لحظه به اشتراک بگذار' },
-  { icon: ICONS.shield, title: 'امن و خصوصی', text: 'گفتگوهای تو فقط بین خودت و مخاطبت می‌ماند' },
-];
+/* ───────────────────────── اجزای گفتگو ───────────────────────── */
 
-function ShowcasePanel() {
+function BotAvatar({ className = 'w-8 h-8' }) {
   return (
-    <div className="hidden lg:flex relative flex-col justify-between p-10 xl:p-12 overflow-hidden bg-gradient-to-br from-primary-600/25 via-surface-900/40 to-accent-500/20 border-l border-white/10">
-      <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary-500/30 blur-3xl" aria-hidden="true" />
-      <div className="absolute -bottom-24 -right-16 w-72 h-72 rounded-full bg-accent-500/25 blur-3xl" aria-hidden="true" />
+    <span
+      className={`shrink-0 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-md shadow-primary-500/30 ${className}`}
+    >
+      <Icon name="chat" className="w-1/2 h-1/2 text-white" strokeWidth={2.2} />
+    </span>
+  );
+}
 
-      {/* برند */}
-      <div className="relative flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/30">
-          <Icon d={ICONS.chat} className="w-6 h-6 text-white" strokeWidth={2} />
-        </div>
-        <span className="text-lg font-bold text-surface-50">چت مدرن</span>
-      </div>
-
-      {/* پیام‌های دکوراتیو */}
-      <div className="relative my-8 space-y-3" aria-hidden="true">
-        <div className="login-float flex justify-start">
-          <div className="max-w-[78%] px-4 py-2.5 rounded-2xl rounded-tr-sm bg-surface-800/80 border border-white/10 text-sm text-surface-100 backdrop-blur">
-            سلام! امروز جلسه ساعت چنده؟ 👋
-          </div>
-        </div>
-        <div className="login-float-delay flex justify-end">
-          <div className="max-w-[78%] px-4 py-2.5 rounded-2xl rounded-tl-sm bg-gradient-to-br from-primary-500 to-primary-700 text-sm text-white shadow-lg shadow-primary-900/40">
-            ساعت ۵ عصر، همون‌جای همیشگی ✨
-          </div>
-        </div>
-        <div className="login-float flex justify-start">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl rounded-tr-sm bg-surface-800/80 border border-white/10 backdrop-blur">
-            <span className="w-8 h-8 rounded-full bg-primary-500 text-white flex items-center justify-center">
-              <svg className="w-4 h-4 translate-x-[1px]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5.14v13.72a1 1 0 001.52.85l11-6.86a1 1 0 000-1.7l-11-6.86A1 1 0 008 5.14z" />
-              </svg>
-            </span>
-            <span className="flex items-center gap-[2px] h-6" dir="ltr">
-              {[8, 14, 10, 20, 12, 18, 7, 16, 11, 19, 9, 13].map((h, i) => (
-                <span key={i} className={`w-[3px] rounded-full ${i < 5 ? 'bg-primary-400' : 'bg-surface-600'}`} style={{ height: h }} />
-              ))}
-            </span>
-            <span className="text-[11px] text-surface-400 tabular-nums">۰:۱۲</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ویژگی‌ها */}
-      <ul className="relative space-y-4">
-        {FEATURES.map((f) => (
-          <li key={f.title} className="flex items-start gap-3">
-            <span className="shrink-0 w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-primary-300">
-              <Icon d={f.icon} />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-surface-50">{f.title}</p>
-              <p className="text-xs text-surface-400 mt-0.5 leading-relaxed">{f.text}</p>
-            </div>
-          </li>
+function TypingBubble({ showAvatar }) {
+  return (
+    <div dir="ltr" className="flex items-end gap-2 login-msg origin-bottom-left" aria-hidden="true">
+      {showAvatar ? <BotAvatar className="w-7 h-7" /> : <span className="w-7 shrink-0" />}
+      <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-surface-800 border border-surface-700 flex items-center gap-1.5">
+        {[0, 1, 2].map((i) => (
+          <span key={i} className="w-1.5 h-1.5 rounded-full bg-surface-400 login-dot" style={{ animationDelay: `${i * 0.16}s` }} />
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
 
-/* ───────────────────────── فیلد ورودی ───────────────────────── */
+function Bubble({ m, showAvatar, editable, onEdit }) {
+  const mine = m.from === 'me';
 
-function FieldError({ id, message }) {
-  if (!message) return null;
+  if (mine) {
+    const body = (
+      <div className="relative px-4 py-2.5 rounded-2xl rounded-tr-sm bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-900/30">
+        {m.kind === 'password' ? (
+          <p dir="ltr" className="text-base tracking-[0.3em] leading-6 select-none">{m.text}</p>
+        ) : (
+          <p dir="auto" className="text-sm sm:text-[15px] leading-6 break-all">{m.text}</p>
+        )}
+        <div className="flex items-center justify-end gap-1.5 mt-0.5 select-none" dir="ltr">
+          {editable && <Icon name="pencil" className="w-3 h-3 text-white/60" />}
+          <time className="text-[10px] text-primary-100/80">{formatTime(m.at)}</time>
+          <svg
+            className={`w-4 h-4 transition-colors duration-300 ${m.seen ? 'text-white' : 'text-primary-100/60'}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d={m.seen ? PATHS.checks : PATHS.check} />
+          </svg>
+        </div>
+      </div>
+    );
+
+    return (
+      <div dir="ltr" className="flex justify-end login-msg origin-bottom-right">
+        {editable ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label="ویرایش نام کاربری"
+            className="text-start rounded-2xl rounded-tr-sm max-w-[80%] hover:brightness-110 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+          >
+            {body}
+          </button>
+        ) : (
+          <div className="max-w-[80%]">{body}</div>
+        )}
+      </div>
+    );
+  }
+
+  const tone =
+    m.tone === 'error'
+      ? 'bg-error-500/10 border-error-500/40 text-surface-50'
+      : m.tone === 'success'
+        ? 'bg-emerald-500/10 border-emerald-500/40 text-surface-50'
+        : 'bg-surface-800 border-surface-700 text-surface-50';
+
   return (
-    <p id={id} role="alert" className="mt-2 text-xs sm:text-sm text-error-500 flex items-center gap-1.5 animate-fade-in">
-      <Icon d={ICONS.alert} className="w-4 h-4 shrink-0" />
-      {message}
-    </p>
+    <div dir="ltr" className="flex items-end gap-2 login-msg origin-bottom-left">
+      {showAvatar ? <BotAvatar className="w-7 h-7" /> : <span className="w-7 shrink-0" />}
+      <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tl-sm border shadow-md ${tone}`}>
+        <p dir="rtl" className="text-sm sm:text-[15px] leading-7 flex items-start gap-2">
+          {m.tone === 'error' && <Icon name="alert" className="w-4 h-4 mt-1.5 shrink-0 text-error-500" />}
+          {m.tone === 'success' && <Icon name="check" className="w-4 h-4 mt-1.5 shrink-0 text-emerald-400" strokeWidth={3} />}
+          <span>{m.text}</span>
+        </p>
+      </div>
+    </div>
   );
 }
 
-const inputBase =
-  'w-full rounded-xl bg-surface-900/60 border text-sm sm:text-base text-surface-50 placeholder:text-surface-500 py-3.5 outline-none transition-all duration-200 ' +
-  'hover:border-surface-600 focus:bg-surface-900/90 focus:ring-4 disabled:opacity-60 disabled:cursor-not-allowed';
-
-const inputOk = 'border-surface-700 focus:border-primary-500 focus:ring-primary-500/20';
-const inputErr = 'border-error-500/70 focus:border-error-500 focus:ring-error-500/20';
+const chipClass =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium text-surface-100 border border-surface-700 bg-white/[0.04] hover:bg-white/[0.09] hover:border-primary-500/60 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500';
 
 /* ───────────────────────── صفحه ورود ───────────────────────── */
 
 export default function Login({ onAuth }) {
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [capsLock, setCapsLock] = useState(false);
-  const [shake, setShake] = useState(false);
   const navigate = useNavigate();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm({
-    resolver: yupResolver(loginSchema),
-    mode: 'onTouched',
-    defaultValues: { username: '', password: '' },
-  });
+  const [messages, setMessages] = useState([]);
+  const [typing, setTyping] = useState(false);
+  const [locked, setLocked] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState('username'); // username | password
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const [shake, setShake] = useState(false);
+  const [connected, setConnected] = useState(false);
+
+  const timers = useRef([]);
+  const idRef = useRef(0);
+  const userInputRef = useRef(null);
+  const passInputRef = useRef(null);
+  const endRef = useRef(null);
+
+  const nextId = () => ++idRef.current;
+
+  /* ───── ارسال پیام توسط ربات (با نشانگر در حال نوشتن) ───── */
+  const botSay = useCallback(
+    (text, extra = {}) =>
+      new Promise((resolve) => {
+        const delay = extra.instant ? 0 : Math.min(450 + text.length * 14, 1200);
+        setTyping(true);
+        const t = setTimeout(() => {
+          setTyping(false);
+          setMessages((list) => [
+            ...list.map((x) => (x.from === 'me' && !x.seen ? { ...x, seen: true } : x)),
+            { id: nextId(), from: 'bot', text, at: new Date(), ...extra },
+          ]);
+          resolve();
+        }, delay);
+        timers.current.push(t);
+      }),
+    []
+  );
+
+  const addMine = (text, kind) =>
+    setMessages((list) => [...list, { id: nextId(), from: 'me', text, kind, at: new Date(), seen: false }]);
+
+  /* ───── شروع گفتگو ───── */
+  useEffect(() => {
+    let alive = true;
+    setMessages([]);
+    (async () => {
+      await botSay('سلام! 👋');
+      await botSay('به چت مدرن خوش اومدی. برای ورود، نام کاربریت رو بنویس.');
+      if (alive) setLocked(false);
+    })();
+    return () => {
+      alive = false;
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      setTyping(false);
+    };
+  }, [botSay]);
+
+  /* ───── اسکرول خودکار به آخرین پیام ───── */
+  useEffect(() => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    endRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'end' });
+  }, [messages, typing]);
+
+  /* ───── فوکوس خودکار روی فیلد فعال ───── */
+  useEffect(() => {
+    if (locked) return;
+    (step === 'username' ? userInputRef : passInputRef).current?.focus();
+  }, [step, locked]);
 
   const triggerShake = () => {
     setShake(false);
@@ -162,229 +222,295 @@ export default function Login({ onAuth }) {
     setTimeout(() => setShake(false), 500);
   };
 
-  const onSubmit = async (data) => {
+  const showValidationError = (text) => {
+    triggerShake();
+    setMessages((list) => [
+      ...list.filter((x) => !x.validation),
+      { id: nextId(), from: 'bot', text, tone: 'error', validation: true, at: new Date() },
+    ]);
+  };
+
+  const clearValidationError = () => setMessages((list) => list.filter((x) => !x.validation));
+
+  /* ───── مرحله ۱: نام کاربری ───── */
+  const submitUsername = async () => {
+    const value = username.trim();
+    try {
+      await loginSchema.validateAt('username', { username: value });
+    } catch (err) {
+      showValidationError(err.message);
+      return;
+    }
+    clearValidationError();
+    setLocked(true);
+    addMine(value, 'username');
+    setStep('password');
+    await botSay(`${value} عزیز، خوشحالم که برگشتی! حالا رمز عبورت رو بنویس.`);
+    setLocked(false);
+  };
+
+  /* ───── مرحله ۲: رمز عبور و ورود ───── */
+  const submitPassword = async () => {
+    try {
+      await loginSchema.validateAt('password', { password });
+    } catch (err) {
+      showValidationError(err.message);
+      return;
+    }
+    clearValidationError();
+    setLocked(true);
     setLoading(true);
+    addMine('•'.repeat(Math.min(password.length, 12)), 'password');
+
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(data),
+        body: JSON.stringify({ username: username.trim(), password }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'خطا در ورود');
 
-      setSuccess(true);
+      setLoading(false);
+      setConnected(true);
+      await botSay(`خوش اومدی ${result.user.username}! دارم می‌برمت به چت…`, { tone: 'success' });
 
       sileo.success({
         title: 'خوش آمدی!',
         description: `سلام ${result.user.username}، به چت خوش اومدی.`,
       });
-
       onAuth(result.user, result.token);
-      setTimeout(() => navigate('/chat'), 450);
+      setTimeout(() => navigate('/chat'), 500);
     } catch (err) {
-      triggerShake();
-      sileo.error({
-        title: 'خطا',
-        description: err.message,
-      });
-    } finally {
       setLoading(false);
+      setPassword('');
+      triggerShake();
+      const text =
+        err instanceof TypeError
+          ? 'ارتباط با سرور برقرار نشد. اینترنتت رو بررسی کن و دوباره امتحان کن.'
+          : err.message;
+      await botSay(text, { tone: 'error' });
+      setLocked(false);
     }
   };
 
-  const onInvalid = () => triggerShake();
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (locked) return;
+    return step === 'username' ? submitUsername() : submitPassword();
+  };
+
+  const goBackToUsername = async () => {
+    if (locked || step === 'username') return;
+    setLocked(true);
+    setPassword('');
+    setStep('username');
+    clearValidationError();
+    await botSay('باشه! نام کاربری درستت رو بنویس.');
+    setLocked(false);
+  };
 
   const handleCaps = (e) => setCapsLock(e.getModifierState?.('CapsLock') ?? false);
 
-  const busy = loading || success;
-  const passwordField = register('password');
+  const lastMessage = messages[messages.length - 1];
+  const activeValue = step === 'username' ? username : password;
+  const canSend = !locked && activeValue.trim().length > 0;
+  const lastMineIdx = messages.reduce((acc, m, i) => (m.from === 'me' && m.kind === 'username' ? i : acc), -1);
+
+  const inputClass =
+    'flex-1 min-w-0 bg-transparent outline-none text-sm sm:text-base text-surface-50 placeholder:text-surface-500 py-2.5 disabled:opacity-60';
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      {/* انیمیشن‌های اختصاصی این صفحه */}
+    <div className="min-h-[100dvh] flex items-center justify-center sm:p-6 relative overflow-hidden">
       <style>{`
+        @keyframes login-msg-in {
+          from { opacity: 0; transform: translateY(10px) scale(.95); }
+          to   { opacity: 1; transform: none; }
+        }
+        @keyframes login-dot {
+          0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+          30% { transform: translateY(-4px); opacity: 1; }
+        }
         @keyframes login-shake {
           0%, 100% { transform: translateX(0); }
-          15%, 55% { transform: translateX(-8px); }
-          35%, 75% { transform: translateX(8px); }
+          15%, 55% { transform: translateX(-7px); }
+          35%, 75% { transform: translateX(7px); }
         }
-        @keyframes login-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
+        @keyframes login-bar {
+          0%   { transform: translateX(-120%); }
+          100% { transform: translateX(300%); }
         }
-        @keyframes login-pop {
-          0% { transform: scale(0.5); opacity: 0; }
-          70% { transform: scale(1.15); }
-          100% { transform: scale(1); opacity: 1; }
+        @keyframes login-panel-in {
+          from { opacity: 0; transform: translateY(18px) scale(.98); }
+          to   { opacity: 1; transform: none; }
         }
-        .login-shake { animation: login-shake 0.5s cubic-bezier(.36,.07,.19,.97); }
-        .login-float { animation: login-float 6s ease-in-out infinite; }
-        .login-float-delay { animation: login-float 6s ease-in-out 1.5s infinite; }
-        .login-pop { animation: login-pop 0.35s ease-out both; }
+        .login-msg   { animation: login-msg-in .24s cubic-bezier(.2,.8,.2,1) both; }
+        .login-dot   { animation: login-dot 1s ease-in-out infinite; }
+        .login-shake { animation: login-shake .5s cubic-bezier(.36,.07,.19,.97); }
+        .login-bar   { animation: login-bar 1.1s ease-in-out infinite; }
+        .login-panel { animation: login-panel-in .5s cubic-bezier(.2,.8,.2,1) both; }
+        .login-scroll { scrollbar-width: none; }
+        .login-scroll::-webkit-scrollbar { display: none; }
         @media (prefers-reduced-motion: reduce) {
-          .login-shake, .login-float, .login-float-delay, .login-pop { animation: none; }
+          .login-msg, .login-dot, .login-shake, .login-bar, .login-panel { animation: none; }
         }
       `}</style>
 
-      {/* پس‌زمینه */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-500/20 rounded-full blur-3xl animate-blob animation-delay-2000" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent-500/20 rounded-full blur-3xl animate-blob animation-delay-4000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary-400/10 to-accent-400/10 rounded-full blur-3xl animate-float" />
-      </div>
-      <div className="absolute inset-0 bg-grid-pattern opacity-40" aria-hidden="true" />
+      {/* درخشش پس‌زمینه (یک منبع نور، نه چند لکه) */}
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[820px] h-[820px] max-w-none pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(closest-side, rgba(99,102,241,0.20), rgba(168,85,247,0.08) 55%, transparent)',
+        }}
+        aria-hidden="true"
+      />
 
-      <div className="relative w-full max-w-md lg:max-w-4xl">
-        <div
-          className={`glass-morphism-strong rounded-3xl shadow-2xl border border-white/10 overflow-hidden animate-scale-in grid lg:grid-cols-2 ${
-            shake ? 'login-shake' : ''
-          }`}
+      <div className="relative w-full sm:max-w-[440px]">
+        {/* پنجره گفتگو */}
+        <main
+          className="login-panel relative flex flex-col h-[100dvh] sm:h-[680px] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[28px] overflow-hidden bg-surface-900/85 backdrop-blur-2xl sm:border border-white/10 shadow-2xl shadow-black/40"
+          aria-label="ورود به چت مدرن"
         >
-          {/* ───── پنل فرم ───── */}
-          <div className="p-7 sm:p-10 lg:p-12 flex flex-col justify-center">
-            {/* هدر */}
-            <div className="text-center lg:text-right mb-8">
-              <div className="lg:hidden inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-500/25 mb-5 animate-float">
-                <Icon d={ICONS.chat} className="w-8 h-8 text-white" strokeWidth={2} />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-surface-50 mb-2">خوش آمدی 👋</h1>
-              <p className="text-surface-400 text-sm leading-relaxed">برای ادامه، وارد حساب کاربری خود شوید</p>
-            </div>
-
-            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-5" noValidate>
-              {/* نام کاربری */}
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-surface-300 mb-2">
-                  نام کاربری
-                </label>
-                <div className="relative group">
-                  <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-surface-500 group-focus-within:text-primary-400 transition-colors">
-                    <Icon d={ICONS.user} />
-                  </span>
-                  <input
-                    {...register('username')}
-                    id="username"
-                    type="text"
-                    autoComplete="username"
-                    autoFocus
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    placeholder="مثال: ali123"
-                    disabled={busy}
-                    aria-invalid={errors.username ? 'true' : 'false'}
-                    aria-describedby={errors.username ? 'username-error' : undefined}
-                    className={`${inputBase} pr-11 pl-4 ${errors.username ? inputErr : inputOk}`}
-                  />
-                </div>
-                <FieldError id="username-error" message={errors.username?.message} />
-              </div>
-
-              {/* رمز عبور */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-surface-300 mb-2">
-                  رمز عبور
-                </label>
-                <div className="relative group">
-                  <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-surface-500 group-focus-within:text-primary-400 transition-colors">
-                    <Icon d={ICONS.lock} />
-                  </span>
-                  <input
-                    {...passwordField}
-                    onBlur={(e) => {
-                      passwordField.onBlur(e);
-                      setCapsLock(false);
-                    }}
-                    onKeyDown={handleCaps}
-                    onKeyUp={handleCaps}
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    disabled={busy}
-                    aria-invalid={errors.password ? 'true' : 'false'}
-                    aria-describedby={errors.password ? 'password-error' : capsLock ? 'caps-warning' : undefined}
-                    className={`${inputBase} pr-11 pl-12 ${errors.password ? inputErr : inputOk}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    disabled={busy}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-50 hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                    aria-label={showPassword ? 'مخفی کردن رمز' : 'نمایش رمز'}
-                    aria-pressed={showPassword}
-                  >
-                    <Icon d={showPassword ? ICONS.eyeOff : ICONS.eye} />
-                  </button>
-                </div>
-
-                {capsLock && !errors.password && (
-                  <p id="caps-warning" className="mt-2 text-xs text-amber-400 flex items-center gap-1.5 animate-fade-in">
-                    <Icon d={ICONS.alert} className="w-4 h-4 shrink-0" />
-                    Caps Lock روشن است
-                  </p>
-                )}
-                <FieldError id="password-error" message={errors.password?.message} />
-              </div>
-
-              {/* دکمه ورود */}
-              <button
-                type="submit"
-                disabled={busy}
-                className={`
-                  group relative w-full py-3.5 rounded-xl text-base font-semibold text-white cursor-pointer overflow-hidden
-                  flex items-center justify-center gap-2
-                  bg-linear-[135deg,#494cf1,#8b5cf6,#500eeb,#7415f0]
-                  bg-size-[300%_300%] bg-position-[0%_50%] hover:bg-position-[100%_50%]
-                  shadow-lg shadow-primary-600/30 hover:shadow-xl hover:shadow-primary-600/40
-                  transition-all duration-300 ease-in-out active:scale-[0.98]
-                  focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/40
-                  disabled:cursor-not-allowed ${loading ? 'opacity-80' : ''} ${success ? '!bg-emerald-500 !from-emerald-500' : ''}
-                `}
-              >
-                {success ? (
-                  <span className="login-pop flex items-center gap-2">
-                    <Icon d={ICONS.check} className="w-5 h-5" strokeWidth={3} />
-                    ورود موفق
-                  </span>
-                ) : loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    در حال ورود...
-                  </span>
-                ) : (
-                  <>
-                    ورود به چت
-                    <Icon d={ICONS.arrow} className="w-5 h-5 transition-transform duration-300 group-hover:-translate-x-1" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* جداکننده */}
-            <div className="flex items-center gap-4 my-6" role="separator">
-              <div className="flex-1 h-px bg-gradient-to-l from-surface-700 to-transparent" />
-              <span className="text-xs text-surface-500">حساب نداری؟</span>
-              <div className="flex-1 h-px bg-gradient-to-r from-surface-700 to-transparent" />
-            </div>
-
-            {/* ثبت‌نام */}
-            <Link
-              to="/register"
-              className="w-full py-3 rounded-xl text-sm sm:text-base font-medium text-surface-100 border border-surface-700 bg-white/[0.03] hover:bg-white/[0.08] hover:border-surface-600 flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-4 focus-visible:ring-primary-500/30"
-            >
-              <Icon d={ICONS.userPlus} />
-              ساخت حساب جدید
-            </Link>
+          {/* نوار پیشرفت هنگام ورود */}
+          <div className="absolute top-0 inset-x-0 h-[2px] overflow-hidden z-10" aria-hidden="true">
+            {loading && <div className="login-bar h-full w-2/5 bg-gradient-to-r from-transparent via-primary-400 to-transparent" />}
           </div>
 
-          {/* ───── پنل معرفی ───── */}
-          <ShowcasePanel />
-        </div>
+          {/* هدر */}
+          <header className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
+            <BotAvatar className="w-10 h-10" />
+            <div className="min-w-0">
+              <h1 className="text-[15px] font-bold text-surface-50 leading-tight">چت مدرن</h1>
+              <p className="text-xs text-surface-400 flex items-center gap-1.5 mt-0.5" aria-live="polite">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${typing ? 'bg-primary-400 animate-pulse' : connected ? 'bg-emerald-400' : 'bg-emerald-500'}`}
+                />
+                {typing ? 'در حال نوشتن…' : connected ? 'متصل شدی' : 'آنلاین'}
+              </p>
+            </div>
+          </header>
 
-        {/* فوتر */}
-        <p className="mt-6 text-center text-xs sm:text-sm text-surface-500">
+          {/* پیام‌ها */}
+          <div
+            role="log"
+            aria-live="polite"
+            aria-label="گفتگوی ورود"
+            className="login-scroll flex-1 overflow-y-auto px-4 py-5 space-y-2"
+          >
+            {messages.map((m, i) => {
+              const prev = messages[i - 1];
+              const showAvatar = m.from === 'bot' && (!prev || prev.from !== 'bot');
+              return (
+                <Bubble
+                  key={m.id}
+                  m={m}
+                  showAvatar={showAvatar}
+                  editable={m.kind === 'username' && i === lastMineIdx && step === 'password' && !locked}
+                  onEdit={goBackToUsername}
+                />
+              )
+            })}
+            {typing && <TypingBubble showAvatar={!lastMessage || lastMessage.from !== 'bot'} />}
+            <div ref={endRef} />
+          </div>
+
+          {/* ورودی */}
+          <form onSubmit={handleSubmit} noValidate className="px-3 pt-2 pb-3 sm:pb-4">
+            {/* میان‌برها */}
+            {!locked && (
+              <div className="flex flex-wrap gap-2 px-1 pb-2.5">
+                {step === 'username' ? (
+                  <Link to="/register" className={chipClass}>
+                    <Icon name="userPlus" className="w-4 h-4 text-primary-300" />
+                    حساب نداری؟ ثبت‌نام
+                  </Link>
+                ) : (
+                  <button type="button" onClick={goBackToUsername} className={chipClass}>
+                    <Icon name="pencil" className="w-4 h-4 text-primary-300" />
+                    تغییر نام کاربری
+                  </button>
+                )}
+              </div>
+            )}
+
+            {capsLock && step === 'password' && (
+              <p className="px-3 pb-2 text-xs text-amber-400 flex items-center gap-1.5">
+                <Icon name="alert" className="w-4 h-4" />
+                Caps Lock روشن است
+              </p>
+            )}
+
+            <div
+              className={`flex items-center gap-1 rounded-full bg-surface-800/90 border border-surface-700 ps-5 pe-1.5 py-1.5 transition-all duration-200 focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-500/15 ${shake ? 'login-shake' : ''}`}
+            >
+              {/* هر دو فیلد در DOM می‌مانند تا مدیر رمز عبور مرورگر درست کار کند */}
+              <input
+                ref={userInputRef}
+                name="username"
+                type="text"
+                dir="auto"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="نام کاربری…"
+                aria-label="نام کاربری"
+                disabled={locked && step === 'username'}
+                tabIndex={step === 'username' ? 0 : -1}
+                aria-hidden={step !== 'username'}
+                className={step === 'username' ? inputClass : 'sr-only'}
+              />
+              <input
+                ref={passInputRef}
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                dir="auto"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handleCaps}
+                onKeyUp={handleCaps}
+                onBlur={() => setCapsLock(false)}
+                autoComplete="current-password"
+                placeholder="رمز عبور…"
+                aria-label="رمز عبور"
+                disabled={locked && step === 'password'}
+                tabIndex={step === 'password' ? 0 : -1}
+                aria-hidden={step !== 'password'}
+                className={step === 'password' ? inputClass : 'sr-only'}
+              />
+
+              {step === 'password' && (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'مخفی کردن رمز' : 'نمایش رمز'}
+                  aria-pressed={showPassword}
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-50 hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                >
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} />
+                </button>
+              )}
+
+              <button
+                type="submit"
+                disabled={!canSend}
+                aria-label={step === 'username' ? 'ادامه' : 'ورود'}
+                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-105 active:scale-90 disabled:opacity-35 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                {loading ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Icon name="send" className="w-5 h-5 -scale-x-100" strokeWidth={2} />
+                )}
+              </button>
+            </div>
+          </form>
+        </main>
+
+        <p className="hidden sm:block mt-5 text-center text-xs text-surface-500">
           © {currentYear} چت مدرن اختصاصی برای — BMS
         </p>
       </div>
