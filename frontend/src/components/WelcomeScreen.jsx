@@ -71,7 +71,7 @@ export default function WelcomeScreen({ user, rooms, onSelectRoom, onCreateRoom 
           >
             {/* آواتار با انیمیشن بزرگ شدن و رینگ */}
             <div className="transition-all duration-300 group-hover:scale-110 group-hover:ring-2 group-hover:ring-primary-500/50 rounded-full">
-              <Avatar username={user?.username} size="sm" status="online" />
+              <Avatar username={user?.username} avatarIndex={user?.avatarIndex} size="sm" status="online" />
             </div>
 
             {/*  ایموجی که با هاور از بالا-راست ظاهر می‌شود */}

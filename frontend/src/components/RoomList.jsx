@@ -201,6 +201,7 @@ export default function RoomList({
                     <Avatar
                       username={u.username}
                       color={u.avatarColor}
+                      avatarIndex={u.avatarIndex}
                       size="md"
                       status={u.isOnline ? 'online' : 'offline'}
                     />
@@ -388,6 +389,7 @@ function RoomItem({
               // 👈 استفاده از کامپوننت Avatar برای چت‌های خصوصی
               <Avatar
                 username={room.dmPartnerUsername}
+                avatarIndex={room.avatarIndex}
                 color={room.dmPartnerAvatar}
                 size="sm"
                 status={partnerOnline ? 'online' : 'offline'}

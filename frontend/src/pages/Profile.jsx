@@ -390,6 +390,7 @@ export default function Profile({ onClose, currentUser }) {
               <div className="rounded-full p-[5px] bg-surface-950">
                 <Avatar
                   username={profile.username}
+                    avatarIndex={profile.avatarIndex}
                   size="xl"
                   status={isOnline ? 'online' : 'offline'}
                 />

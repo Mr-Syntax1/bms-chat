@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
         trim: true,
         maxlength: 30
     },
-    
+
     bio: { type: String, default: '', maxlength: 200 },
 
     settings: {
@@ -16,9 +16,10 @@ const userSchema = new mongoose.Schema({
         readReceipts: { type: Boolean, default: true },
     },
 
+    avatarIndex: { type: Number, default: null },
     tokensValidAfter: { type: Date, default: null },
     password: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
-});
+}, { timestamps: true });
 
 export const User = mongoose.model('User', userSchema);

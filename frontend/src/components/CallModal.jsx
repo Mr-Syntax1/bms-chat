@@ -130,7 +130,7 @@ function useSpeaking(stream, active = true) {
         }
       };
       raf = requestAnimationFrame(tick);
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      if (ctx.state === 'suspended') ctx.resume().catch(() => { });
     } catch {
       /* مرورگر پشتیبانی نمی‌کند */
     }
@@ -142,7 +142,7 @@ function useSpeaking(stream, active = true) {
       } catch {
         /* ignore */
       }
-      ctx?.close?.().catch(() => {});
+      ctx?.close?.().catch(() => { });
     };
   }, [audioTrack, active]);
 
@@ -315,9 +315,8 @@ function Avatar({ name, src, className = 'w-24 h-24 text-3xl', speaking = false 
 
   return (
     <div
-      className={`relative shrink-0 select-none rounded-full grid place-items-center overflow-hidden font-bold text-white shadow-xl ring-1 ring-white/10 transition-shadow ${
-        speaking ? 'cm-speaking' : ''
-      } ${className}`}
+      className={`relative shrink-0 select-none rounded-full grid place-items-center overflow-hidden font-bold text-white shadow-xl ring-1 ring-white/10 transition-shadow ${speaking ? 'cm-speaking' : ''
+        } ${className}`}
       style={{ background: src && !broken ? '#1f2227' : gradientOf(name) }}
       aria-hidden="true"
     >
@@ -338,7 +337,7 @@ function StreamVideo({ stream, muted = true, mirror = false, className = '' }) {
     const el = ref.current;
     if (!el) return;
     if (el.srcObject !== stream) el.srcObject = stream || null;
-    if (stream) el.play?.().catch(() => {});
+    if (stream) el.play?.().catch(() => { });
   }, [stream]);
 
   useEffect(
@@ -396,9 +395,8 @@ function ControlButton({ label, hint, onClick, variant = 'default', disabled, bu
         title={title}
         aria-label={label}
         aria-pressed={pressed}
-        className={`grid place-items-center w-12 h-12 sm:w-14 sm:h-14 rounded-full transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-white/80 active:scale-90 ${
-          disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-        } ${variants[variant]}`}
+        className={`grid place-items-center w-12 h-12 sm:w-14 sm:h-14 rounded-full transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-white/80 active:scale-90 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+          } ${variants[variant]}`}
       >
         {busy ? <Spinner /> : children}
       </button>
@@ -445,11 +443,10 @@ function Tile({
 }) {
   return (
     <div
-      className={`relative min-h-0 min-w-0 overflow-hidden rounded-3xl bg-[#16181c] transition-all duration-300 ${
-        speaking
-          ? 'ring-2 ring-emerald-400/80 shadow-[0_0_0_6px_rgba(52,211,153,0.10)]'
-          : 'ring-1 ring-white/[0.07]'
-      } ${className}`}
+      className={`relative min-h-0 min-w-0 overflow-hidden rounded-3xl bg-[#16181c] transition-all duration-300 ${speaking
+        ? 'ring-2 ring-emerald-400/80 shadow-[0_0_0_6px_rgba(52,211,153,0.10)]'
+        : 'ring-1 ring-white/[0.07]'
+        } ${className}`}
     >
       <div
         aria-hidden="true"
@@ -465,6 +462,7 @@ function Tile({
         <div className="absolute inset-0 grid place-items-center">
           <Avatar
             name={name}
+            avatarIndex={user.avatarIndex}
             src={avatarSrc}
             speaking={speaking}
             className={compact ? 'w-14 h-14 text-xl' : 'w-24 h-24 text-3xl md:w-32 md:h-32 md:text-5xl'}
@@ -553,8 +551,8 @@ function RingingScreen({
               ? 'تماس تصویری ورودی'
               : 'تماس صوتی ورودی'
             : isVideo
-            ? 'تماس تصویری'
-            : 'تماس صوتی'}
+              ? 'تماس تصویری'
+              : 'تماس صوتی'}
         </p>
       </div>
 
@@ -699,9 +697,8 @@ function MiniCall({
           onClick={onToggleMute}
           aria-label={isMuted ? 'روشن کردن میکروفون' : 'بی‌صدا کردن'}
           aria-pressed={isMuted}
-          className={`grid h-9 w-9 place-items-center rounded-full transition ${
-            isMuted ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-white/20'
-          }`}
+          className={`grid h-9 w-9 place-items-center rounded-full transition ${isMuted ? 'bg-rose-500 text-white' : 'bg-white/10 hover:bg-white/20'
+            }`}
         >
           {isMuted ? <MicOffIcon className="h-4 w-4" /> : <MicIcon className="h-4 w-4" />}
         </button>
@@ -810,7 +807,7 @@ export default function CallModal({ call, user, title }) {
       audioRef.current
         ?.play()
         .then(() => setAudioBlocked(false))
-        .catch(() => {});
+        .catch(() => { });
     };
     window.addEventListener('pointerdown', resume, { once: true });
     return () => window.removeEventListener('pointerdown', resume);
@@ -912,7 +909,7 @@ export default function CallModal({ call, user, title }) {
 
   const toggleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen?.();
-    else rootRef.current?.requestFullscreen?.().catch(() => {});
+    else rootRef.current?.requestFullscreen?.().catch(() => { });
   };
 
   if (!call) return null;
@@ -990,11 +987,10 @@ export default function CallModal({ call, user, title }) {
           dir="rtl"
           role="status"
           aria-live="polite"
-          className={`cm-drop fixed start-1/2 top-4 z-[110] flex max-w-[90vw] items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium shadow-2xl ring-1 backdrop-blur-xl ${
-            toast.tone === 'error'
-              ? 'bg-rose-600/90 text-white ring-rose-300/30'
-              : 'bg-[#1b1d22]/95 text-white ring-white/10'
-          }`}
+          className={`cm-drop fixed start-1/2 top-4 z-[110] flex max-w-[90vw] items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium shadow-2xl ring-1 backdrop-blur-xl ${toast.tone === 'error'
+            ? 'bg-rose-600/90 text-white ring-rose-300/30'
+            : 'bg-[#1b1d22]/95 text-white ring-white/10'
+            }`}
           style={{ transform: 'translateX(-50%)' }}
         >
           <PhoneIcon className="h-4 w-4 shrink-0 rotate-[135deg]" />
@@ -1216,11 +1212,10 @@ export default function CallModal({ call, user, title }) {
                     {rows.map((r) => (
                       <li
                         key={r.id}
-                        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition ${
-                          r.speaking ? 'bg-emerald-400/10' : 'hover:bg-white/5'
-                        }`}
+                        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition ${r.speaking ? 'bg-emerald-400/10' : 'hover:bg-white/5'
+                          }`}
                       >
-                        <Avatar name={r.name} src={r.avatar} speaking={r.speaking} className="w-10 h-10 text-sm" />
+                        <Avatar name={r.name} avatarIndex={r.avatarIndex} src={r.avatar} speaking={r.speaking} className="w-10 h-10 text-sm" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium">
                             {r.name}
@@ -1245,7 +1240,7 @@ export default function CallModal({ call, user, title }) {
             {audioBlocked && connected && (
               <button
                 type="button"
-                onClick={() => audioRef.current?.play().then(() => setAudioBlocked(false)).catch(() => {})}
+                onClick={() => audioRef.current?.play().then(() => setAudioBlocked(false)).catch(() => { })}
                 className="cm-rise absolute bottom-3 start-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400"
               >
                 <VolumeIcon className="h-4 w-4" />

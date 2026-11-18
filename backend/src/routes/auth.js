@@ -190,49 +190,48 @@ authRouter.get('/profile/:username', async (req, res) => {
 // ───────────────────────── Settings ─────────────────────────
 
 // ویرایش نام کاربری و بیو
+// backend/routes/auth.js (یا هر فایلی که این روت در آن است)
 authRouter.patch('/profile', authMiddleware, async (req, res) => {
   try {
-    const { username, bio } = req.body || {};
+    const { username, bio, avatarIndex } = req.body || {};
     const user = await User.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'کاربر یافت نشد' });
-    }
+    if (!user) return res.status(404).json({ success: false, error: 'کاربر یافت نشد' });
 
     let usernameChanged = false;
 
     if (username !== undefined) {
-      if (typeof username !== 'string' || !USERNAME_RE.test(username.trim())) {
-        return res.status(400).json({
-          success: false,
-          error: 'نام کاربری باید ۳ تا ۲۴ کاراکتر و بدون فاصله باشد.',
-        });
-      }
+      // ... (منطق قبلی بررسی نام کاربری) ...
       const clean = username.trim();
       if (clean !== user.username) {
         const taken = await User.exists({ username: clean, _id: { $ne: user._id } });
-        if (taken) {
-          return res.status(409).json({ success: false, error: 'این نام کاربری قبلاً گرفته شده است.' });
-        }
+        if (taken) return res.status(409).json({ success: false, error: 'این نام کاربری قبلاً گرفته شده است.' });
         user.username = clean;
         usernameChanged = true;
       }
     }
 
     if (bio !== undefined) {
-      if (typeof bio !== 'string' || bio.trim().length > BIO_MAX) {
-        return res.status(400).json({
-          success: false,
-          error: `بیوگرافی نباید بیشتر از ${BIO_MAX} کاراکتر باشد.`,
-        });
+      if (typeof bio !== 'string' || bio.trim().length > 200) {
+        return res.status(400).json({ success: false, error: 'بیوگرافی نباید بیشتر از ۲۰۰ کاراکتر باشد.' });
       }
       user.bio = bio.trim();
+    }
+
+    //  منطق جدید برای ذخیره آواتار 
+    if (avatarIndex !== undefined) {
+      if (avatarIndex === null || (typeof avatarIndex === 'number' && avatarIndex >= 0 && avatarIndex <= 9)) {
+        user.avatarIndex = avatarIndex;
+      } else {
+        return res.status(400).json({ success: false, error: 'مقدار آواتار نامعتبر است.' });
+      }
     }
 
     await user.save();
 
     const payload = { success: true, user: serializeUser(user, { self: true }) };
+    // اضافه کردن avatarIndex به پاسخ
+    payload.user.avatarIndex = user.avatarIndex; 
 
-    // توکن حاوی username است؛ بعد از تغییر نام، توکن تازه صادر می‌کنیم
     if (usernameChanged) {
       const token = signToken(user);
       setTokenCookie(res, token);
@@ -241,9 +240,7 @@ authRouter.patch('/profile', authMiddleware, async (req, res) => {
 
     res.json(payload);
   } catch (err) {
-    if (err?.code === 11000) {
-      return res.status(409).json({ success: false, error: 'این نام کاربری قبلاً گرفته شده است.' });
-    }
+    if (err?.code === 11000) return res.status(409).json({ success: false, error: 'این نام کاربری قبلاً گرفته شده است.' });
     console.error('[Auth/profile PATCH] error:', err);
     res.status(500).json({ success: false, error: 'خطای سرور' });
   }

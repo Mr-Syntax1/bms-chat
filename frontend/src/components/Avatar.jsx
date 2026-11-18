@@ -25,27 +25,35 @@ function getAvatarIndex(username) {
   return Math.abs(hash) % AVATAR_COLORS.length;
 }
 
-export default function Avatar({ username, color, size = 'md', status, className = '', speaking = false }) {
-  //  سایزها به شکل محسوسی بزرگ‌تر شدند 
+export default function Avatar({ username, avatarIndex, color, size = 'md', status, className = '', speaking = false }) {
   const sizes = {
-    xs: 'w-8 h-8',       // قبلاً 24px بود، الان 32px
-    sm: 'w-10 h-10',     // قبلاً 32px بود، الان 40px
-    md: 'w-14 h-14',     // قبلاً 40px بود، الان 56px (سایز پیش‌فرض)
-    lg: 'w-16 h-16',     // قبلاً 48px بود، الان 64px
-    xl: 'w-24 h-24',     // قبلاً 64px بود، الان 96px (عالی برای هدر پروفایل)
+    xs: 'w-8 h-8',
+    sm: 'w-10 h-10',
+    md: 'w-14 h-14',
+    lg: 'w-16 h-16',
+    xl: 'w-24 h-24',
   };
 
-  //  سایز دایره‌ی وضعیت هم متناسب با آواتار بزرگ‌تر شد 
   const statusSizes = {
-    xs: 'w-2 h-2',       // قبلاً 6px بود، الان 8px
-    sm: 'w-2.5 h-2.5',   // قبلاً 8px بود، الان 10px
-    md: 'w-3.5 h-3.5',   // قبلاً 10px بود، الان 14px
-    lg: 'w-4 h-4',       // قبلاً 12px بود، الان 16px
-    xl: 'w-5 h-5',       // قبلاً 16px بود، الان 20px
+    xs: 'w-2 h-2',
+    sm: 'w-2.5 h-2.5',
+    md: 'w-3.5 h-3.5',
+    lg: 'w-4 h-4',
+    xl: 'w-5 h-5',
   };
 
-  const colorIndex = color ? AVATAR_COLORS.indexOf(color) : getAvatarIndex(username);
-  const safeIndex = colorIndex !== -1 ? colorIndex : 5;
+  // منطق هوشمند انتخاب ایندکس 
+  let finalIndex;
+  if (avatarIndex !== undefined && avatarIndex !== null) {
+    finalIndex = avatarIndex; // اگر کاربر دستی انتخاب کرده باشد
+  } else if (color) {
+    finalIndex = AVATAR_COLORS.indexOf(color); // اگر رنگ دستی پاس داده شده باشد
+  } else {
+    finalIndex = getAvatarIndex(username); // حالت پیش‌فرض خودکار (بر اساس نام کاربری)
+  }
+
+  // اطمینان از معتبر بودن ایندکس (بین ۰ تا ۹)
+  const safeIndex = (finalIndex >= 0 && finalIndex < 10) ? finalIndex : 5;
 
   const finalColor = AVATAR_COLORS[safeIndex];
   const avatarImage = AVATAR_IMAGES[safeIndex];

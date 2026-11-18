@@ -259,7 +259,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
               className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-full"
               title={`مشاهده پروفایل ${msg.sender}`}
             >
-              <Avatar username={msg.sender} color={msg.avatarColor} size="sm" />
+              <Avatar username={msg.sender} avatarIndex={msg.avatarIndex} color={msg.avatarColor} size="sm" />
             </button>
           )}
         </div>

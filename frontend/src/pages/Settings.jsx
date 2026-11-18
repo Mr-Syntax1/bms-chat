@@ -9,29 +9,19 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const BIO_MAX = 200;
 const USERNAME_RE = /^\S{3,24}$/;
 
-/* ───────────────────────── Helpers ───────────────────────── */
-async function api(path, { method = 'GET', body } = {}) {
-    const res = await fetch(`${API_URL}${path}`, {
-        method,
-        credentials: 'include',
-        headers: body ? { 'Content-Type': 'application/json' } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-    });
-    let data = null;
-    try {
-        data = await res.json();
-    } catch {
-        /* بدنه‌ی خالی */
-    }
-    if (!res.ok || data?.success === false) {
-        throw new Error(data?.error || 'خطا در ارتباط با سرور');
-    }
-    return data;
-}
+const AVATAR_IMAGES = [
+    '/avatars/red.png',
+    '/avatars/orange.png',
+    '/avatars/yellow.png',
+    '/avatars/green.png',
+    '/avatars/teal.png',
+    '/avatars/blue.png',
+    '/avatars/indigo.png',
+    '/avatars/purple.png',
+    '/avatars/pink.png',
+    '/avatars/slate.png',
+];
 
-// ----------------------------
-// هماهنگ‌سازی رنگ آواتار و بنر (جایگزین هوشمند hashHue)
-// ----------------------------
 const AVATAR_COLORS = [
     '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
     '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b',
@@ -69,6 +59,25 @@ function hexToHSL(H) {
     return { h, s, l };
 }
 
+async function api(path, { method = 'GET', body } = {}) {
+    const res = await fetch(`${API_URL}${path}`, {
+        method,
+        credentials: 'include',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+    });
+    let data = null;
+    try {
+        data = await res.json();
+    } catch {
+        // بدنه خالی
+    }
+    if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || 'خطا در ارتباط با سرور');
+    }
+    return data;
+}
+
 const passwordScore = (pw) => {
     let s = 0;
     if (pw.length >= 8) s += 1;
@@ -78,6 +87,7 @@ const passwordScore = (pw) => {
     if (/[^A-Za-z0-9]/.test(pw)) s += 1;
     return Math.min(s, 4);
 };
+
 const STRENGTH = [
     { label: 'خیلی ضعیف', color: 'bg-red-500' },
     { label: 'ضعیف', color: 'bg-orange-500' },
@@ -86,7 +96,6 @@ const STRENGTH = [
     { label: 'عالی', color: 'bg-emerald-500' },
 ];
 
-/* ───────────────────────── Icons ───────────────────────── */
 const PATHS = {
     close: 'M6 18L18 6M6 6l12 12',
     arrowRight: 'M10 5l-7 7m0 0l7 7m-7-7h18',
@@ -124,7 +133,6 @@ function Spinner({ className = 'w-4 h-4' }) {
     );
 }
 
-/* ───────────────────────── Building blocks ───────────────────────── */
 function IconButton({ icon, label, onClick, className = '' }) {
     return (
         <button
@@ -290,7 +298,6 @@ function Button({ variant = 'primary', loading, className = '', children, ...pro
     );
 }
 
-/* ───────────────────────── Confirm modal ───────────────────────── */
 function Modal({ open, onClose, title, description, icon = 'warning', tone = 'danger', children }) {
     useEffect(() => {
         if (!open) return undefined;
@@ -328,37 +335,45 @@ function Modal({ open, onClose, title, description, icon = 'warning', tone = 'da
     );
 }
 
-/* ───────────────────────── Main ───────────────────────── */
 export default function Settings({ currentUser, onLogout, onUserUpdate }) {
     const navigate = useNavigate();
     const user = currentUser;
 
-    /* ── پروفایل ── */
+    const defaultAvatarIndex = getAvatarIndex(user?.username);
+    
     const [username, setUsername] = useState(user?.username || '');
     const [bio, setBio] = useState(user?.bio || '');
+    const [selectedAvatar, setSelectedAvatar] = useState(user?.avatarIndex ?? defaultAvatarIndex);
     const [savingProfile, setSavingProfile] = useState(false);
     const [profileError, setProfileError] = useState('');
 
     const profileDirty = username.trim() !== (user?.username || '') || bio.trim() !== (user?.bio || '');
     const usernameInvalid = username.trim() !== '' && !USERNAME_RE.test(username.trim());
+    const hasChanges = profileDirty || selectedAvatar !== (user?.avatarIndex ?? defaultAvatarIndex);
 
-    // همگام‌سازی با تغییرات بیرونی user
     useEffect(() => {
         setUsername(user?.username || '');
         setBio(user?.bio || '');
-    }, [user?.username, user?.bio]);
+        setSelectedAvatar(user?.avatarIndex ?? getAvatarIndex(user?.username));
+    }, [user?.username, user?.bio, user?.avatarIndex]);
 
     const saveProfile = async () => {
-        if (!profileDirty || usernameInvalid || savingProfile) return;
+        if (!hasChanges || usernameInvalid || savingProfile) return;
         setSavingProfile(true);
         setProfileError('');
         try {
             const data = await api('/auth/profile', {
                 method: 'PATCH',
-                body: { username: username.trim(), bio: bio.trim() },
+                body: { 
+                    username: username.trim(), 
+                    bio: bio.trim(),
+                    avatarIndex: selectedAvatar
+                },
             });
-            // اگر نام کاربری عوض شده باشد سرور توکن تازه هم برمی‌گرداند
-            onUserUpdate?.(data.user || { ...user, username: username.trim(), bio: bio.trim() }, data.token);
+            onUserUpdate?.(
+                { ...data.user, avatarIndex: selectedAvatar }, 
+                data.token
+            );
             sileo.success({ title: 'ذخیره شد', description: 'پروفایل شما به‌روزرسانی شد.', duration: 2000 });
         } catch (err) {
             setProfileError(err.message);
@@ -371,10 +386,10 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
     const resetProfile = () => {
         setUsername(user?.username || '');
         setBio(user?.bio || '');
+        setSelectedAvatar(user?.avatarIndex ?? getAvatarIndex(user?.username));
         setProfileError('');
     };
 
-    /* ── تنظیمات سرور (حریم خصوصی) ── */
     const [privacy, setPrivacy] = useState({
         onlineStatus: user?.settings?.onlineStatus ?? true,
         readReceipts: user?.settings?.readReceipts ?? true,
@@ -383,21 +398,20 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
 
     const changePrivacy = async (key, value) => {
         const prev = privacy[key];
-        setPrivacy((p) => ({ ...p, [key]: value })); // optimistic
+        setPrivacy((p) => ({ ...p, [key]: value }));
         setPendingKey(key);
         try {
             await api('/auth/settings', { method: 'PATCH', body: { [key]: value } });
             onUserUpdate?.({ ...user, settings: { ...(user?.settings || {}), ...privacy, [key]: value } });
             sileo.success({ title: 'ذخیره شد', description: 'تنظیمات به‌روزرسانی شد.', duration: 1800 });
         } catch (err) {
-            setPrivacy((p) => ({ ...p, [key]: prev })); // rollback
+            setPrivacy((p) => ({ ...p, [key]: prev }));
             sileo.error({ title: 'ذخیره نشد', description: err.message });
         } finally {
             setPendingKey(null);
         }
     };
 
-    /* ── ترجیحات محلی ── */
     const [prefs, setPrefs] = useState(loadUiPrefs);
     const [notifPerm, setNotifPerm] = useState(
         typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
@@ -431,7 +445,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
         }
     };
 
-    /* ── رمز عبور ── */
     const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
     const [savingPw, setSavingPw] = useState(false);
     const score = passwordScore(pw.next);
@@ -446,7 +459,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                 method: 'POST',
                 body: { currentPassword: pw.current, newPassword: pw.next },
             });
-            // توکن تازه برای دستگاه فعلی (سایر دستگاه‌ها خارج می‌شوند)
             if (data.token) onUserUpdate?.(user, data.token);
             setPw({ current: '', next: '', confirm: '' });
             sileo.success({ title: 'رمز تغییر کرد', description: 'رمز عبور شما با موفقیت عوض شد.' });
@@ -457,7 +469,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
         }
     };
 
-    /* ── نشست‌ها / خروج ── */
     const [loggingOut, setLoggingOut] = useState(false);
     const [logoutAllOpen, setLogoutAllOpen] = useState(false);
     const [loggingOutAll, setLoggingOutAll] = useState(false);
@@ -488,11 +499,11 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
         }
     };
 
-    /* ── حذف حساب ── */
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleteName, setDeleteName] = useState('');
     const [deletePw, setDeletePw] = useState('');
     const [deleting, setDeleting] = useState(false);
+    
     const closeDelete = useCallback(() => {
         setDeleteOpen(false);
         setDeleteName('');
@@ -514,7 +525,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
         }
     };
 
-    /* ── کپی شناسه ── */
     const [idCopied, setIdCopied] = useState(false);
     const copyId = async () => {
         try {
@@ -527,11 +537,9 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
         }
     };
 
-    /* ── بنر ── */
-    // 👇 منطق جدید هماهنگ با رنگ آواتار 👇
     const banner = useMemo(() => {
-        const colorIndex = getAvatarIndex(user?.username);
-        const baseHex = AVATAR_COLORS[colorIndex];
+        const currentIndex = user?.avatarIndex !== undefined && user?.avatarIndex !== null ? user.avatarIndex : getAvatarIndex(user?.username);
+        const baseHex = AVATAR_COLORS[currentIndex];
         const { h, s, l } = hexToHSL(baseHex);
 
         return {
@@ -541,7 +549,7 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                 linear-gradient(135deg, hsl(${h}, ${s}%, ${Math.max(l - 30, 15)}%), hsl(${h}, ${s}%, ${Math.max(l - 45, 10)}%))
             `,
         };
-    }, [user?.username]);
+    }, [user?.username, user?.avatarIndex]);
 
     const bioRef = useRef(null);
     useEffect(() => {
@@ -563,11 +571,9 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
         );
     }
 
-    /* ───────────────────────── رندر ───────────────────────── */
     return (
         <div className="h-dvh w-full flex flex-col bg-surface-950/70 backdrop-blur-sm overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-                {/* ── Banner ── */}
                 <div className="relative h-36 sm:h-44" style={{ background: banner.background }}>
                     <div
                         className="absolute inset-0 opacity-[.12] mix-blend-overlay pointer-events-none"
@@ -599,12 +605,11 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                 </div>
 
                 <div className="mx-auto w-full max-w-3xl">
-                    {/* ── Identity ── */}
                     <div className="relative z-10 px-4 sm:px-6">
                         <div className="flex items-end gap-3 sm:gap-4 -mt-12 sm:-mt-14">
                             <div className="relative shrink-0">
                                 <div className="rounded-full p-[5px] bg-surface-950">
-                                    <Avatar username={user.username} size="xl" status="online" />
+                                    <Avatar username={user.username} avatarIndex={user.avatarIndex} size="xl" status="online" />
                                 </div>
                             </div>
                             <div className="pb-1 flex-1 min-w-0">
@@ -625,9 +630,7 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                         </div>
                     </div>
 
-                    {/* ── Body ── */}
                     <div className="px-4 sm:px-6 mt-6 pb-[max(2rem,env(safe-area-inset-bottom))] space-y-3 sm:space-y-4 animate-slide-up">
-                        {/* پروفایل */}
                         <Section icon="user" title="ویرایش پروفایل" description="نام کاربری و بیوگرافی که دیگران می‌بینند">
                             <Field
                                 label="نام کاربری"
@@ -660,7 +663,7 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
 
                             <div
                                 className={`flex flex-col-reverse sm:flex-row gap-2 sm:justify-end transition-all duration-300 overflow-hidden
-                  ${profileDirty ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}
+                  ${hasChanges ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}
                             >
                                 <Button variant="ghost" onClick={resetProfile} type="button">
                                     انصراف
@@ -676,7 +679,49 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                             </div>
                         </Section>
 
-                        {/* حریم خصوصی */}
+                        <Section icon="sparkles" title="آواتار" description="شخصی‌سازی تصویر پروفایل خود">
+                            <div className="grid grid-cols-5 sm:grid-cols-10 gap-3 sm:gap-4">
+                                {AVATAR_IMAGES.map((img, index) => {
+                                    const isSelected = selectedAvatar === index;
+                                    return (
+                                        <button
+                                            key={index}
+                                            type="button"
+                                            onClick={() => setSelectedAvatar(index)}
+                                            className={`relative group rounded-full p-1 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                                                isSelected
+                                                    ? 'ring-2 ring-primary-500 scale-110 shadow-lg shadow-primary-500/30'
+                                                    : 'ring-1 ring-white/10 hover:ring-white/40 hover:scale-105'
+                                            }`}
+                                            aria-label={`انتخاب آواتار شماره ${index + 1}`}
+                                        >
+                                            <img 
+                                                src={img} 
+                                                alt={`Avatar ${index}`} 
+                                                className="w-full h-full rounded-full object-cover"
+                                            />
+                                            {isSelected && (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full backdrop-blur-[1px]">
+                                                    <Icon name="check" className="w-5 h-5 text-white" strokeWidth={3} />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            
+                            {selectedAvatar !== defaultAvatarIndex && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedAvatar(defaultAvatarIndex)}
+                                    className="mt-4 text-xs text-surface-400 hover:text-primary-400 transition-colors flex items-center gap-1.5"
+                                >
+                                    <Icon name="sparkles" className="w-3.5 h-3.5" />
+                                    بازگشت به آواتار پیشنهادی خودکار
+                                </button>
+                            )}
+                        </Section>
+
                         <Section icon="eye" title="حریم خصوصی" description="کنترل کنید دیگران چه چیزی از شما می‌بینند">
                             <SettingItem icon="eye" label="وضعیت آنلاین" description="نمایش آنلاین بودن شما به سایر کاربران">
                                 <Toggle
@@ -696,7 +741,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                             </SettingItem>
                         </Section>
 
-                        {/* اعلان‌ها */}
                         <Section icon="bell" title="اعلان‌ها" description="روی همین دستگاه ذخیره می‌شود">
                             <SettingItem
                                 icon="bell"
@@ -722,7 +766,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                             </SettingItem>
                         </Section>
 
-                        {/* ظاهر */}
                         <Section icon="sparkles" title="ظاهر" description="روی همین دستگاه ذخیره می‌شود">
                             <SettingItem icon="sparkles" label="پس‌زمینه متحرک" description="برای عملکرد بهتر در گوشی‌های ضعیف خاموش کنید">
                                 <Toggle
@@ -745,7 +788,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                             </SettingItem>
                         </Section>
 
-                        {/* امنیت */}
                         <Section icon="lock" title="امنیت" description="رمز عبور و نشست‌های فعال">
                             <div className="rounded-xl bg-surface-950/40 ring-1 ring-white/[0.04] p-3 sm:p-4 space-y-3">
                                 <p className="text-sm font-medium text-surface-50">تغییر رمز عبور</p>
@@ -783,7 +825,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                             </SettingItem>
                         </Section>
 
-                        {/* حساب */}
                         <Section icon="shield" title="حساب کاربری">
                             {user.id && (
                                 <button
@@ -830,7 +871,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                             </button>
                         </Section>
 
-                        {/* منطقه خطر */}
                         <section className="rounded-2xl bg-red-500/[0.04] ring-1 ring-red-500/20 p-4 sm:p-5">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div className="flex items-start gap-3 min-w-0">
@@ -853,7 +893,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                 </div>
             </div>
 
-            {/* ── مودال خروج از همه ── */}
             <Modal
                 open={logoutAllOpen}
                 onClose={() => setLogoutAllOpen(false)}
@@ -868,7 +907,6 @@ export default function Settings({ currentUser, onLogout, onUserUpdate }) {
                 </div>
             </Modal>
 
-            {/* ── مودال حذف حساب ── */}
             <Modal
                 open={deleteOpen}
                 onClose={closeDelete}

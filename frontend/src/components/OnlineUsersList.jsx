@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import Avatar from './Avatar';
 
-export default function OnlineUsersList({ 
-  users, 
-  currentUser, 
-  onClose, 
-  onOpenDM, 
+export default function OnlineUsersList({
+  users,
+  currentUser,
+  onClose,
+  onOpenDM,
   onOpenProfile,
   usersSpeaking = [],
   usersMuted = [],
@@ -70,12 +70,13 @@ export default function OnlineUsersList({
 
               <Avatar
                 username={u.username}
+                avatarIndex={u.avatarIndex}
                 color={u.avatarColor}
                 size="md"
                 status="online"
                 speaking={usersSpeaking.includes(u.id)}
               />
-              
+
               <div className="flex-1 min-w-0 flex flex-col">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-surface-50 truncate">
@@ -95,7 +96,7 @@ export default function OnlineUsersList({
                   )}
                 </span>
               </div>
-              
+
               {/* 👈 اکشن‌ها (پیام خصوصی و پروفایل) */}
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {/* دکمه پیام خصوصی */}
@@ -110,7 +111,7 @@ export default function OnlineUsersList({
                     </svg>
                   </button>
                 )}
-                
+
                 {/* 👈 دکمه پروفایل (جدید) */}
                 <button
                   onClick={() => onOpenProfile && onOpenProfile(u.username)}
