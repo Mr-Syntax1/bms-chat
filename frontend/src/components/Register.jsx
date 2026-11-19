@@ -25,10 +25,8 @@ const registerSchema = yup.object({
 });
 
 const currentYear = new Date().getFullYear();
-
 const formatTime = (d) => d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
 
-/* قدرت رمز عبور: ۰ تا ۴ */
 function passwordScore(pw) {
   if (!pw) return 0;
   let s = 0;
@@ -46,8 +44,6 @@ const STRENGTH = [
   { label: 'خوب', bar: 'bg-primary-400', text: 'text-primary-300' },
   { label: 'قوی', bar: 'bg-emerald-400', text: 'text-emerald-400' },
 ];
-
-/* ───────────────────────── آیکن‌ها ───────────────────────── */
 
 const PATHS = {
   chat: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
@@ -67,9 +63,7 @@ const Icon = ({ name, className = 'w-5 h-5', strokeWidth = 1.8 }) => (
   </svg>
 );
 
-/* ───────────────────────── اجزای گفتگو ───────────────────────── */
-
-// 👇 تغییر ۱: استفاده از تصویر pwa-192x192.png به جای آیکون 👇
+// تغییر ۱: استفاده از تصویر pwa-192x192.png به جای آیکون
 function BotAvatar({ className = 'w-8 h-8' }) {
   return (
     <img
@@ -84,7 +78,7 @@ function BotAvatar({ className = 'w-8 h-8' }) {
 function TypingBubble({ showAvatar }) {
   return (
     <div dir="ltr" className="flex items-end gap-2 login-msg origin-bottom-left" aria-hidden="true">
-      {showAvatar ? <BotAvatar className="w-7 h-7" /> : <span className="w-7 shrink-0" />}
+      {showAvatar ? <BotAvatar className="w-7 h-7 md:w-8 md:h-8" /> : <span className="w-7 md:w-8 shrink-0" />}
       <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-surface-800 border border-surface-700 flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
           <span key={i} className="w-1.5 h-1.5 rounded-full bg-surface-400 login-dot" style={{ animationDelay: `${i * 0.16}s` }} />
@@ -99,17 +93,17 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
 
   if (mine) {
     const body = (
-      <div className="relative px-4 py-2.5 rounded-2xl rounded-tr-sm bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-900/30">
+      <div className="relative px-4 py-2.5 md:px-5 md:py-3 rounded-2xl rounded-tr-sm bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-900/30">
         {m.kind === 'password' ? (
-          <p dir="ltr" className="text-base tracking-[0.3em] leading-6 select-none">{m.text}</p>
+          <p dir="ltr" className="text-base md:text-lg tracking-[0.3em] leading-6 select-none">{m.text}</p>
         ) : (
-          <p dir="auto" className="text-sm sm:text-[15px] leading-6 break-all">{m.text}</p>
+          <p dir="auto" className="text-sm md:text-[15px] leading-6 break-all">{m.text}</p>
         )}
         <div className="flex items-center justify-end gap-1.5 mt-0.5 select-none" dir="ltr">
-          {editable && <Icon name="pencil" className="w-3 h-3 text-white/60" />}
-          <time className="text-[10px] text-primary-100/80">{formatTime(m.at)}</time>
+          {editable && <Icon name="pencil" className="w-3 h-3 md:w-3.5 md:h-3.5 text-white/60" />}
+          <time className="text-[10px] md:text-xs text-primary-100/80">{formatTime(m.at)}</time>
           <svg
-            className={`w-4 h-4 transition-colors duration-300 ${m.seen ? 'text-white' : 'text-primary-100/60'}`}
+            className={`w-4 h-4 md:w-5 md:h-5 transition-colors duration-300 ${m.seen ? 'text-white' : 'text-primary-100/60'}`}
             fill="none"
             stroke="currentColor"
             strokeWidth={2.5}
@@ -129,12 +123,12 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
             type="button"
             onClick={onEdit}
             aria-label={m.field === 'username' ? 'ویرایش نام کاربری' : 'ویرایش رمز عبور'}
-            className="text-start rounded-2xl rounded-tr-sm max-w-[80%] hover:brightness-110 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 cursor-pointer"
+            className="text-start rounded-2xl rounded-tr-sm max-w-[85%] md:max-w-[75%] hover:brightness-110 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 cursor-pointer"
           >
             {body}
           </button>
         ) : (
-          <div className="max-w-[80%]">{body}</div>
+          <div className="max-w-[85%] md:max-w-[75%]">{body}</div>
         )}
       </div>
     );
@@ -149,9 +143,9 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
 
   return (
     <div dir="ltr" className="flex items-end gap-2 login-msg origin-bottom-left">
-      {showAvatar ? <BotAvatar className="w-7 h-7" /> : <span className="w-7 shrink-0" />}
-      <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tl-sm border shadow-md ${tone}`}>
-        <p dir="rtl" className="text-sm sm:text-[15px] leading-7 flex items-start gap-2">
+      {showAvatar ? <BotAvatar className="w-7 h-7 md:w-8 md:h-8" /> : <span className="w-7 md:w-8 shrink-0" />}
+      <div className={`max-w-[85%] md:max-w-[75%] px-4 py-2.5 md:px-5 md:py-3 rounded-2xl rounded-tl-sm border shadow-md ${tone}`}>
+        <p dir="rtl" className="text-sm md:text-[15px] leading-7 flex items-start gap-2">
           {m.tone === 'error' && <Icon name="alert" className="w-4 h-4 mt-1.5 shrink-0 text-error-500" />}
           {m.tone === 'success' && <Icon name="check" className="w-4 h-4 mt-1.5 shrink-0 text-emerald-400" strokeWidth={3} />}
           <span>{m.text}</span>
@@ -162,9 +156,7 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
 }
 
 const chipClass =
-  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium text-surface-100 border border-surface-700 bg-white/[0.04] hover:bg-white/[0.09] hover:border-primary-500/60 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer';
-
-/* ───────────────────────── صفحه ثبت‌نام ───────────────────────── */
+  'inline-flex items-center gap-1.5 px-3.5 py-2 md:px-4 md:py-2.5 rounded-full text-xs md:text-sm font-medium text-surface-100 border border-surface-700 bg-white/[0.04] hover:bg-white/[0.09] hover:border-primary-500/60 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer';
 
 export default function Register({ onAuth }) {
   const navigate = useNavigate();
@@ -173,7 +165,7 @@ export default function Register({ onAuth }) {
   const [typing, setTyping] = useState(false);
   const [locked, setLocked] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState('username'); // username | password | confirm
+  const [step, setStep] = useState('username');
   const [values, setValues] = useState({ username: '', password: '', confirm: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
@@ -188,7 +180,6 @@ export default function Register({ onAuth }) {
   const nextId = () => ++idRef.current;
   const setValue = (key, v) => setValues((s) => ({ ...s, [key]: v }));
 
-  /* ───── ارسال پیام توسط ربات ───── */
   const botSay = useCallback(
     (text, extra = {}) =>
       new Promise((resolve) => {
@@ -210,12 +201,11 @@ export default function Register({ onAuth }) {
   const addMine = (text, kind, field) =>
     setMessages((list) => [...list, { id: nextId(), from: 'me', text, kind, field, at: new Date(), seen: false }]);
 
-  /* ───── شروع گفتگو ───── */
   useEffect(() => {
     let alive = true;
     setMessages([]);
     (async () => {
-      await botSay('سلام! 👋');
+      await botSay('سلام!');
       await botSay('بیا برات یه حساب بسازیم. اول یه نام کاربری انتخاب کن.');
       if (alive) setLocked(false);
     })();
@@ -263,7 +253,6 @@ export default function Register({ onAuth }) {
     }
   };
 
-  /* ───── مرحله ۱: نام کاربری ───── */
   const submitUsername = async () => {
     const name = values.username.trim();
     if (!(await validate('username', { username: name }))) return;
@@ -275,7 +264,6 @@ export default function Register({ onAuth }) {
     setLocked(false);
   };
 
-  /* ───── مرحله ۲: رمز عبور ───── */
   const submitPassword = async () => {
     if (!(await validate('password', { password: values.password }))) return;
     clearValidationError();
@@ -286,7 +274,6 @@ export default function Register({ onAuth }) {
     setLocked(false);
   };
 
-  /* ───── مرحله ۳: تکرار رمز و ثبت‌نام ───── */
   const submitConfirm = async () => {
     const ok = await validate('confirmPassword', {
       password: values.password,
@@ -343,7 +330,6 @@ export default function Register({ onAuth }) {
     return submitConfirm();
   };
 
-  /* ───── بازگشت به مرحله قبل ───── */
   const goBackTo = async (target) => {
     if (locked || target === step) return;
     setLocked(true);
@@ -369,9 +355,9 @@ export default function Register({ onAuth }) {
   const score = step === 'password' ? passwordScore(values.password) : 0;
   const strength = STRENGTH[score];
 
-  // 👇 تغییر ۳: اضافه شدن placeholder:text-right به کلاس اینپوت 👇
+  // تغییر ۳: اضافه شدن placeholder:text-right به کلاس اینپوت
   const inputClass =
-    'flex-1 min-w-0 bg-transparent outline-none text-sm sm:text-base text-surface-50 placeholder:text-surface-500 placeholder:text-right py-2.5 disabled:opacity-60';
+    'flex-1 min-w-0 bg-transparent outline-none text-sm md:text-base text-surface-50 placeholder:text-surface-500 placeholder:text-right py-3 md:py-3.5 disabled:opacity-60';
 
   const fields = [
     { key: 'username', placeholder: 'نام کاربری…', label: 'نام کاربری', type: 'text', auto: 'username' },
@@ -382,7 +368,7 @@ export default function Register({ onAuth }) {
   const stepIndex = { username: 0, password: 1, confirm: 2 }[step];
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center sm:p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden">
       <style>{`
         @keyframes login-msg-in {
           from { opacity: 0; transform: translateY(10px) scale(.95); }
@@ -410,16 +396,16 @@ export default function Register({ onAuth }) {
         .login-shake { animation: login-shake .5s cubic-bezier(.36,.07,.19,.97); }
         .login-bar   { animation: login-bar 1.1s ease-in-out infinite; }
         .login-panel { animation: login-panel-in .5s cubic-bezier(.2,.8,.2,1) both; }
-        .login-scroll { scrollbar-width: none; }
-        .login-scroll::-webkit-scrollbar { display: none; }
+        .login-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent; }
+        .login-scroll::-webkit-scrollbar { width: 6px; }
+        .login-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; }
         @media (prefers-reduced-motion: reduce) {
-          .login-msg, .login-dot, .login-shake, .login-bar, .login-panel { animation: none; }
+          .login-msg, .login-dot, .login-shake, .login-bar, .login-panel { animation: none !important; }
         }
       `}</style>
 
-      {/* درخشش پس‌زمینه */}
       <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[820px] h-[820px] max-w-none pointer-events-none"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] sm:w-[820px] sm:h-[820px] md:w-[1000px] md:h-[1000px] lg:w-[1200px] lg:h-[1200px] max-w-none pointer-events-none transition-all duration-700"
         style={{
           background:
             'radial-gradient(closest-side, rgba(99,102,241,0.20), rgba(168,85,247,0.08) 55%, transparent)',
@@ -427,12 +413,11 @@ export default function Register({ onAuth }) {
         aria-hidden="true"
       />
 
-      <div className="relative w-full sm:max-w-[440px]">
+      <div className="relative w-full sm:max-w-md md:max-w-xl lg:max-w-2xl transition-all duration-300">
         <main
-          className="login-panel relative flex flex-col h-[100dvh] sm:h-[680px] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[28px] overflow-hidden bg-surface-900/85 backdrop-blur-2xl sm:border border-white/10 shadow-2xl shadow-black/40"
+          className="login-panel relative flex flex-col h-[85vh] sm:h-[600px] md:h-[650px] lg:h-[700px] sm:rounded-[28px] md:rounded-[36px] overflow-hidden bg-surface-900/85 backdrop-blur-2xl sm:border border-white/10 shadow-2xl shadow-black/40"
           aria-label="ثبت‌نام در چت مدرن"
         >
-          {/* نوار پیشرفت: هنگام ثبت‌نام متحرک، وگرنه نشانگر مرحله */}
           <div className="absolute top-0 inset-x-0 h-[2px] overflow-hidden z-10" aria-hidden="true">
             {loading ? (
               <div className="login-bar h-full w-2/5 bg-gradient-to-r from-transparent via-primary-400 to-transparent" />
@@ -444,26 +429,24 @@ export default function Register({ onAuth }) {
             )}
           </div>
 
-          {/* هدر */}
-          <header className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
-            <BotAvatar className="w-10 h-10" />
+          <header className="flex items-center gap-4 px-6 py-5 md:px-8 md:py-6 border-b border-white/5">
+            <BotAvatar className="w-10 h-10 md:w-12 md:h-12" />
             <div className="min-w-0 flex-1">
-              <h1 className="text-[15px] font-bold text-surface-50 leading-tight">ساخت حساب جدید</h1>
-              <p className="text-xs text-surface-400 flex items-center gap-1.5 mt-0.5" aria-live="polite">
+              <h1 className="text-base md:text-lg font-bold text-surface-50 leading-tight">ساخت حساب جدید</h1>
+              <p className="text-xs md:text-sm text-surface-400 flex items-center gap-1.5 mt-1" aria-live="polite">
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${typing ? 'bg-primary-400 animate-pulse' : 'bg-emerald-500'}`}
+                  className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${typing ? 'bg-primary-400 animate-pulse' : 'bg-emerald-500'}`}
                 />
                 {typing ? 'در حال نوشتن…' : connected ? 'حسابت آماده است' : `مرحله ${['اول', 'دوم', 'سوم'][stepIndex]} از ۳`}
               </p>
             </div>
           </header>
 
-          {/* پیام‌ها */}
           <div
             role="log"
             aria-live="polite"
             aria-label="گفتگوی ثبت‌نام"
-            className="login-scroll flex-1 overflow-y-auto px-4 py-5 space-y-2"
+            className="login-scroll flex-1 overflow-y-auto px-5 py-6 md:px-8 md:py-8 space-y-3 md:space-y-4"
           >
             {messages.map((m, i) => {
               const prev = messages[i - 1];
@@ -488,37 +471,32 @@ export default function Register({ onAuth }) {
             <div ref={endRef} />
           </div>
 
-          {/* ورودی */}
-          <form onSubmit={handleSubmit} noValidate className="px-3 pt-2 pb-3 sm:pb-4">
-            {/* میان‌برها */}
+          <form onSubmit={handleSubmit} noValidate className="px-5 pt-4 pb-5 md:px-8 md:pt-6 md:pb-6">
             {!locked && (
-              <div className="flex flex-wrap gap-2 px-1 pb-2.5">
+              <div className="flex flex-wrap gap-2 px-1 pb-3 md:pb-4">
                 {step === 'username' && (
                   <Link to="/login" className={chipClass}>
-                    <Icon name="login" className="w-4 h-4 text-primary-300" />
+                    <Icon name="login" className="w-4 h-4 md:w-5 md:h-5 text-primary-300" />
                     قبلاً ثبت‌نام کردی؟ ورود
                   </Link>
                 )}
                 {step !== 'username' && (
-                  // 👇 تغییر ۲: اضافه شدن cursor-pointer 👇
                   <button type="button" onClick={() => goBackTo('username')} className={`${chipClass} cursor-pointer`}>
-                    <Icon name="pencil" className="w-4 h-4 text-primary-300" />
+                    <Icon name="pencil" className="w-4 h-4 md:w-5 md:h-5 text-primary-300" />
                     تغییر نام کاربری
                   </button>
                 )}
                 {step === 'confirm' && (
-                  // 👇 تغییر ۲: اضافه شدن cursor-pointer 👇
                   <button type="button" onClick={() => goBackTo('password')} className={`${chipClass} cursor-pointer`}>
-                    <Icon name="pencil" className="w-4 h-4 text-primary-300" />
+                    <Icon name="pencil" className="w-4 h-4 md:w-5 md:h-5 text-primary-300" />
                     تغییر رمز عبور
                   </button>
                 )}
               </div>
             )}
 
-            {/* قدرت رمز عبور */}
             {step === 'password' && strength && (
-              <div className="flex items-center gap-3 px-3 pb-2.5" aria-live="polite">
+              <div className="flex items-center gap-3 px-3 pb-2.5 md:pb-3" aria-live="polite">
                 <div className="flex-1 flex gap-1" dir="rtl" aria-hidden="true">
                   {[1, 2, 3, 4].map((n) => (
                     <span
@@ -532,16 +510,15 @@ export default function Register({ onAuth }) {
             )}
 
             {capsLock && isPasswordStep && (
-              <p className="px-3 pb-2 text-xs text-amber-400 flex items-center gap-1.5">
+              <p className="px-1 pb-2 text-xs md:text-sm text-amber-400 flex items-center gap-1.5">
                 <Icon name="alert" className="w-4 h-4" />
                 Caps Lock روشن است
               </p>
             )}
 
             <div
-              className={`flex items-center gap-1 rounded-full bg-surface-800/90 border border-surface-700 ps-5 pe-1.5 py-1.5 transition-all duration-200 focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-500/15 ${shake ? 'login-shake' : ''}`}
+              className={`flex items-center gap-1 rounded-full bg-surface-800/90 border border-surface-700 ps-5 pe-1.5 py-1.5 md:py-2 transition-all duration-200 focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-500/15 ${shake ? 'login-shake' : ''}`}
             >
-              {/* هر سه فیلد در DOM می‌مانند تا مدیر رمز عبور مرورگر درست کار کند */}
               {fields.map((f) => {
                 const active = step === f.key;
                 return (
@@ -570,38 +547,36 @@ export default function Register({ onAuth }) {
               })}
 
               {isPasswordStep && (
-                // 👇 تغییر ۲: اضافه شدن cursor-pointer 👇
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'مخفی کردن رمز' : 'نمایش رمز'}
                   aria-pressed={showPassword}
-                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-50 hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer"
+                  className="shrink-0 w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-50 hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer"
                 >
-                  <Icon name={showPassword ? 'eyeOff' : 'eye'} />
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
               )}
 
-              {/* 👇 تغییر ۲: اضافه شدن cursor-pointer 👇 */}
               <button
                 type="submit"
                 disabled={!canSend}
                 aria-label={step === 'confirm' ? 'ایجاد حساب' : 'ادامه'}
-                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-105 active:scale-90 disabled:opacity-35 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 cursor-pointer"
+                className="shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-105 active:scale-90 disabled:opacity-35 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 cursor-pointer"
               >
                 {loading ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : step === 'confirm' ? (
-                  <Icon name="check" className="w-5 h-5" strokeWidth={2.8} />
+                  <Icon name="check" className="w-5 h-5 md:w-6 md:h-6" strokeWidth={2.8} />
                 ) : (
-                  <Icon name="send" className="w-5 h-5 -scale-x-100" strokeWidth={2} />
+                  <Icon name="send" className="w-5 h-5 md:w-6 md:h-6 -scale-x-100" strokeWidth={2} />
                 )}
               </button>
             </div>
           </form>
         </main>
 
-        <p className="hidden sm:block mt-5 text-center text-xs text-surface-500">
+        <p className="hidden sm:block mt-6 md:mt-8 text-center text-xs md:text-sm text-surface-500">
           © {currentYear} چت مدرن اختصاصی برای — BMS
         </p>
       </div>
