@@ -69,7 +69,7 @@ export async function apiRequest(endpoint, options = {}) {
 
     return data;
   } catch (err) {
-    if (err.name === 'AbortError') throw new Error('زمان درخواست به پایان رسید',err);
+    if (err.name === 'AbortError') throw new Error('زمان درخواست به پایان رسید', err);
     throw err;
   } finally {
     clearTimeout(timer);
@@ -165,7 +165,7 @@ export function useChat() {
       avatarIndex: m.data?.avatarIndex ?? null,
     });
 
-    // 👈 Defensive: فقط آرایه‌های معتبر را merge کن
+    //  Defensive: فقط آرایه‌های معتبر را merge کن
     const mergeMembers = (incoming) => {
       if (disposed) return;
       if (!Array.isArray(incoming)) return;
@@ -173,7 +173,7 @@ export function useChat() {
       setOnlineUsers((prev) => {
         const map = new Map(prev.map((u) => [u.id, u]));
         for (const m of incoming) {
-          if (m && m.clientId && m.clientId !== userId) {
+          if (m && m.clientId) {
             map.set(m.clientId, toUser(m));
           }
         }
@@ -196,7 +196,7 @@ export function useChat() {
     };
 
     const onEnter = (member) => {
-      if (disposed || !member || member.clientId === userId) return;
+      if (disposed || !member) return;
       setOnlineUsers((prev) => {
         if (prev.some((u) => u.id === member.clientId)) {
           return prev.map((u) => (u.id === member.clientId ? toUser(member) : u));
@@ -211,7 +211,8 @@ export function useChat() {
     };
 
     const onUpdate = (member) => {
-      if (disposed || !member || member.clientId === userId) return;
+      if (disposed || !member) return;
+
       setOnlineUsers((prev) =>
         prev.map((u) => (u.id === member.clientId ? toUser(member) : u))
       );
@@ -249,7 +250,7 @@ export function useChat() {
           // retry فقط اگر هنوز متصلیم
           setTimeout(() => {
             if (!disposed && isAblyConnected() && channel.state === 'attached') {
-              channel.presence.enter({ name: username, avatarIndex }).catch(() => {});
+              channel.presence.enter({ name: username, avatarIndex }).catch(() => { });
             }
           }, 2000);
         });
@@ -284,7 +285,7 @@ export function useChat() {
       const current = currentUserRef.current?.avatarIndex;
       if (current !== prevAvatarIndex) {
         const username = currentUserRef.current?.username;
-        channel.presence.update({ name: username, avatarIndex: current }).catch(() => {});
+        channel.presence.update({ name: username, avatarIndex: current }).catch(() => { });
         prevAvatarIndex = current;
       }
     }, 5000);
@@ -308,7 +309,7 @@ export function useChat() {
       // فقط وقتی connection باز است leave بده
       if (isAblyConnected()) {
         try {
-          channel.presence.leave().catch(() => {});
+          channel.presence.leave().catch(() => { });
         } catch { /* ignore */ }
       }
 

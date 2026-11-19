@@ -15,7 +15,6 @@ export default function Chat({ chat, user, onLogout }) {
   const {
     messages,
     onlineUsers,
-    markMessagesAsRead,
     typingUsers,
     rooms,
     currentRoom,
@@ -39,11 +38,13 @@ export default function Chat({ chat, user, onLogout }) {
     markNotificationsAsRead,
     setUnreadCount,
     setShowNotifications,
+    markMessagesAsRead,
   } = chat;
 
   const [isPending, startTransition] = useTransition();
   const navigate = useNavigate();
   const [sidebar, setSidebar] = useState(null);
+  
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
   // هماهنگ‌سازی با API جدید useWebRTC
@@ -69,7 +70,6 @@ export default function Chat({ chat, user, onLogout }) {
   const toggleSidebar = useCallback((panel = 'rooms') => {
     setSidebar((prev) => (prev === panel ? null : panel));
   }, []);
-
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -111,21 +111,19 @@ export default function Chat({ chat, user, onLogout }) {
     [navigate]
   );
 
-  // وقتی اتاق عوض شد یا پیام جدید آمد
+  // وقتی اتاق عوض شد یا پیام جدید آمد، پیام‌های خوانده‌نشده را مارک کن
   useEffect(() => {
     if (currentRoom && messages.length > 0 && user?.id) {
       const unseenIds = messages
         .filter(m => m.senderId !== user.id && !m.readBy?.includes(user.id))
-        // 👇 تغییر مهم: از m.id یا m._id استفاده کن و undefinedها را فیلتر کن 👇
         .map(m => m.id || m._id)
-        .filter(id => id);
+        .filter(id => id); // فیلتر کردن مقادیر undefined یا null
 
       if (unseenIds.length > 0) {
-        chat.markMessagesAsRead(currentRoom, unseenIds);
+        markMessagesAsRead(currentRoom, unseenIds);
       }
     }
-  }, [messages, currentRoom, user?.id, chat.markMessagesAsRead]);
-
+  }, [messages, currentRoom, user?.id, markMessagesAsRead]);
 
   const handleOpenNotifications = useCallback(() => {
     setShowNotifications((prev) => {
@@ -137,6 +135,7 @@ export default function Chat({ chat, user, onLogout }) {
 
   return (
     <div className="h-screen flex flex-col bg-aurora overflow-hidden relative">
+      {/* پس‌زمینه‌ی متحرک */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-linear-to-br from-primary-500/20 to-accent-500/20 blur-3xl animate-blob" />
         <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-linear-to-br from-cyan-500/15 to-primary-500/15 blur-3xl animate-blob animation-delay-2000" />
@@ -150,7 +149,7 @@ export default function Chat({ chat, user, onLogout }) {
           onGoHome={handleGoHome}
           user={user}
           onlineUsers={onlineUsers}
-          onlineCount={onlineUsers.length}
+          onlineCount={onlineUsers.length} // 👈 حالا به درستی شامل خود کاربر هم می‌شود
           roomName={currentRoom}
           onLogout={onLogout}
           onToggleSidebar={() => toggleSidebar('rooms')}
@@ -161,6 +160,7 @@ export default function Chat({ chat, user, onLogout }) {
         />
 
         <div className="flex-1 flex overflow-hidden">
+          {/* سایدبار دسکتاپ */}
           <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong slide-in-left">
             <RoomList
               rooms={rooms}
@@ -177,9 +177,10 @@ export default function Chat({ chat, user, onLogout }) {
             />
           </aside>
 
+          {/* بخش اصلی چت */}
           <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 relative">
             {isPending && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-950/40  animate-fade-in">
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-950/60 backdrop-blur-sm animate-fade-in">
                 <LoadingSpinner text="در حال ورود به اتاق..." />
               </div>
             )}
@@ -194,9 +195,12 @@ export default function Chat({ chat, user, onLogout }) {
                     onEditMessage={editMessage}
                     currentUserId={user?.id}
                   />
+                  
+                  {/* اصلاح TypingIndicator: فیلتر ایمن‌تر برای جلوگیری از خطا */}
                   <TypingIndicator
-                    users={typingUsers.filter((u) => u !== user?.username)}
+                    users={typingUsers.filter((u) => u && u !== user?.username)}
                   />
+                  
                   <ChatInput onSend={sendMessage} onTyping={setTyping} />
                 </>
               ) : (
@@ -211,7 +215,10 @@ export default function Chat({ chat, user, onLogout }) {
           </main>
         </div>
 
+        {/* مودال تماس */}
         <CallModal
+          call={rtc}
+          user={user}
           isCalling={rtc.callState === 'calling' || rtc.callState === 'connecting' || rtc.callState === 'connected'}
           incomingCall={rtc.incomingCall}
           remoteUser={rtc.peer}
@@ -229,25 +236,23 @@ export default function Chat({ chat, user, onLogout }) {
           onEnd={rtc.endCall}
           onToggleMute={rtc.toggleMute}
           onToggleVideo={rtc.toggleCamera}
-          user={user}
           isScreenSharing={rtc.isScreenSharing}
           isDeafened={rtc.isDeafened}
           remoteScreenSharing={rtc.remoteScreenSharing}
           participants={rtc.participants}
           onToggleDeafen={rtc.toggleDeafen}
           onToggleScreenShare={rtc.toggleScreenShare}
-          call={rtc}
-          user={user}
         />
 
+        {/* سایدبار موبایل */}
         {sidebar && (
           <>
             <div
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in"
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in lg:hidden"
               onClick={closeSidebar}
             />
-            <div className="fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong flex flex-col shadow-2xl right-0 left-auto slide-in-right">
-              {sidebar === 'rooms' ? (
+            <div className="fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong flex flex-col shadow-2xl right-0 left-auto slide-in-right lg:hidden">
+              {sidebar === 'rooms' && (
                 <RoomList
                   rooms={rooms}
                   onlineUsers={onlineUsers}
@@ -262,12 +267,13 @@ export default function Chat({ chat, user, onLogout }) {
                   currentUser={user?.id}
                   onClose={closeSidebar}
                 />
-              ) : null}
+              )}
             </div>
           </>
         )}
       </div>
 
+      {/* دراپ‌داون اعلان‌ها */}
       <div className="notification-dropdown">
         <NotificationDropdown
           notifications={notifications}
