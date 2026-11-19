@@ -437,7 +437,7 @@ export default function Login({ onAuth }) {
               <input
                 ref={userInputRef}
                 name="username"
-                type="text"
+                type="rtl"
                 dir="auto"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
