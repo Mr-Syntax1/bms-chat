@@ -455,7 +455,7 @@ export default function Login({ onAuth }) {
                 ref={passInputRef}
                 name="password"
                 type={showPassword ? 'text' : 'password'}
-                dir="auto"
+                dir="rtl"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handleCaps}

@@ -527,7 +527,7 @@ export default function Register({ onAuth }) {
                     ref={(el) => (inputRefs.current[f.key] = el)}
                     name={f.key === 'confirm' ? 'confirmPassword' : f.key}
                     type={f.type}
-                    dir="auto"
+                    dir="rtl"
                     value={values[f.key]}
                     onChange={(e) => setValue(f.key, e.target.value)}
                     onKeyDown={f.key !== 'username' ? handleCaps : undefined}
