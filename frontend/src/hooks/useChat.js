@@ -434,16 +434,6 @@ export function useChat() {
         );
       });
 
-      on('message-deleted', (data) => {
-        const { messageId, deleteForEveryone } = data;
-        if (!messageId) return;
-
-        if (deleteForEveryone) {
-          // اگر برای همه حذف شده باشد، پیام را کاملاً از آرایه فیلتر و حذف می‌کنیم
-          setMessages((prev) => prev.filter((m) => m.id !== messageId));
-        }
-      });
-
       on('new-message', (msg) => {
         if (!msg) return;
         const currentUserId = currentUserRef.current?.id;
@@ -512,6 +502,17 @@ export function useChat() {
           clearTypingUser(key);
         }
         syncTyping();
+      });
+
+      on('message-deleted', (data) => {
+
+        const { messageId, deleteForEveryone } = data;
+        if (!messageId || !deleteForEveryone) return;
+
+        setMessages((prev) => {
+          const filtered = prev.filter((m) => m.id !== messageId);
+          return filtered;
+        });
       });
 
       roomHandlersRef.current[roomName] = { channelName, handlers };
