@@ -943,22 +943,75 @@ export function useChat() {
     }
   }, []);
 
-  const sendMessage = useCallback(
+    const sendMessage = useCallback(
     async (payload) => {
       const room = currentRoomRef.current;
       if (!room) return;
 
-      const data = typeof payload === 'string' ? { text: payload, room } : { ...payload, room };
+      const currentUserId = currentUserRef.current?.id;
+      const currentUsername = currentUserRef.current?.username;
+
+      // ۱. ساخت یک شناسه موقت برای پیام
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      
+      // ۲. ساخت آبجکت پیام موقت با وضعیت 'sending'
+      const tempMessage = {
+        id: tempId,
+        text: typeof payload === 'string' ? payload : payload.text,
+        sender: currentUsername,
+        senderId: currentUserId,
+        room: room,
+        createdAt: new Date().toISOString(),
+        status: 'sending', // وضعیت اولیه: در حال ارسال (نمایش ساعت)
+        type: payload.type || 'text',
+        ...(payload.fileUrl && {
+          fileUrl: payload.fileUrl,
+          fileName: payload.fileName,
+          fileType: payload.fileType,
+          fileSize: payload.fileSize,
+        }),
+      };
+
+      // ۳. نمایش فوری پیام در لیست (Optimistic Update)
+      setMessages((prev) => [...prev, tempMessage]);
 
       try {
-        await apiRequest('/api/messages/send', {
+        const data = typeof payload === 'string' ? { text: payload, room } : { ...payload, room };
+        
+        // ارسال به سرور
+        const res = await apiRequest('/api/messages/send', {
           method: 'POST',
           body: JSON.stringify(data),
         });
+
+        // ۴. موفقیت: جایگزینی پیام موقت با پیام واقعی سرور و تغییر وضعیت به 'sent'
+        if (res.success && res.message) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempId ? { ...res.message, status: 'sent' } : m
+            )
+          );
+        } else {
+          // اگر سرور خطای ناشناخته‌ای داد اما ۲۰۰ برگرداند
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempId ? { ...m, status: 'failed' } : m
+            )
+          );
+        }
+        
         setTyping(false);
       } catch (err) {
         console.error('[Chat] Send message error:', err);
-        sileo.error({ title: 'خطا', description: 'ارسال پیام با خطا مواجه شد' });
+        
+        // ۵. شکست: علامت‌گذاری پیام به عنوان 'failed' (می‌توانید بعداً آیکون خطا اضافه کنید)
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId ? { ...m, status: 'failed' } : m
+          )
+        );
+        
+        sileo.error({ title: 'خطا در ارسال', description: 'لطفاً اتصال اینترنت خود را بررسی کنید.' });
       }
     },
     [setTyping]

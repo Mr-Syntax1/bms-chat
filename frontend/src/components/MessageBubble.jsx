@@ -90,6 +90,31 @@ function FilePreview({ msg, isMine, onImageClick }) {
   );
 }
 
+// --- آیکون‌های وضعیت پیام ---
+function ClockIcon() {
+  return (
+    <svg className="w-4 h-4 text-primary-100/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function SingleCheckIcon({ isRead }) {
+  return (
+    <svg className={`w-4 h-4 transition-colors duration-300 ${isRead ? 'text-white' : 'text-primary-100/60'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
+function DoubleCheckIcon() {
+  return (
+    <svg className="w-4 h-4 text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 6L7 17l-5-5M22 10l-7.5 7.5L13 16" />
+    </svg>
+  );
+}
+
 function DeleteIcon() {
   return (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,19 +139,16 @@ function EditIcon() {
   );
 }
 
-
-export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage, onEditMessage, currentUserId }) {
+export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage, onEditMessage }) {
   const navigate = useNavigate();
-
   const isSystem = msg.type === 'system';
   const isFile = msg.type === 'file';
 
-  //  منطق بررسی خوانده شدن پیام 
-  // برای پیام‌های ارسالی (isMine): چک کن که گیرنده (هر کسی غیر از senderId) خوانده باشد
-  // برای پیام‌های دریافتی: چک کن که کاربر جاری (currentUserId) خوانده باشد
-  const isRead = isMine
-    ? msg.readBy?.some(id => id !== msg.senderId)
-    : msg.readBy?.includes(currentUserId);
+  // منطق خوانده شدن: اگر وضعیت read باشد یا در readBy باشد
+  const isRead = msg.status === 'read' || (isMine && msg.readBy?.some(id => id !== msg.senderId));
+  
+  // تعیین وضعیت نهایی برای نمایش آیکون
+  const displayStatus = msg.status || (isRead ? 'read' : 'sent');
 
   const [contextMenu, setContextMenu] = useState({ x: null, y: null });
   const [menuItems, setMenuItems] = useState([]);
@@ -328,31 +350,16 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
             <p className="whitespace-pre-wrap wrap-break-word">{msg.text}</p>
           )}
 
-          {/*  بخش زمان و تیک خوانده‌شدن  */}
-          <div className="flex items-center justify-end gap-1.5 mt-1.5 select-none">
-            <time className={`text-[10px] ${isMine ? 'text-primary-100/80' : 'text-surface-500'}`}>
+          {/* بخش زمان و وضعیت (ساعت / تیک) */}
+          <div className="flex items-center justify-end gap-1 mt-1.5 select-none">
+            <time className={`text-[10px] ${displayStatus === 'sending' ? 'text-primary-100/60' : (isMine ? 'text-primary-100/80' : 'text-surface-500')}`}>
               {time}
             </time>
 
-            {/* منطق نمایش تیک */}
+            {/* منطق نمایش آیکون وضعیت فقط برای پیام‌های ارسالی */}
             {isMine && (
-              <svg
-                className={`w-4 h-4 transition-colors duration-300 ${isRead ? 'text-white' : 'text-primary-100/60'
-                  }`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                {isRead ? (
-                  // آیکون دو تیک (خوانده شده)
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 6L7 17l-5-5M22 10l-7.5 7.5L13 16" />
-                ) : (
-                  // آیکون تک تیک (ارسال شده)
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                )}
-              </svg>
+              displayStatus === 'sending' ? <ClockIcon /> :
+              isRead ? <DoubleCheckIcon /> : <SingleCheckIcon isRead={false} />
             )}
           </div>
         </div>
