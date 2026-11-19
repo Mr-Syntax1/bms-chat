@@ -444,7 +444,7 @@ export default function Login({ onAuth }) {
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="نام کاربری…"
+                placeholder="…نام کاربری"
                 aria-label="نام کاربری"
                 disabled={locked && step === 'username'}
                 tabIndex={step === 'username' ? 0 : -1}
@@ -462,7 +462,7 @@ export default function Login({ onAuth }) {
                 onKeyUp={handleCaps}
                 onBlur={() => setCapsLock(false)}
                 autoComplete="current-password"
-                placeholder="رمز عبور…"
+                placeholder="…رمز عبور"
                 aria-label="رمز عبور"
                 disabled={locked && step === 'password'}
                 tabIndex={step === 'password' ? 0 : -1}
