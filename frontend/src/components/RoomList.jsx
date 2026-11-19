@@ -186,45 +186,66 @@ export default function RoomList({
         {showSearch && userResults.length > 0 && (
           <>
             <li className="px-2 py-1 text-xs text-surface-500 uppercase tracking-wider">کاربران</li>
-            {userResults.map((u) => (
-              <li key={`user-${u.id}`}>
-                <div className="w-full px-2 py-2 rounded-xl transition-all duration-200 flex items-center justify-between text-surface-300 hover:bg-white/5 card-hover">
-                  <button
-                    onClick={() => {
-                      onOpenDM?.(u.id, u.username);
-                      clearSearch();
-                    }}
-                    className="flex-1 min-w-0 flex items-center gap-2 text-right cursor-pointer"
-                    title="ارسال پیام"
-                  >
-                    {/* 👈 استفاده از کامپوننت Avatar */}
-                    <Avatar
-                      username={u.username}
-                      color={u.avatarColor}
-                      avatarIndex={u.avatarIndex}
-                      size="md"
-                      status={u.isOnline ? 'online' : 'offline'}
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-surface-200">{u.username}</span>
-                      <span className={`block text-[10px] ${u.isOnline ? 'text-green-400' : 'text-surface-500'}`}>
-                        {u.isOnline ? 'آنلاین' : 'آفلاین — ارسال پیام ممکن است'}
+            {userResults.map((u) => {
+              //  بررسی وضعیت آنلاین بودن بر اساس آرایه onlineUsers
+              const isUserOnline = onlineUsers.some(
+                (onlineUser) => onlineUser.id === u.id || onlineUser.username === u.username
+              );
+
+              return (
+                <li key={`user-${u.id}`}>
+                  <div className="w-full px-2 py-2 rounded-xl transition-all duration-200 flex items-center justify-between text-surface-300 hover:bg-white/5 card-hover">
+                    <button
+                      onClick={() => {
+                        onOpenDM?.(u.id, u.username);
+                        clearSearch();
+                      }}
+                      className="flex-1 min-w-0 flex items-center gap-2 text-right cursor-pointer"
+                      title="ارسال پیام"
+                    >
+                      {/*  استفاده از کامپوننت Avatar */}
+                      <Avatar
+                        username={u.username}
+                        avatarIndex={u.avatarIndex}
+                        size="md"
+                        status={isUserOnline ? 'online' : 'offline'} //  استفاده از متغیر جدید
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-surface-200">
+                          {u.username}
+                        </span>
+                        <span
+                          className={`block text-[10px] ${isUserOnline ? 'text-green-400' : 'text-surface-500'
+                            }`}
+                        >
+                          {isUserOnline ? 'آنلاین' : 'آفلاین — ارسال پیام ممکن است'}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => onOpenProfile?.(u.username)}
-                    className="p-2 rounded-lg text-surface-500 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
-                    title="مشاهده پروفایل"
-                    aria-label="مشاهده پروفایل"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </button>
-                </div>
-              </li>
-            ))}
+                    </button>
+                    <button
+                      onClick={() => onOpenProfile?.(u.username)}
+                      className="p-2 rounded-lg text-surface-500 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+                      title="مشاهده پروفایل"
+                      aria-label="مشاهده پروفایل"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </>
         )}
 
