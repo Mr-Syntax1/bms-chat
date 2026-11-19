@@ -1,5 +1,4 @@
 import Avatar from './Avatar';
-import InstallButton from './InstallButton';
 import { useState } from 'react';
 
 export default function ChatHeader({
@@ -126,11 +125,6 @@ export default function ChatHeader({
             </span>
           )}
         </button>
-
-        {/* دکمه نصب - فقط دسکتاپ */}
-        <div className="hidden md:block">
-          <InstallButton />
-        </div>
 
         {/* تماس خصوصی */}
         {dmPartner && (

@@ -98,7 +98,7 @@ export function getWebRTCChannelName(userId1, userId2) {
   return pairChannelName('private:webrtc-', userId1, userId2);
 }
 
-// 👇 کانال حضور سراسری: همه کاربران آنلاین در آن enter می‌کنند 👇
+// کانال حضور سراسری: همه کاربران آنلاین در آن enter می‌کنند 
 export function getPresenceChannelName() {
   return assertValidChannelName('presence:online');
 }
@@ -118,11 +118,35 @@ export function subscribeToPresence() { return getChannel(getPresenceChannelName
 
 function safeReleaseChannel(channelName) {
   const channel = ably.channels.get(channelName);
-  if (channel) {
-    if (channel.state === 'attached' || channel.state === 'attaching') {
-      channel.detach();
-    }
-    ably.channels.release(channelName);
+  if (!channel) return;
+
+  // اول همه listenerها را پاک کن
+  try { channel.unsubscribe(); } catch { /* ignore */ }
+
+  const state = channel.state;
+
+  // اگر کانال در حالت detachable است، detach کن و بعد از اتمام release کن
+  if (state === 'attached' || state === 'attaching') {
+    channel.detach((err) => {
+      if (err) return;
+      try { ably.channels.release(channelName); } catch { /* ignore */ }
+    });
+    return;
+  }
+
+  // اگر در حالت detaching است، صبر کن تا detach کامل شود
+  if (state === 'detaching') {
+    const onDetached = () => {
+      channel.off('detached', onDetached);
+      try { ably.channels.release(channelName); } catch { /* ignore */ }
+    };
+    channel.on('detached', onDetached);
+    return;
+  }
+
+  // در حالت‌های detached / failed / initialized مستقیم release کن
+  if (state === 'detached' || state === 'failed' || state === 'initialized') {
+    try { ably.channels.release(channelName); } catch { /* ignore */ }
   }
 }
 
@@ -141,7 +165,7 @@ export function publishEvent(channelName, eventName, data) {
   return channel.publish(eventName, data);
 }
 
-// 👇 callback پیام کامل (message) را می‌گیرد (سازگار با useWebRTC) 👇
+// callback پیام کامل (message) را می‌گیرد (سازگار با useWebRTC) 
 export function bindEvent(channelName, eventName, callback) {
   const channel = getChannel(channelName);
   channel.subscribe(eventName, callback);

@@ -19,10 +19,11 @@ import { notifyIncomingMessage } from '../lib/notify';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-const REQUEST_TIMEOUT = 15000; // ms
+const REQUEST_TIMEOUT = 15000;
 const MAX_MESSAGES = 500;
 const TYPING_SEND_INTERVAL = 1500;
 const TYPING_STOP_DELAY = 2000;
+const PRESENCE_SYNC_INTERVAL = 30000;
 
 const isDmRoom = (name) => typeof name === 'string' && name.startsWith('dm_');
 
@@ -70,7 +71,7 @@ export async function apiRequest(endpoint, options = {}) {
   } catch (err) {
     if (err.name === 'AbortError') throw new Error('زمان درخواست به پایان رسید',err);
     throw err;
-    } finally {
+  } finally {
     clearTimeout(timer);
   }
 }
@@ -104,11 +105,13 @@ export function useChat() {
   const resyncRef = useRef(null);
   const disconnectRef = useRef(null);
 
+  // کمک‌کننده: آیا اتصال Ably سالم است؟
+  const isAblyConnected = () =>
+    ably?.connection?.state === 'connected' || ably?.connection?.state === 'connected';
+
   const markMessagesAsRead = useCallback(async (roomName, messageIds = []) => {
     const userSettings = currentUserRef.current?.settings;
-    if (userSettings?.readReceipts === false) {
-      return;
-    }
+    if (userSettings?.readReceipts === false) return;
 
     try {
       await apiRequest('/api/messages/mark-read', {
@@ -145,7 +148,7 @@ export function useChat() {
   }, []);
 
   // -------------------------------------------------------------------------
-  // حضور سراسری: مدیریت هوشمند و بدون Race Condition
+  // حضور سراسری - نسخه‌ی مقاوم در برابر Race Condition و TypeError
   // -------------------------------------------------------------------------
   useEffect(() => {
     const userId = currentUserRef.current?.id;
@@ -154,42 +157,46 @@ export function useChat() {
     const channel = subscribeToPresence();
     if (!channel) return undefined;
 
+    let disposed = false;
+
     const toUser = (m) => ({
       id: m.clientId,
       username: m.data?.name || 'Unknown',
       avatarIndex: m.data?.avatarIndex ?? null,
     });
 
-    // ۱. استراتژی MERGE برای جلوگیری از Race Condition
-    const mergeMembers = (incomingMembers) => {
+    // 👈 Defensive: فقط آرایه‌های معتبر را merge کن
+    const mergeMembers = (incoming) => {
+      if (disposed) return;
+      if (!Array.isArray(incoming)) return;
+
       setOnlineUsers((prev) => {
         const map = new Map(prev.map((u) => [u.id, u]));
-        for (const m of incomingMembers) {
-          if (m.clientId !== userId) {
+        for (const m of incoming) {
+          if (m && m.clientId && m.clientId !== userId) {
             map.set(m.clientId, toUser(m));
           }
         }
-        // اطمینان از حضور کاربر جاری در لیست
-        const currentUser = prev.find((u) => u.id === userId);
-        if (currentUser && !map.has(userId)) {
-          map.set(userId, currentUser);
-        }
+        // کاربر جاری را همیشه نگه دار (تا از بین نرود)
+        const self = prev.find((u) => u.id === userId);
+        if (self && !map.has(userId)) map.set(userId, self);
         return Array.from(map.values());
       });
     };
 
     const loadAll = async () => {
+      if (disposed) return;
+      if (channel.state !== 'attached') return;
       try {
         const members = await channel.presence.get();
-        mergeMembers(members);
+        mergeMembers(Array.isArray(members) ? members : []);
       } catch (err) {
-        console.error('[Chat] presence.get error:', err);
+        if (!disposed) console.warn('[Chat] presence.get error:', err?.message || err);
       }
     };
 
-    // ۲. Subscribe به تمام رویدادهای حیاتی Presence
     const onEnter = (member) => {
-      if (member.clientId === userId) return;
+      if (disposed || !member || member.clientId === userId) return;
       setOnlineUsers((prev) => {
         if (prev.some((u) => u.id === member.clientId)) {
           return prev.map((u) => (u.id === member.clientId ? toUser(member) : u));
@@ -199,18 +206,25 @@ export function useChat() {
     };
 
     const onLeave = (member) => {
+      if (disposed || !member) return;
       setOnlineUsers((prev) => prev.filter((u) => u.id !== member.clientId));
     };
 
     const onUpdate = (member) => {
-      if (member.clientId === userId) return;
+      if (disposed || !member || member.clientId === userId) return;
       setOnlineUsers((prev) =>
         prev.map((u) => (u.id === member.clientId ? toUser(member) : u))
       );
     };
 
+    //  رویداد present گاهی آرایه، گاهی message واحد است
     const onPresent = (members) => {
-      mergeMembers(members);
+      if (disposed) return;
+      if (Array.isArray(members)) {
+        mergeMembers(members);
+      } else if (members && members.clientId) {
+        mergeMembers([members]);
+      }
     };
 
     channel.presence.subscribe('enter', onEnter);
@@ -218,21 +232,31 @@ export function useChat() {
     channel.presence.subscribe('update', onUpdate);
     channel.presence.subscribe('present', onPresent);
 
-    // ۳. ورود ایمن با مکانیزم Retry
+    //  ورود ایمن: فقط وقتی connection و channel هر دو آماده‌اند
     const doEnter = () => {
+      if (disposed) return;
+      if (!isAblyConnected()) return;
+      if (channel.state !== 'attached') return;
+
       const username = currentUserRef.current?.username;
       const avatarIndex = currentUserRef.current?.avatarIndex ?? null;
-      channel.presence.enter({ name: username, avatarIndex }).catch((err) => {
-        console.warn('[Chat] presence.enter error:', err?.message || err);
-        setTimeout(() => {
-          if (channel.state === 'attached' || channel.state === 'attaching') {
-            channel.presence.enter({ name: username, avatarIndex }).catch(() => {});
-          }
-        }, 2000);
-      });
+
+      channel
+        .presence.enter({ name: username, avatarIndex })
+        .catch((err) => {
+          if (disposed) return;
+          console.warn('[Chat] presence.enter error:', err?.message || err);
+          // retry فقط اگر هنوز متصلیم
+          setTimeout(() => {
+            if (!disposed && isAblyConnected() && channel.state === 'attached') {
+              channel.presence.enter({ name: username, avatarIndex }).catch(() => {});
+            }
+          }, 2000);
+        });
     };
 
     const onAttached = () => {
+      if (disposed) return;
       loadAll();
       doEnter();
     };
@@ -243,35 +267,56 @@ export function useChat() {
       channel.on('attached', onAttached);
     }
 
-    // ۴. Sync دوره‌ای هر ۳۰ ثانیه برای جبران رویدادهای گمشده (Network Glitch)
+    //  Sync دوره‌ای با چک connection
     const syncInterval = setInterval(() => {
-      if (channel.state === 'attached') {
-        loadAll();
-      }
-    }, 30000);
+      if (disposed) return;
+      if (!isAblyConnected()) return;
+      if (channel.state === 'attached') loadAll();
+    }, PRESENCE_SYNC_INTERVAL);
 
-    // ۵. به‌روزرسانی فوری Presence در صورت تغییر avatarIndex
+    //  Watch avatarIndex برای update فوری
     let prevAvatarIndex = currentUserRef.current?.avatarIndex;
     const avatarWatchInterval = setInterval(() => {
-      const currentAvatarIndex = currentUserRef.current?.avatarIndex;
-      if (currentAvatarIndex !== prevAvatarIndex && channel.state === 'attached') {
+      if (disposed) return;
+      if (!isAblyConnected()) return;
+      if (channel.state !== 'attached') return;
+
+      const current = currentUserRef.current?.avatarIndex;
+      if (current !== prevAvatarIndex) {
         const username = currentUserRef.current?.username;
-        channel.presence.update({ name: username, avatarIndex: currentAvatarIndex }).catch(() => {});
-        prevAvatarIndex = currentAvatarIndex;
+        channel.presence.update({ name: username, avatarIndex: current }).catch(() => {});
+        prevAvatarIndex = current;
       }
     }, 5000);
 
-    // Cleanup
     return () => {
+      disposed = true;
       clearInterval(syncInterval);
       clearInterval(avatarWatchInterval);
-      channel.presence.unsubscribe('enter', onEnter);
-      channel.presence.unsubscribe('leave', onLeave);
-      channel.presence.unsubscribe('update', onUpdate);
-      channel.presence.unsubscribe('present', onPresent);
-      channel.off('attached', onAttached);
-      channel.presence.leave().catch(() => {});
-      unsubscribeFromPresence();
+
+      try {
+        channel.presence.unsubscribe('enter', onEnter);
+        channel.presence.unsubscribe('leave', onLeave);
+        channel.presence.unsubscribe('update', onUpdate);
+        channel.presence.unsubscribe('present', onPresent);
+      } catch { /* ignore */ }
+
+      try {
+        channel.off('attached', onAttached);
+      } catch { /* ignore */ }
+
+      // فقط وقتی connection باز است leave بده
+      if (isAblyConnected()) {
+        try {
+          channel.presence.leave().catch(() => {});
+        } catch { /* ignore */ }
+      }
+
+      try {
+        unsubscribeFromPresence();
+      } catch (err) {
+        console.warn('[Chat] unsubscribeFromPresence error:', err?.message || err);
+      }
     };
   }, [connected]);
 
@@ -351,10 +396,11 @@ export function useChat() {
       };
 
       on('messages-read', (data) => {
-        const { userId, messageIds, all } = data;
+        const { userId, messageIds, all } = data || {};
+        if (!userId) return;
         setMessages((prev) =>
           prev.map((msg) => {
-            const shouldUpdate = all || messageIds?.includes(msg.id);
+            const shouldUpdate = all || (Array.isArray(messageIds) && messageIds.includes(msg.id));
             if (shouldUpdate && !msg.readBy?.includes(userId)) {
               return { ...msg, readBy: [...(msg.readBy || []), userId] };
             }
@@ -364,6 +410,7 @@ export function useChat() {
       });
 
       on('new-message', (msg) => {
+        if (!msg) return;
         const currentUserId = currentUserRef.current?.id;
         const senderId = msg.senderId ?? msg.userId;
 
@@ -386,8 +433,10 @@ export function useChat() {
         if (senderKey != null) clearTypingUser(String(senderKey));
         else if (msg.sender) clearTypingByUsername(msg.sender);
       });
+
+      roomHandlersRef.current[roomName] = { channelName, handlers };
     },
-    [clearTypingUser, clearTypingByUsername, syncTyping]
+    [clearTypingUser, clearTypingByUsername]
   );
 
   const unbindRoomHandlers = useCallback((roomName) => {
@@ -396,7 +445,7 @@ export function useChat() {
     const channel = getChannel(entry.channelName);
     if (channel) {
       for (const [event, fn] of entry.handlers) {
-        channel.unsubscribe(event, fn);
+        try { channel.unsubscribe(event, fn); } catch { /* ignore */ }
       }
     }
     delete roomHandlersRef.current[roomName];
@@ -405,11 +454,13 @@ export function useChat() {
   const teardownRoom = useCallback(
     (roomName) => {
       unbindRoomHandlers(roomName);
+
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = null;
       }
       lastTypingSentRef.current = 0;
+
       try {
         unsubscribeFromRoom(roomName);
       } catch (err) {
@@ -480,8 +531,12 @@ export function useChat() {
   const cleanupNotificationHandlers = useCallback(() => {
     const entry = notificationHandlersRef.current;
     if (!entry) return;
+
     const channel = getChannel(entry.channelName);
-    if (channel) channel.unsubscribe('new-notification', entry.handler);
+    if (channel) {
+      try { channel.unsubscribe('new-notification', entry.handler); } catch { /* ignore */ }
+    }
+
     try {
       unsubscribeFromNotifications(entry.userId);
     } catch (err) {
@@ -498,6 +553,7 @@ export function useChat() {
 
     const handler = (message) => {
       const notif = message.data;
+      if (!notif) return;
       if (notif.roomName && notif.roomName === currentRoomRef.current) {
         markRead(notif.roomName);
         return;
@@ -601,10 +657,6 @@ export function useChat() {
     roomNames.forEach((name) => teardownRoom(name));
     currentRoomRef.current = null;
 
-    ably.close();
-    wasConnectedRef.current = false;
-    currentUserRef.current = null;
-
     resetTyping();
     setMessages([]);
     setRooms([]);
@@ -616,6 +668,13 @@ export function useChat() {
     setShowNotifications(false);
     setError(null);
     setConnected(false);
+    currentUserRef.current = null;
+    wasConnectedRef.current = false;
+
+    //  ably.close را به تعویق بینداز تا effect‌ها cleanup شوند
+    setTimeout(() => {
+      try { ably.close(); } catch { /* ignore */ }
+    }, 100);
   }, [cleanupNotificationHandlers, teardownRoom, resetTyping]);
 
   const logout = useCallback(() => {
