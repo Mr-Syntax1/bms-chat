@@ -66,7 +66,7 @@ export default function InstallButton() {
                  w-full sm:w-auto cursor-pointer overflow-hidden"
     >
       {/* افکت درخشش ملایم و مدرن هنگام هاور (جایگزین شمر پیچیده) */}
-      <span className="absolute inset-0 bg-linear-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+      <span className="absolute inset-0 bg-linear-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-in-out" />
 
       {/* آیکون با انیمیشن نرم */}
       <svg
