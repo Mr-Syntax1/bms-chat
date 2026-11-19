@@ -46,7 +46,6 @@ const Icon = ({ name, className = 'w-5 h-5', strokeWidth = 1.8 }) => (
 
 /* ───────────────────────── اجزای گفتگو ───────────────────────── */
 
-// 👇 تغییر ۱: استفاده از تصویر pwa-192x192.png به جای آیکون 👇
 function BotAvatar({ className = 'w-8 h-8' }) {
   return (
     <img
@@ -60,11 +59,19 @@ function BotAvatar({ className = 'w-8 h-8' }) {
 
 function TypingBubble({ showAvatar }) {
   return (
-    <div dir="ltr" className="flex items-end gap-2 login-msg origin-bottom-left" aria-hidden="true">
-      {showAvatar ? <BotAvatar className="w-7 h-7" /> : <span className="w-7 shrink-0" />}
-      <div className="px-4 py-3.5 rounded-2xl rounded-tl-sm bg-surface-800 border border-surface-700 flex items-center gap-1.5">
+    <div dir="ltr" className="flex items-end gap-2 sm:gap-2.5 login-msg origin-bottom-left" aria-hidden="true">
+      {showAvatar ? (
+        <BotAvatar className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9" />
+      ) : (
+        <span className="w-7 sm:w-8 md:w-9 shrink-0" />
+      )}
+      <div className="px-4 py-3.5 sm:px-5 sm:py-4 md:px-6 md:py-4.5 rounded-2xl sm:rounded-3xl rounded-tl-sm bg-surface-800 border border-surface-700 flex items-center gap-1.5 sm:gap-2">
         {[0, 1, 2].map((i) => (
-          <span key={i} className="w-1.5 h-1.5 rounded-full bg-surface-400 login-dot" style={{ animationDelay: `${i * 0.16}s` }} />
+          <span
+            key={i}
+            className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-surface-400 login-dot"
+            style={{ animationDelay: `${i * 0.16}s` }}
+          />
         ))}
       </div>
     </div>
@@ -76,17 +83,21 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
 
   if (mine) {
     const body = (
-      <div className="relative px-4 py-2.5 rounded-2xl rounded-tr-sm bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-900/30">
+      <div className="relative px-4 py-2.5 sm:px-5 sm:py-3 md:px-6 md:py-3.5 rounded-2xl sm:rounded-3xl rounded-tr-sm sm:rounded-tr-[20px] bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-lg shadow-primary-900/30">
         {m.kind === 'password' ? (
-          <p dir="ltr" className="text-base tracking-[0.3em] leading-6 select-none">{m.text}</p>
+          <p dir="ltr" className="text-base sm:text-lg md:text-xl tracking-[0.3em] leading-6 sm:leading-7 md:leading-8 select-none">
+            {m.text}
+          </p>
         ) : (
-          <p dir="auto" className="text-sm sm:text-[15px] leading-6 break-all">{m.text}</p>
+          <p dir="auto" className="text-sm sm:text-[15px] md:text-base leading-6 sm:leading-7 md:leading-8 break-all">
+            {m.text}
+          </p>
         )}
-        <div className="flex items-center justify-end gap-1.5 mt-0.5 select-none" dir="ltr">
-          {editable && <Icon name="pencil" className="w-3 h-3 text-white/60" />}
-          <time className="text-[10px] text-primary-100/80">{formatTime(m.at)}</time>
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2 mt-0.5 select-none" dir="ltr">
+          {editable && <Icon name="pencil" className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white/60" />}
+          <time className="text-[10px] sm:text-[11px] md:text-xs text-primary-100/80">{formatTime(m.at)}</time>
           <svg
-            className={`w-4 h-4 transition-colors duration-300 ${m.seen ? 'text-white' : 'text-primary-100/60'}`}
+            className={`w-4 h-4 sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 transition-colors duration-300 ${m.seen ? 'text-white' : 'text-primary-100/60'}`}
             fill="none"
             stroke="currentColor"
             strokeWidth={2.5}
@@ -102,17 +113,16 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
     return (
       <div dir="ltr" className="flex justify-end login-msg origin-bottom-right">
         {editable ? (
-          // 👇 تغییر ۲: اضافه شدن cursor-pointer 👇
           <button
             type="button"
             onClick={onEdit}
             aria-label="ویرایش نام کاربری"
-            className="text-start rounded-2xl rounded-tr-sm max-w-[80%] hover:brightness-110 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 cursor-pointer"
+            className="text-start rounded-2xl sm:rounded-3xl rounded-tr-sm sm:rounded-tr-[20px] max-w-[80%] sm:max-w-[75%] md:max-w-[70%] hover:brightness-110 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 cursor-pointer"
           >
             {body}
           </button>
         ) : (
-          <div className="max-w-[80%]">{body}</div>
+          <div className="max-w-[80%] sm:max-w-[75%] md:max-w-[70%]">{body}</div>
         )}
       </div>
     );
@@ -126,12 +136,16 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
         : 'bg-surface-800 border-surface-700 text-surface-50';
 
   return (
-    <div dir="ltr" className="flex items-end gap-2 login-msg origin-bottom-left">
-      {showAvatar ? <BotAvatar className="w-7 h-7" /> : <span className="w-7 shrink-0" />}
-      <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tl-sm border shadow-md ${tone}`}>
-        <p dir="rtl" className="text-sm sm:text-[15px] leading-7 flex items-start gap-2">
-          {m.tone === 'error' && <Icon name="alert" className="w-4 h-4 mt-1.5 shrink-0 text-error-500" />}
-          {m.tone === 'success' && <Icon name="check" className="w-4 h-4 mt-1.5 shrink-0 text-emerald-400" strokeWidth={3} />}
+    <div dir="ltr" className="flex items-end gap-2 sm:gap-2.5 login-msg origin-bottom-left">
+      {showAvatar ? (
+        <BotAvatar className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9" />
+      ) : (
+        <span className="w-7 sm:w-8 md:w-9 shrink-0" />
+      )}
+      <div className={`max-w-[80%] sm:max-w-[75%] md:max-w-[70%] px-4 py-2.5 sm:px-5 sm:py-3 md:px-6 md:py-3.5 rounded-2xl sm:rounded-3xl rounded-tl-sm sm:rounded-tl-[20px] border shadow-md ${tone}`}>
+        <p dir="rtl" className="text-sm sm:text-[15px] md:text-base leading-7 sm:leading-8 md:leading-9 flex items-start gap-2 sm:gap-2.5">
+          {m.tone === 'error' && <Icon name="alert" className="w-4 h-4 sm:w-[18px] sm:h-[18px] mt-1.5 sm:mt-2 shrink-0 text-error-500" />}
+          {m.tone === 'success' && <Icon name="check" className="w-4 h-4 sm:w-[18px] sm:h-[18px] mt-1.5 sm:mt-2 shrink-0 text-emerald-400" strokeWidth={3} />}
           <span>{m.text}</span>
         </p>
       </div>
@@ -139,9 +153,8 @@ function Bubble({ m, showAvatar, editable, onEdit }) {
   );
 }
 
-// 👇 تغییر ۲: اضافه شدن cursor-pointer به کلاس پایه چیپ‌ها 👇
 const chipClass =
-  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-medium text-surface-100 border border-surface-700 bg-white/[0.04] hover:bg-white/[0.09] hover:border-primary-500/60 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer';
+  'inline-flex items-center gap-1.5 sm:gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 rounded-full text-xs sm:text-sm md:text-[15px] font-medium text-surface-100 border border-surface-700 bg-white/[0.04] hover:bg-white/[0.09] hover:border-primary-500/60 transition-all duration-200 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer';
 
 /* ───────────────────────── صفحه ورود ───────────────────────── */
 
@@ -321,12 +334,11 @@ export default function Login({ onAuth }) {
   const canSend = !locked && activeValue.trim().length > 0;
   const lastMineIdx = messages.reduce((acc, m, i) => (m.from === 'me' && m.kind === 'username' ? i : acc), -1);
 
-  // 👇 تغییر ۳: اضافه شدن placeholder:text-right به کلاس اینپوت 👇
   const inputClass =
-    'flex-1 min-w-0 bg-transparent outline-none text-sm sm:text-base text-surface-50 placeholder:text-surface-500 placeholder:text-right py-2.5 disabled:opacity-60';
+    'flex-1 min-w-0 bg-transparent outline-none text-sm sm:text-base md:text-lg text-surface-50 placeholder:text-surface-500 placeholder:text-right py-2.5 sm:py-3 md:py-3.5 disabled:opacity-60';
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center sm:p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] flex items-center justify-center p-0 sm:p-6 md:p-8 lg:p-10 relative overflow-hidden">
       <style>{`
         @keyframes login-msg-in {
           from { opacity: 0; transform: translateY(10px) scale(.95); }
@@ -361,9 +373,9 @@ export default function Login({ onAuth }) {
         }
       `}</style>
 
-      {/* درخشش پس‌زمینه (یک منبع نور، نه چند لکه) */}
+      {/* درخشش پس‌زمینه - در سایزهای بزرگ‌تر گسترده‌تر می‌شود */}
       <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[820px] h-[820px] max-w-none pointer-events-none"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[820px] sm:w-[900px] md:w-[1000px] lg:w-[1200px] h-[820px] sm:h-[900px] md:h-[1000px] lg:h-[1200px] max-w-none pointer-events-none"
         style={{
           background:
             'radial-gradient(closest-side, rgba(99,102,241,0.20), rgba(168,85,247,0.08) 55%, transparent)',
@@ -371,25 +383,26 @@ export default function Login({ onAuth }) {
         aria-hidden="true"
       />
 
-      <div className="relative w-full sm:max-w-[440px]">
+      {/* 👇 عرض پنجره در هر breakpoint بزرگ‌تر می‌شود 👇 */}
+      <div className="relative w-full sm:max-w-[440px] md:max-w-[520px] lg:max-w-[640px] xl:max-w-[720px]">
         {/* پنجره گفتگو */}
         <main
-          className="login-panel relative flex flex-col h-[100dvh] sm:h-[680px] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[28px] overflow-hidden bg-surface-900/85 backdrop-blur-2xl sm:border border-white/10 shadow-2xl shadow-black/40"
+          className="login-panel relative flex flex-col h-[100dvh] sm:h-[680px] md:h-[720px] lg:h-[760px] xl:h-[800px] sm:max-h-[calc(100dvh-3rem)] md:max-h-[calc(100dvh-4rem)] lg:max-h-[calc(100dvh-5rem)] sm:rounded-[28px] md:rounded-[32px] overflow-hidden bg-surface-900/85 backdrop-blur-2xl sm:border border-white/10 shadow-2xl shadow-black/40"
           aria-label="ورود به چت مدرن"
         >
           {/* نوار پیشرفت هنگام ورود */}
-          <div className="absolute top-0 inset-x-0 h-[2px] overflow-hidden z-10" aria-hidden="true">
+          <div className="absolute top-0 inset-x-0 h-[2px] sm:h-[3px] overflow-hidden z-10" aria-hidden="true">
             {loading && <div className="login-bar h-full w-2/5 bg-gradient-to-r from-transparent via-primary-400 to-transparent" />}
           </div>
 
           {/* هدر */}
-          <header className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
-            <BotAvatar className="w-10 h-10" />
+          <header className="flex items-center gap-3 sm:gap-4 px-5 py-4 sm:px-6 sm:py-5 md:px-7 md:py-6 border-b border-white/5">
+            <BotAvatar className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12" />
             <div className="min-w-0">
-              <h1 className="text-[15px] font-bold text-surface-50 leading-tight">چت مدرن</h1>
-              <p className="text-xs text-surface-400 flex items-center gap-1.5 mt-0.5" aria-live="polite">
+              <h1 className="text-[15px] sm:text-base md:text-lg font-bold text-surface-50 leading-tight">چت مدرن</h1>
+              <p className="text-xs sm:text-[13px] md:text-sm text-surface-400 flex items-center gap-1.5 sm:gap-2 mt-0.5" aria-live="polite">
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${typing ? 'bg-primary-400 animate-pulse' : connected ? 'bg-emerald-400' : 'bg-emerald-500'}`}
+                  className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${typing ? 'bg-primary-400 animate-pulse' : connected ? 'bg-emerald-400' : 'bg-emerald-500'}`}
                 />
                 {typing ? 'در حال نوشتن…' : connected ? 'متصل شدی' : 'آنلاین'}
               </p>
@@ -401,7 +414,7 @@ export default function Login({ onAuth }) {
             role="log"
             aria-live="polite"
             aria-label="گفتگوی ورود"
-            className="login-scroll flex-1 overflow-y-auto px-4 py-5 space-y-2"
+            className="login-scroll flex-1 overflow-y-auto px-4 py-5 sm:px-5 sm:py-6 md:px-6 md:py-7 space-y-2 sm:space-y-3"
           >
             {messages.map((m, i) => {
               const prev = messages[i - 1];
@@ -414,25 +427,25 @@ export default function Login({ onAuth }) {
                   editable={m.kind === 'username' && i === lastMineIdx && step === 'password' && !locked}
                   onEdit={goBackToUsername}
                 />
-              )
+              );
             })}
             {typing && <TypingBubble showAvatar={!lastMessage || lastMessage.from !== 'bot'} />}
             <div ref={endRef} />
           </div>
 
           {/* ورودی */}
-          <form onSubmit={handleSubmit} noValidate className="px-3 pt-2 pb-3 sm:pb-4">
+          <form onSubmit={handleSubmit} noValidate className="px-3 pt-2 pb-3 sm:px-4 sm:pt-3 sm:pb-4 md:px-5 md:pt-4 md:pb-5">
             {/* میان‌برها */}
             {!locked && (
-              <div className="flex flex-wrap gap-2 px-1 pb-2.5">
+              <div className="flex flex-wrap gap-2 sm:gap-2.5 px-1 pb-2.5 sm:pb-3">
                 {step === 'username' ? (
                   <Link to="/register" className={chipClass}>
-                    <Icon name="userPlus" className="w-4 h-4 text-primary-300" />
+                    <Icon name="userPlus" className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-primary-300" />
                     حساب نداری؟ ثبت‌نام
                   </Link>
                 ) : (
                   <button type="button" onClick={goBackToUsername} className={chipClass}>
-                    <Icon name="pencil" className="w-4 h-4 text-primary-300" />
+                    <Icon name="pencil" className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-primary-300" />
                     تغییر نام کاربری
                   </button>
                 )}
@@ -440,14 +453,14 @@ export default function Login({ onAuth }) {
             )}
 
             {capsLock && step === 'password' && (
-              <p className="px-3 pb-2 text-xs text-amber-400 flex items-center gap-1.5">
-                <Icon name="alert" className="w-4 h-4" />
+              <p className="px-3 sm:px-4 md:px-5 pb-2 sm:pb-2.5 text-xs sm:text-sm md:text-[15px] text-amber-400 flex items-center gap-1.5 sm:gap-2">
+                <Icon name="alert" className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                 Caps Lock روشن است
               </p>
             )}
 
             <div
-              className={`flex items-center gap-1 rounded-full bg-surface-800/90 border border-surface-700 ps-5 pe-1.5 py-1.5 transition-all duration-200 focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-500/15 ${shake ? 'login-shake' : ''}`}
+              className={`flex items-center gap-1 sm:gap-1.5 rounded-full bg-surface-800/90 border border-surface-700 ps-5 sm:ps-6 md:ps-7 pe-1.5 py-1.5 sm:py-2 md:py-2.5 transition-all duration-200 focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-500/15 ${shake ? 'login-shake' : ''}`}
             >
               {/* هر دو فیلد در DOM می‌مانند تا مدیر رمز عبور مرورگر درست کار کند */}
               <input
@@ -487,36 +500,34 @@ export default function Login({ onAuth }) {
               />
 
               {step === 'password' && (
-                // 👇 تغییر ۲: اضافه شدن cursor-pointer 👇
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'مخفی کردن رمز' : 'نمایش رمز'}
                   aria-pressed={showPassword}
-                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-50 hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer"
+                  className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 flex items-center justify-center rounded-full text-surface-400 hover:text-surface-50 hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 cursor-pointer"
                 >
-                  <Icon name={showPassword ? 'eyeOff' : 'eye'} />
+                  <Icon name={showPassword ? 'eyeOff' : 'eye'} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
                 </button>
               )}
 
-              {/* 👇 تغییر ۲: اضافه شدن cursor-pointer 👇 */}
               <button
                 type="submit"
                 disabled={!canSend}
                 aria-label={step === 'username' ? 'ادامه' : 'ورود'}
-                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-105 active:scale-90 disabled:opacity-35 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 cursor-pointer"
+                className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-accent-500 shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-105 active:scale-90 disabled:opacity-35 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 cursor-pointer"
               >
                 {loading ? (
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <Icon name="send" className="w-5 h-5 -scale-x-100" strokeWidth={2} />
+                  <Icon name="send" className="w-5 h-5 sm:w-6 sm:h-6 -scale-x-100" strokeWidth={2} />
                 )}
               </button>
             </div>
           </form>
         </main>
 
-        <p className="hidden sm:block mt-5 text-center text-xs text-surface-500">
+        <p className="hidden sm:block mt-5 md:mt-6 text-center text-xs md:text-sm text-surface-500">
           © {currentYear} چت مدرن اختصاصی برای — BMS
         </p>
       </div>
