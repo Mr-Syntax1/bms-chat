@@ -449,7 +449,27 @@ export function useChat() {
         if (msg.room && msg.room !== currentRoomRef.current) return;
 
         setMessages((prev) => {
+          // ۱. اگر پیام واقعی قبلاً (توسط HTTP) اضافه شده، کاری نکن
           if (prev.some((m) => m.id === msg.id)) return prev;
+
+          // ۲. بررسی کنیم آیا این پیام، همان پیامی است که به صورت optimistic فرستادیم؟
+          // (مقایسه بر اساس متن، فرستنده و نزدیکی زمان ارسال)
+          const optimisticIndex = prev.findIndex(
+            (m) =>
+              m.id.startsWith('temp-') &&
+              m.senderId === msg.senderId &&
+              m.text === msg.text &&
+              Math.abs(new Date(m.createdAt).getTime() - new Date(msg.createdAt).getTime()) < 5000
+          );
+
+          if (optimisticIndex !== -1) {
+            // جایگزینی پیام موقت با پیام واقعی دریافتی از Ably و تنظیم وضعیت به 'sent'
+            const newPrev = [...prev];
+            newPrev[optimisticIndex] = { ...msg, status: 'sent' };
+            return newPrev;
+          }
+
+          // ۳. در غیر این صورت، پیام جدید را به انتهای لیست اضافه کن
           const next = [...prev, msg];
           return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
         });
@@ -943,7 +963,7 @@ export function useChat() {
     }
   }, []);
 
-    const sendMessage = useCallback(
+  const sendMessage = useCallback(
     async (payload) => {
       const room = currentRoomRef.current;
       if (!room) return;
@@ -951,10 +971,10 @@ export function useChat() {
       const currentUserId = currentUserRef.current?.id;
       const currentUsername = currentUserRef.current?.username;
 
-      // ۱. ساخت یک شناسه موقت برای پیام
+      // ۱. ساخت شناسه موقت
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-      
-      // ۲. ساخت آبجکت پیام موقت با وضعیت 'sending'
+
+      // ۲. ساخت آبجکت پیام موقت با وضعیت 'sending' (آیکون ساعت)
       const tempMessage = {
         id: tempId,
         text: typeof payload === 'string' ? payload : payload.text,
@@ -962,7 +982,7 @@ export function useChat() {
         senderId: currentUserId,
         room: room,
         createdAt: new Date().toISOString(),
-        status: 'sending', // وضعیت اولیه: در حال ارسال (نمایش ساعت)
+        status: 'sending',
         type: payload.type || 'text',
         ...(payload.fileUrl && {
           fileUrl: payload.fileUrl,
@@ -972,45 +992,49 @@ export function useChat() {
         }),
       };
 
-      // ۳. نمایش فوری پیام در لیست (Optimistic Update)
+      // ۳. نمایش فوری پیام در لیست
       setMessages((prev) => [...prev, tempMessage]);
 
       try {
         const data = typeof payload === 'string' ? { text: payload, room } : { ...payload, room };
-        
+
         // ارسال به سرور
         const res = await apiRequest('/api/messages/send', {
           method: 'POST',
           body: JSON.stringify(data),
         });
 
-        // ۴. موفقیت: جایگزینی پیام موقت با پیام واقعی سرور و تغییر وضعیت به 'sent'
+        // ۴. مدیریت هوشمند پاسخ سرور برای جلوگیری از تکرار
         if (res.success && res.message) {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === tempId ? { ...res.message, status: 'sent' } : m
-            )
-          );
+          const realMessage = res.message;
+
+          setMessages((prev) => {
+            // حالت الف: اگر Ably زودتر عمل کرده و پیام واقعی را اضافه کرده است،
+            // فقط پیام موقت (tempId) را حذف کن تا تکراری ایجاد نشود.
+            if (prev.some((m) => m.id === realMessage.id)) {
+              return prev.filter((m) => m.id !== tempId);
+            }
+
+            // حالت ب: اگر HTTP زودتر رسیده، پیام موقت را با پیام واقعی و وضعیت 'sent' جایگزین کن.
+            return prev.map((m) =>
+              m.id === tempId ? { ...realMessage, status: 'sent' } : m
+            );
+          });
         } else {
-          // اگر سرور خطای ناشناخته‌ای داد اما ۲۰۰ برگرداند
           setMessages((prev) =>
-            prev.map((m) =>
-              m.id === tempId ? { ...m, status: 'failed' } : m
-            )
+            prev.map((m) => (m.id === tempId ? { ...m, status: 'failed' } : m))
           );
         }
-        
+
         setTyping(false);
       } catch (err) {
         console.error('[Chat] Send message error:', err);
-        
-        // ۵. شکست: علامت‌گذاری پیام به عنوان 'failed' (می‌توانید بعداً آیکون خطا اضافه کنید)
+
+        // ۵. در صورت خطای شبکه، وضعیت را به failed تغییر بده
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempId ? { ...m, status: 'failed' } : m
-          )
+          prev.map((m) => (m.id === tempId ? { ...m, status: 'failed' } : m))
         );
-        
+
         sileo.error({ title: 'خطا در ارسال', description: 'لطفاً اتصال اینترنت خود را بررسی کنید.' });
       }
     },
