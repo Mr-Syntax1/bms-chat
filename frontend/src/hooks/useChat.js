@@ -165,21 +165,45 @@ export function useChat() {
       avatarIndex: m.data?.avatarIndex ?? null,
     });
 
-    //  Defensive: فقط آرایه‌های معتبر را merge کن
+    // Defensive: ترکیب هوشمند لیست جدید با لیست قبلی برای جلوگیری از کاربران شبح
     const mergeMembers = (incoming) => {
       if (disposed) return;
       if (!Array.isArray(incoming)) return;
 
       setOnlineUsers((prev) => {
-        const map = new Map(prev.map((u) => [u.id, u]));
+        const map = new Map();
+
+        // اولویت اول: لیست معتبر و به‌روزی که مستقیماً از سرور Ably آمده است
         for (const m of incoming) {
           if (m && m.clientId) {
-            map.set(m.clientId, toUser(m));
+            map.set(m.clientId, {
+              id: m.clientId,
+              username: m.data?.name || 'Unknown',
+              avatarIndex: m.data?.avatarIndex ?? null,
+            });
           }
         }
-        // کاربر جاری را همیشه نگه دار (تا از بین نرود)
-        const self = prev.find((u) => u.id === userId);
-        if (self && !map.has(userId)) map.set(userId, self);
+
+        // لایه محافظتی: اگر کاربر جاری به هر دلیلی در لیست سرور نبود، دستی اضافه‌اش کن
+        const currentUserId = currentUserRef.current?.id;
+        const currentUsername = currentUserRef.current?.username;
+        const currentAvatarIndex = currentUserRef.current?.avatarIndex ?? null;
+
+        if (currentUserId && !map.has(currentUserId)) {
+          map.set(currentUserId, {
+            id: currentUserId,
+            username: currentUsername || 'شما',
+            avatarIndex: currentAvatarIndex,
+          });
+        }
+
+        if (map.size === 0 && prev.length > 0) {
+
+          prev.forEach(u => {
+            if (!map.has(u.id)) map.set(u.id, u);
+          });
+        }
+
         return Array.from(map.values());
       });
     };
@@ -435,10 +459,36 @@ export function useChat() {
         else if (msg.sender) clearTypingByUsername(msg.sender);
       });
 
+      // اضافه کردن شنونده‌ی رویداد Typing (حلقه‌ی گمشده)
+      on('typing', (data) => {
+        if (!data || !data.username) return;
+        // اگر خودمان هستیم، نادیده بگیر
+        if (data.userId === currentUserRef.current?.id) return;
+
+        const key = `${roomName}-${data.userId || data.username}`;
+
+        if (data.isTyping) {
+          // پاک کردن تایمر قبلی اگر وجود دارد
+          const existing = typingMapRef.current.get(key);
+          if (existing?.timer) clearTimeout(existing.timer);
+
+          // تنظیم تایمر جدید برای پاک کردن خودکار در صورت قطع شدن ناگهانی شبکه (Fallback)
+          const timer = setTimeout(() => {
+            clearTypingUser(key);
+          }, 3500); // ۳.۵ ثانیه
+
+          typingMapRef.current.set(key, { username: data.username, timer });
+        } else {
+          clearTypingUser(key);
+        }
+        syncTyping();
+      });
+
       roomHandlersRef.current[roomName] = { channelName, handlers };
     },
-    [clearTypingUser, clearTypingByUsername]
+    [clearTypingUser, syncTyping] // وابستگی‌ها به‌روز شدند
   );
+
 
   const unbindRoomHandlers = useCallback((roomName) => {
     const entry = roomHandlersRef.current[roomName];

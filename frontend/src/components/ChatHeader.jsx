@@ -28,15 +28,17 @@ export default function ChatHeader({
 
   const dmPartner = currentRoomObj?.isPrivate
     ? {
-      userId: currentRoomObj.dmPartnerId,
-      username: currentRoomObj.dmPartnerUsername,
-      avatarIndex: currentRoomObj.avatarIndex ?? null,
-      isOnline: onlineUsers.some((u) => u.username === currentRoomObj.dmPartnerUsername),
-    }
+        userId: currentRoomObj.dmPartnerId,
+        username: currentRoomObj.dmPartnerUsername,
+        avatarIndex: currentRoomObj.avatarIndex ?? null,
+        isOnline: onlineUsers.some((u) => u.username === currentRoomObj.dmPartnerUsername),
+      }
     : null;
 
   const isGroupRoom = currentRoomObj && !currentRoomObj.isPrivate && currentRoomObj.members;
-  const onlineMembers = onlineUsers;
+  
+  // نمایش همه کاربران آنلاین
+  const onlineMembers = onlineUsers; 
 
   const displayTitle = resolvedDmName
     ? `گفتگو با ${resolvedDmName}`

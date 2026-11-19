@@ -44,7 +44,7 @@ export default function Chat({ chat, user, onLogout }) {
   const [isPending, startTransition] = useTransition();
   const navigate = useNavigate();
   const [sidebar, setSidebar] = useState(null);
-  
+
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
   // هماهنگ‌سازی با API جدید useWebRTC
@@ -195,12 +195,12 @@ export default function Chat({ chat, user, onLogout }) {
                     onEditMessage={editMessage}
                     currentUserId={user?.id}
                   />
-                  
+
                   {/* اصلاح TypingIndicator: فیلتر ایمن‌تر برای جلوگیری از خطا */}
                   <TypingIndicator
                     users={typingUsers.filter((u) => u && u !== user?.username)}
                   />
-                  
+
                   <ChatInput onSend={sendMessage} onTyping={setTyping} />
                 </>
               ) : (
