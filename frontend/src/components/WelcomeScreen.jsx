@@ -4,7 +4,6 @@ import Avatar from './Avatar';
 import InstallButton from './InstallButton';
 
 /* ───────────── helpers ───────────── */
-
 const faNum = (n) => Number(n || 0).toLocaleString('fa-IR');
 
 const getGreeting = () => {
@@ -36,52 +35,43 @@ const PATH = {
 
 const FEATURES = [
   { icon: PATH.bolt, label: 'گفتگوی لحظه‌ای' },
-  { icon: PATH.shield, label: 'ورود با حساب خودت' },
-  { icon: PATH.device, label: 'موبایل و دسکتاپ' },
+  { icon: PATH.shield, label: 'حریم خصوصی' },
+  { icon: PATH.device, label: 'همه‌ی دستگاه‌ها' },
 ];
 
 /* ───────────── تصویر اصلی (SVG) ───────────── */
-
 function HeroIllustration({ className = '' }) {
   return (
     <svg viewBox="0 0 320 200" fill="none" className={className} aria-hidden="true">
-      {/* تزئینات */}
       <circle cx="30" cy="26" r="5" className="stroke-primary-400/60" strokeWidth="2" />
       <path d="M292 22v14M285 29h14" className="stroke-accent-400/70" strokeWidth="2" strokeLinecap="round" />
       <path d="M14 150v10M9 155h10" className="stroke-surface-600" strokeWidth="2" strokeLinecap="round" />
       <circle cx="304" cy="176" r="3" className="fill-surface-600" />
       <circle cx="244" cy="20" r="2.5" className="fill-primary-400/50" />
 
-      {/* حباب پشتی */}
       <g className="ws-float">
         <rect x="20" y="32" width="178" height="88" rx="22" className="fill-surface-800" />
         <path d="M54 116l-6 26 30-24z" className="fill-surface-800" />
-        {/* آواتار */}
         <circle cx="46" cy="60" r="13" className="fill-accent-400" />
         <circle cx="46" cy="56" r="4.5" className="fill-surface-950/70" />
         <path d="M37 69a9 7 0 0118 0z" className="fill-surface-950/70" />
-        {/* خطوط متن */}
         <rect x="68" y="52" width="76" height="7" rx="3.5" className="fill-white/30" />
         <rect x="68" y="66" width="112" height="7" rx="3.5" className="fill-white/12" />
         <rect x="36" y="90" width="140" height="7" rx="3.5" className="fill-white/10" />
         <rect x="36" y="103" width="92" height="7" rx="3.5" className="fill-white/10" />
       </g>
 
-      {/* حباب جلویی */}
       <g className="ws-float" style={{ animationDelay: '-3s' }}>
         <rect x="112" y="102" width="192" height="84" rx="22" className="fill-primary-500" />
         <path d="M270 182l8 16-30-15z" className="fill-primary-500" />
         <rect x="134" y="120" width="112" height="7" rx="3.5" className="fill-white/75" />
         <rect x="134" y="134" width="76" height="7" rx="3.5" className="fill-white/40" />
-        {/* در حال تایپ */}
         <circle className="ws-dot fill-white" cx="142" cy="162" r="4" />
         <circle className="ws-dot fill-white" cx="156" cy="162" r="4" style={{ animationDelay: '.18s' }} />
         <circle className="ws-dot fill-white" cx="170" cy="162" r="4" style={{ animationDelay: '.36s' }} />
-        {/* آواتار */}
         <circle cx="278" cy="128" r="13" className="fill-primary-200" />
         <circle cx="278" cy="124" r="4.5" className="fill-primary-700" />
         <path d="M269 137a9 7 0 0118 0z" className="fill-primary-700" />
-        {/* تیک آنلاین */}
         <circle cx="298" cy="108" r="12" className="fill-emerald-400 stroke-surface-950" strokeWidth="3" />
         <path d="M292.5 108.5l4 4 7-8" className="stroke-surface-950" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
       </g>
@@ -89,7 +79,6 @@ function HeroIllustration({ className = '' }) {
   );
 }
 
-/* دسته‌ی آواتارها (SVG) */
 function AvatarStack() {
   const colors = ['fill-accent-400', 'fill-primary-300', 'fill-emerald-400', 'fill-amber-400'];
   return (
@@ -105,7 +94,6 @@ function AvatarStack() {
   );
 }
 
-/* تزئین گوشه‌ی کارت (SVG) */
 function CardArcs() {
   return (
     <svg className="absolute -top-px -left-px w-40 h-40 pointer-events-none text-white/[0.06]" viewBox="0 0 160 160" fill="none" aria-hidden="true">
@@ -117,7 +105,6 @@ function CardArcs() {
 }
 
 /* ───────────── component ───────────── */
-
 export default function WelcomeScreen({ user, rooms = [], onSelectRoom, onCreateRoom }) {
   const navigate = useNavigate();
   const btnRef = useRef(null);
@@ -126,7 +113,6 @@ export default function WelcomeScreen({ user, rooms = [], onSelectRoom, onCreate
 
   const greeting = useMemo(getGreeting, []);
 
-  /* تنها اتاق پیشنهادی: bms */
   const bmsRoom = useMemo(
     () => rooms.find((r) => !r.isPrivate && r.name.toLowerCase().includes('bms')),
     [rooms]
@@ -143,93 +129,96 @@ export default function WelcomeScreen({ user, rooms = [], onSelectRoom, onCreate
     setError('');
     setBusy(true);
     try {
-      // اگر اتاق هنوز وجود ندارد، بی‌صدا ساخته می‌شود (کاربر چیزی از ساخت اتاق نمی‌بیند)
       if (!bmsRoom) await onCreateRoom(roomName);
       onSelectRoom(roomName);
     } catch {
-      setError('ورود به اتاق ناموفق بود. دوباره تلاش کن.');
+      setError('ورود به اتاق ناموفق بود. لطفاً دوباره تلاش کن.');
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div dir="rtl" className="relative flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain">
+    <div dir="rtl" className="relative flex-1 min-h-0 flex flex-col overflow-y-auto overscroll-contain bg-surface-950">
       <style>{`
-        @keyframes ws-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-        @keyframes ws-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes ws-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+        @keyframes ws-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
         @keyframes ws-dot { 0%,60%,100% { opacity: .35; } 30% { opacity: 1; } }
-        .ws-in { animation: ws-in .55s cubic-bezier(.2,.7,.2,1) both; }
+        @keyframes shimmer { 100% { transform: translateX(100%); } }
+        .ws-in { animation: ws-in .6s cubic-bezier(.2,.7,.2,1) both; }
         .ws-float { animation: ws-float 6s ease-in-out infinite; transform-box: fill-box; }
         .ws-dot { animation: ws-dot 1.2s ease-in-out infinite; }
-        @media (prefers-reduced-motion: reduce) { .ws-in, .ws-float, .ws-dot { animation: none; } }
+        @media (prefers-reduced-motion: reduce) { .ws-in, .ws-float, .ws-dot, .animate-spin { animation: none; } }
       `}</style>
 
-      {/* قوس‌های تزئینی پس‌زمینه (SVG ثابت، بدون هزینه‌ی رندر) */}
-      <svg className="absolute -bottom-40 -right-40 w-[34rem] h-[34rem] pointer-events-none text-white/[0.035]" viewBox="0 0 400 400" fill="none" aria-hidden="true">
-        {[60, 110, 160, 210, 260].map((r) => (
-          <circle key={r} cx="400" cy="400" r={r} stroke="currentColor" strokeWidth="1.5" />
-        ))}
-      </svg>
+      {/* پس‌زمینه‌ی تزئینی */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent-500/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
+      </div>
 
-      <div className="relative flex-1 flex flex-col w-full max-w-5xl mx-auto px-4 sm:px-8 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {/* ───── نوار بالا ───── */}
-        <header className="flex items-center justify-between h-14 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <img src="/pwa-192x192.png" alt="" width={28} height={28} className="w-7 h-7 rounded-lg object-contain" />
-            <span className="font-semibold text-surface-100 tracking-tight">چت BMS</span>
+      <div className="relative flex-1 flex flex-col w-full max-w-6xl mx-auto px-4 sm:px-8 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
+        
+        {/* هدر */}
+        <header className="flex items-center justify-between h-16 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/20">
+              <img src="/pwa-192x192.png" alt="" className="w-6 h-6 object-contain" />
+            </div>
+            <span className="font-bold text-lg text-surface-100 tracking-tight">چت BMS</span>
           </div>
-          <div className="flex items-center gap-2">
-            <InstallButton />
-            <button
-              onClick={() => navigate('/profile')}
-              className="rounded-full transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950"
-              aria-label="مشاهده پروفایل"
-              title="پروفایل"
-            >
-              <Avatar username={user?.username} avatarIndex={user?.avatarIndex} size="sm" status="online" />
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="rounded-full transition-transform active:scale-95 hover:ring-2 hover:ring-primary-500/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            aria-label="مشاهده پروفایل"
+            title="پروفایل"
+          >
+            <Avatar username={user?.username} avatarIndex={user?.avatarIndex} size="sm" status="online" />
+          </button>
         </header>
 
-        {/* ───── محتوا ───── */}
-        <main className="flex-1 grid lg:grid-cols-2 items-center gap-[clamp(12px,3dvh,40px)] lg:gap-12 py-[clamp(4px,2dvh,24px)]">
-          {/* تصویر */}
-          <div className="ws-in order-first lg:order-last flex justify-center">
-            <HeroIllustration className="w-auto h-[clamp(96px,21dvh,190px)] lg:h-[min(50dvh,400px)] max-w-full [@media(max-height:520px)]:hidden" />
+        {/* محتوای اصلی */}
+        <main className="flex-1 grid lg:grid-cols-2 items-center gap-8 lg:gap-16 py-6">
+          
+          {/* بخش تصویر (سمت چپ در دسکتاپ) */}
+          <div className="ws-in order-first lg:order-last flex justify-center lg:justify-end">
+            <HeroIllustration className="w-full max-w-md lg:max-w-lg h-auto drop-shadow-2xl" />
           </div>
 
-          {/* متن + کارت */}
-          <div className="flex flex-col items-center lg:items-stretch text-center lg:text-right gap-[clamp(12px,2.6dvh,24px)]">
-            <div className="ws-in" style={{ animationDelay: '60ms' }}>
-              <p className="text-sm text-surface-500">{greeting}</p>
-              <h1 className="mt-1 text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-surface-50 break-words">
-                سلام، {user?.username}
+          {/* بخش متن و کارت (سمت راست در دسکتاپ) */}
+          <div className="flex flex-col items-center lg:items-stretch text-center lg:text-right gap-6">
+            <div className="ws-in space-y-3" style={{ animationDelay: '80ms' }}>
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/10 text-primary-400 text-xs font-semibold border border-primary-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-pulse" />
+                {greeting}
+              </span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-surface-50 break-words">
+                سلام، <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">{user?.username}</span>
               </h1>
-              <p className="mt-2 sm:mt-3 text-surface-400 leading-7 max-w-md mx-auto lg:mx-0">
-                اتاق اصلی BMS منتظر توئه. با یک کلیک وارد گفتگو شو.
+              <p className="text-surface-400 leading-7 max-w-md mx-auto lg:mx-0 text-sm sm:text-base">
+                اتاق اصلی منتظر توئه. با یک کلیک وارد گفتگو شو و یا برای تجربه‌ی بهتر، اپلیکیشن رو نصب کن.
               </p>
             </div>
 
-            {/* کارت اتاق */}
-            <div className="ws-in w-full max-w-md lg:max-w-none" style={{ animationDelay: '120ms' }}>
-              <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-surface-900 p-4 sm:p-5 text-right">
+            {/* کارت اصلی اقدام */}
+            <div className="ws-in w-full max-w-md lg:max-w-none" style={{ animationDelay: '140ms' }}>
+              <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-surface-900/60 backdrop-blur-xl p-5 sm:p-6 shadow-2xl shadow-black/20">
                 <CardArcs />
 
-                <div className="relative flex items-center gap-3.5">
-                  <div className="w-12 h-12 shrink-0 rounded-2xl bg-primary-500/15 text-primary-300 flex items-center justify-center">
-                    <Icon d={PATH.hash} className="w-6 h-6" />
+                <div className="relative flex items-center gap-4 mb-6">
+                  <div className="w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-500/20 text-primary-300 flex items-center justify-center border border-white/5">
+                    <Icon d={PATH.hash} className="w-7 h-7" />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h2 className="font-semibold text-lg text-surface-50 truncate">{roomName}</h2>
-                      <span className="shrink-0 px-2 h-5 inline-flex items-center rounded-md bg-primary-500/15 text-primary-300 text-[11px] font-semibold">
+                  <div className="min-w-0 flex-1 text-right">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="font-bold text-xl text-surface-50 truncate">{roomName}</h2>
+                      <span className="shrink-0 px-2 h-6 inline-flex items-center rounded-lg bg-primary-500/15 text-primary-300 text-[11px] font-bold border border-primary-500/20">
                         پیشنهادی
                       </span>
                     </div>
-                    <p className="mt-0.5 flex items-center gap-1.5 text-xs text-surface-400">
+                    <p className="mt-1 flex items-center gap-2 text-xs text-surface-400">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 ring-4 ring-emerald-400/15" />
-                      {members !== null ? `${faNum(members)} عضو` : 'اتاق عمومی'} · آماده‌ی گفتگو
+                      {members !== null ? `${faNum(members)} عضو فعال` : 'اتاق عمومی'} · آماده‌ی گفتگو
                     </p>
                   </div>
                   <div className="hidden sm:block shrink-0">
@@ -237,36 +226,45 @@ export default function WelcomeScreen({ user, rooms = [], onSelectRoom, onCreate
                   </div>
                 </div>
 
-                <button
-                  ref={btnRef}
-                  onClick={enter}
-                  disabled={busy}
-                  className="group relative mt-4 w-full h-12 sm:h-[52px] rounded-2xl bg-primary-500 hover:bg-primary-400 active:bg-primary-600 active:scale-[.985] text-white font-semibold flex items-center justify-center gap-2.5 transition-all disabled:opacity-80 disabled:cursor-wait focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900"
-                >
-                  {busy ? (
-                    <span className="block w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" role="status" aria-label="در حال ورود" />
-                  ) : (
-                    <>
-                      ورود به اتاق
-                      <Icon d={PATH.arrow} className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-1" sw={2.2} />
-                    </>
-                  )}
-                </button>
+                {/* دکمه‌های اقدام (اصلی و ثانویه) */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    ref={btnRef}
+                    onClick={enter}
+                    disabled={busy}
+                    className="flex-1 h-12 sm:h-[52px] rounded-2xl bg-primary-500 hover:bg-primary-400 active:bg-primary-600 active:scale-[0.98] text-white font-bold flex items-center justify-center gap-2.5 transition-all disabled:opacity-70 disabled:cursor-wait focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900"
+                  >
+                    {busy ? (
+                      <span className="block w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    ) : (
+                      <>
+                        ورود به اتاق
+                        <Icon d={PATH.arrow} className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-1" sw={2.2} />
+                      </>
+                    )}
+                  </button>
+                  
+                  {/* 👈 اینجا دکمه نصب به شکل طبیعی و ثانویه قرار گرفته است */}
+                  <InstallButton variant="secondary" />
+                </div>
 
-                <p role="alert" aria-live="polite" className={`mt-3 text-sm text-rose-400 ${error ? '' : 'hidden'}`}>
-                  {error}
-                </p>
+                {error && (
+                  <p role="alert" className="mt-4 text-sm text-rose-400 flex items-center justify-center sm:justify-start gap-2 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20">
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {error}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* ویژگی‌ها */}
-            <ul className="ws-in grid grid-cols-3 gap-2 w-full max-w-md lg:max-w-none [@media(max-height:600px)]:hidden" style={{ animationDelay: '180ms' }}>
+            <ul className="ws-in grid grid-cols-3 gap-3 w-full max-w-md lg:max-w-none" style={{ animationDelay: '200ms' }}>
               {FEATURES.map((f) => (
-                <li key={f.label} className="flex flex-col lg:flex-row items-center gap-2 text-xs text-surface-400">
-                  <span className="w-8 h-8 shrink-0 rounded-lg bg-white/[0.05] text-primary-300 flex items-center justify-center">
-                    <Icon d={f.icon} className="w-4 h-4" />
+                <li key={f.label} className="flex flex-col items-center lg:items-start gap-2.5 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-colors">
+                  <span className="w-9 h-9 shrink-0 rounded-xl bg-surface-800 text-primary-400 flex items-center justify-center border border-white/5">
+                    <Icon d={f.icon} className="w-4.5 h-4.5" />
                   </span>
-                  <span className="leading-5">{f.label}</span>
+                  <span className="text-xs font-medium text-surface-300 leading-5">{f.label}</span>
                 </li>
               ))}
             </ul>
