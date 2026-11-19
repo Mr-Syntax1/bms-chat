@@ -39,10 +39,9 @@ export default function InstallButton() {
       }
     } else {
       // حالت ۲: مرورگر اجازه نصب مستقیم نمی‌دهد (آیفون یا رد شده توسط کاربر)
-      // نمایش راهنمای دقیق و هوشمند بر اساس دستگاه
       const message = isIOS
         ? 'برای نصب، روی دکمه Share (مربع با فلش رو به بالا) در پایین مرورگر بزنید و "Add to Home Screen" را انتخاب کنید.'
-        : 'برای نصب، روی آیکون سه‌نقطه (⋮) در بالای مرورگر بزنید و گزینه "Install App" یا "نصب برنامه" را انتخاب کنید.';
+        : 'برای نصب، روی آیکون سه‌نقطه (⋮) در بالای مرورگر یا کنار url گزینه  "Install App" یا "نصب برنامه" را انتخاب کنید.';
 
       sileo.info({
         title: 'راهنمای نصب',
@@ -58,24 +57,28 @@ export default function InstallButton() {
   return (
     <button
       onClick={handleInstall}
-      className="group relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-primary-600 to-accent-600 text-white text-sm font-medium shadow-lg shadow-primary-500/20 hover:shadow-primary-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 w-full sm:w-auto cursor-pointer overflow-hidden"
+      className="group relative flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl 
+                 bg-surface-800/60 backdrop-blur-md border border-white/10 
+                 text-surface-200 hover:text-white hover:bg-surface-800 hover:border-primary-500/50
+                 text-sm font-medium shadow-sm hover:shadow-lg hover:shadow-primary-500/10
+                 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]
+                 transition-all duration-300 ease-out
+                 w-full sm:w-auto cursor-pointer overflow-hidden"
     >
-      {/* افکت درخشش ملایم و مدرن هنگام هاور */}
-      <span className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-linear-to-r from-transparent via-white/20 to-transparent" />
-      
-      {/* آیکون با انیمیشن بزرگ شدن نرم */}
-      <svg className="w-4 h-4 shrink-0 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* افکت درخشش ملایم و مدرن هنگام هاور (جایگزین شمر پیچیده) */}
+      <span className="absolute inset-0 bg-linear-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+
+      {/* آیکون با انیمیشن نرم */}
+      <svg
+        className="w-4.5 h-4.5 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-0.5 text-primary-400 group-hover:text-primary-300"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
       </svg>
-      
-      <span>نصب برنامه</span>
-      
-      {/* نشانگر ظریف (فقط زمانی که پرامپت آماده است) */}
-      {deferredPrompt && (
-        <span className="absolute top-2 right-2 flex h-2 w-2">
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-white/80 group-hover:bg-white transition-colors"></span>
-        </span>
-      )}
+
+      <span>نصب اپلیکیشن</span>
     </button>
   );
 }
