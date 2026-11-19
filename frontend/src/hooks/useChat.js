@@ -606,12 +606,27 @@ export function useChat() {
         if (seq !== switchSeqRef.current) return { success: false, stale: true };
         if (res.error) return res;
 
-        const room = res.room || roomName;
+        // اصلاح: اضافه کردن اتاق جوین‌شده به لیست در صورت عدم وجود
+        if (res.room) {
+          setRooms((prevRooms) => {
+            const roomObj = typeof res.room === 'object' ? res.room : { name: res.room };
+            const exists = prevRooms.some(
+              (r) => r.id === roomObj.id || r.name === roomObj.name
+            );
+            if (exists) return prevRooms;
+
+            return [...prevRooms, roomObj];
+          });
+        }
+
+        const roomToEnter = typeof res.room === 'object' ? res.room.name : res.room;
+
         const result = await enterRoom({
-          room,
+          room: roomToEnter,
           history: res.history,
           partnerName: res.targetUser?.username ?? null,
         });
+
         if (!result.ok) return { error: result.error };
 
         return res;
@@ -636,8 +651,32 @@ export function useChat() {
         if (seq !== switchSeqRef.current) return { success: false, stale: true };
         if (res.error) return { success: false, error: res.error };
 
+        //  اصلاح: اضافه کردن اتاق جدید به لیست در صورت عدم وجود
+        if (res.room) {
+          setRooms((prevRooms) => {
+            // بررسی می‌کنیم آیا این اتاق از قبل در لیست هست یا خیر
+            const exists = prevRooms.some(
+              (r) => r.id === res.room.id || r.name === res.room.name
+            );
+            if (exists) return prevRooms; // اگر بود، لیست را تغییر نده
+
+            // اگر نبود، اتاق جدید را به لیست اضافه کن
+            return [...prevRooms, res.room];
+          });
+        }
+
         const partnerName = res.targetUser?.username || targetUsername;
-        const result = await enterRoom({ room: res.room, history: res.history, partnerName });
+
+        // توجه: اگر res.room یک آبجکت است، نام آن res.room.name است. 
+        // اگر بک‌اند فقط نام رشته‌ای را برمی‌گرداند، از همان res.room استفاده کنید.
+        const roomNameToEnter = typeof res.room === 'object' ? res.room.name : res.room;
+
+        const result = await enterRoom({
+          room: roomNameToEnter,
+          history: res.history,
+          partnerName
+        });
+
         if (!result.ok) return { success: false, error: 'Failed to subscribe to DM room' };
 
         return { success: true, targetUsername: res.targetUser?.username };
