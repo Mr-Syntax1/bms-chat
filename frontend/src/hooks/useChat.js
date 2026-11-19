@@ -434,6 +434,16 @@ export function useChat() {
         );
       });
 
+      on('message-deleted', (data) => {
+        const { messageId, deleteForEveryone } = data;
+        if (!messageId) return;
+
+        if (deleteForEveryone) {
+          // اگر برای همه حذف شده باشد، پیام را کاملاً از آرایه فیلتر و حذف می‌کنیم
+          setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        }
+      });
+
       on('new-message', (msg) => {
         if (!msg) return;
         const currentUserId = currentUserRef.current?.id;
@@ -1042,17 +1052,23 @@ export function useChat() {
   );
 
   const deleteMessage = useCallback(async (messageId, deleteForEveryone) => {
+    // ۱. حذف خوش‌بینانه (Optimistic Update): بلافاصله پیام را از لیست خودت حذف کن
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
     try {
       const res = await apiRequest('/api/messages/delete', {
         method: 'POST',
         body: JSON.stringify({ messageId, deleteForEveryone }),
       });
-      if (!deleteForEveryone && !res?.error) {
-        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+      if (res?.error) {
+        sileo.error({ title: 'خطا', description: res.error || 'حذف پیام با شکست مواجه شد.' });
+        // نکته: در صورت خطا، می‌توانید پیام را دوباره به لیست برگردانید (Rollback)
       }
       return res;
     } catch (err) {
       console.error('[Chat] Delete message error:', err);
+      sileo.error({ title: 'خطا', description: 'خطا در ارتباط با سرور' });
       return { error: err.message };
     }
   }, []);
