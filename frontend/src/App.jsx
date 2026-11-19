@@ -87,7 +87,7 @@ function App() {
         <div className="min-h-screen flex items-center justify-center bg-aurora text-white relative overflow-hidden">
           {uiPrefs.animatedBackground && <HalloweenBackground />}
           {/* کامپوننت لودینگ شما اینجا قرار می‌گیرد و به صورت خودکار وسط‌چین می‌شود */}
-          <LoadingSpinner text="در حال بررسی وضعیت حساب..." />
+          <LoadingSpinner text="در حال بارگذاری..." />
         </div>
       </ToastProvider>
     );
