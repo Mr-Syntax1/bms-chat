@@ -45,7 +45,6 @@ roomsRouter.get('/search', async (req, res) => {
 
     const [rooms, users] = await Promise.all([
       Room.find({ isPrivate: false, name: regex }).limit(20).lean(),
-      // جستجوی بهینه فقط بر اساس username
       User.find({ _id: { $ne: req.userId }, username: regex })
         .select('username avatarIndex')
         .limit(20)
@@ -64,7 +63,7 @@ roomsRouter.get('/search', async (req, res) => {
         id: u._id.toString(),
         username: u.username,
         avatarIndex: u.avatarIndex ?? null,
-        isOnline: false, // وضعیت آنلاین از طریق Presence مدیریت می‌شود
+        isOnline: false,
       })),
     });
   } catch (err) {
@@ -121,7 +120,16 @@ roomsRouter.post('/create', async (req, res) => {
       members: [req.userId]
     });
 
-    res.json({ success: true, room: { id: room._id.toString(), name: room.name, createdBy: room.createdBy.toString() } });
+    res.json({ 
+      success: true, 
+      room: { 
+        id: room._id.toString(), 
+        name: room.name, 
+        createdBy: room.createdBy.toString(),
+        isPrivate: room.isPrivate,
+        isMember: true
+      } 
+    });
   } catch (err) {
     console.error('Create room error:', err);
     res.status(500).json({ error: 'خطای سرور' });
@@ -156,7 +164,6 @@ roomsRouter.post('/join', async (req, res) => {
     }).sort({ createdAt: -1 }).limit(100).lean();
     history.reverse();
 
-    // Fetch avatarIndex for each unique sender in history
     const senderIds = [...new Set(history.map(m => m.senderId?.toString()).filter(Boolean))];
     const senders = await User.find({ _id: { $in: senderIds } }).select('avatarIndex').lean();
     const avatarIndexMap = Object.fromEntries(senders.map(u => [u._id.toString(), u.avatarIndex ?? null]));
@@ -177,7 +184,16 @@ roomsRouter.post('/join', async (req, res) => {
       avatarIndex: m.senderId ? avatarIndexMap[m.senderId.toString()] ?? null : null,
     }));
 
-    res.json({ success: true, room: roomName, history: formattedHistory });
+    // اصلاح: ارسال آبجکت کامل اتاق به جای فقط نام رشته‌ای
+    const formattedRoom = {
+      id: room._id.toString(),
+      name: room.name,
+      createdBy: room.createdBy.toString(),
+      isMember: true,
+      isPrivate: room.isPrivate,
+    };
+
+    res.json({ success: true, room: formattedRoom, history: formattedHistory });
   } catch (err) {
     console.error('Join room error:', err);
     res.status(500).json({ error: 'خطای سرور' });
@@ -211,7 +227,7 @@ roomsRouter.post('/delete', async (req, res) => {
     const room = await Room.findOne({ name: roomName });
     if (!room) return res.status(404).json({ error: 'اتاق پیدا نشد.' });
     if (room.createdBy.toString() !== req.userId) {
-      return res.status(403).json({ error: 'فقط سازنده می‌تونه اتاق رو حذف کنه.' });
+      return res.status(403).json({ error: 'فقط سازنده می‌تواند اتاق را حذف کند.' });
     }
 
     await Message.deleteMany({ room: roomName });
@@ -296,7 +312,6 @@ roomsRouter.post('/open-dm', async (req, res) => {
       .lean();
     history.reverse();
 
-    // Fetch avatarIndex for each unique sender in history
     const senderIds = [...new Set(history.map(m => m.senderId?.toString()).filter(Boolean))];
     const senders = await User.find({ _id: { $in: senderIds } }).select('avatarIndex').lean();
     const avatarIndexMap = Object.fromEntries(senders.map(u => [u._id.toString(), u.avatarIndex ?? null]));
@@ -317,9 +332,21 @@ roomsRouter.post('/open-dm', async (req, res) => {
       avatarIndex: m.senderId ? avatarIndexMap[m.senderId.toString()] ?? null : null,
     }));
 
+    // اصلاح: ارسال آبجکت کامل اتاق به جای فقط نام رشته‌ای
+    const formattedRoom = {
+      id: room._id.toString(),
+      name: room.name,
+      createdBy: room.createdBy.toString(),
+      isMember: true,
+      isPrivate: room.isPrivate,
+      dmPartnerId: targetDbId,
+      dmPartnerUsername: targetUsername,
+      avatarIndex: targetAvatarIndex,
+    };
+
     res.json({
       success: true,
-      room: dmRoomName,
+      room: formattedRoom,
       history: formattedHistory,
       targetUser: { id: targetDbId, username: targetUsername, avatarIndex: targetAvatarIndex, isOnline: false },
     });

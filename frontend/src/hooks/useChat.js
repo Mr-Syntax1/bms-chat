@@ -588,6 +588,7 @@ export function useChat() {
   // -------------------------------------------------------------------------
   // اتاق‌ها
   // -------------------------------------------------------------------------
+
   const switchRoom = useCallback(
     async (roomName) => {
       const seq = ++switchSeqRef.current;
@@ -606,20 +607,18 @@ export function useChat() {
         if (seq !== switchSeqRef.current) return { success: false, stale: true };
         if (res.error) return res;
 
-        // اصلاح: اضافه کردن اتاق جوین‌شده به لیست در صورت عدم وجود
-        if (res.room) {
+        //  اصلاح: حالا res.room یک آبجکت کامل است
+        if (res.room && typeof res.room === 'object') {
           setRooms((prevRooms) => {
-            const roomObj = typeof res.room === 'object' ? res.room : { name: res.room };
             const exists = prevRooms.some(
-              (r) => r.id === roomObj.id || r.name === roomObj.name
+              (r) => r.id === res.room.id || r.name === res.room.name
             );
             if (exists) return prevRooms;
-
-            return [...prevRooms, roomObj];
+            return [...prevRooms, res.room]; // اضافه کردن آبجکت کامل به لیست
           });
         }
 
-        const roomToEnter = typeof res.room === 'object' ? res.room.name : res.room;
+        const roomToEnter = res.room.name; // گرفتن نام از آبجکت
 
         const result = await enterRoom({
           room: roomToEnter,
@@ -651,30 +650,24 @@ export function useChat() {
         if (seq !== switchSeqRef.current) return { success: false, stale: true };
         if (res.error) return { success: false, error: res.error };
 
-        //  اصلاح: اضافه کردن اتاق جدید به لیست در صورت عدم وجود
-        if (res.room) {
+        //  اصلاح: حالا res.room یک آبجکت کامل است
+        if (res.room && typeof res.room === 'object') {
           setRooms((prevRooms) => {
-            // بررسی می‌کنیم آیا این اتاق از قبل در لیست هست یا خیر
             const exists = prevRooms.some(
               (r) => r.id === res.room.id || r.name === res.room.name
             );
-            if (exists) return prevRooms; // اگر بود، لیست را تغییر نده
-
-            // اگر نبود، اتاق جدید را به لیست اضافه کن
-            return [...prevRooms, res.room];
+            if (exists) return prevRooms;
+            return [...prevRooms, res.room]; // اضافه کردن آبجکت کامل به لیست
           });
         }
 
         const partnerName = res.targetUser?.username || targetUsername;
-
-        // توجه: اگر res.room یک آبجکت است، نام آن res.room.name است. 
-        // اگر بک‌اند فقط نام رشته‌ای را برمی‌گرداند، از همان res.room استفاده کنید.
-        const roomNameToEnter = typeof res.room === 'object' ? res.room.name : res.room;
+        const roomNameToEnter = res.room.name; // گرفتن نام از آبجکت
 
         const result = await enterRoom({
           room: roomNameToEnter,
           history: res.history,
-          partnerName
+          partnerName,
         });
 
         if (!result.ok) return { success: false, error: 'Failed to subscribe to DM room' };
@@ -687,6 +680,7 @@ export function useChat() {
     },
     [enterRoom]
   );
+  
 
   const createRoom = useCallback(async (name) => {
     if (typeof name === 'string' && name.trim().toLowerCase().startsWith('dm_')) {
