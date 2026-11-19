@@ -1,110 +1,58 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-
-const isStandalone = () =>
-  window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
-
-const isIOS = () =>
-  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+import { useState, useEffect } from 'react';
 
 export default function InstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [installed, setInstalled] = useState(false);
-  const [ios, setIos] = useState(false);
-  const [showHint, setShowHint] = useState(false);
-  const rootRef = useRef(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    if (isStandalone()) {
-      setInstalled(true);
+    // بررسی نصب بودن از طریق حالت نمایش
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      setIsInstalled(true);
       return;
     }
-    setIos(isIOS());
 
-    const onPrompt = (e) => {
+    const handler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
-    const onInstalled = () => {
-      setInstalled(true);
-      setDeferredPrompt(null);
-      setShowHint(false);
-    };
 
-    window.addEventListener('beforeinstallprompt', onPrompt);
-    window.addEventListener('appinstalled', onInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt);
-      window.removeEventListener('appinstalled', onInstalled);
-    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setIsInstalled(true));
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  /* بستن راهنمای iOS با کلیک بیرون یا Esc */
-  useEffect(() => {
-    if (!showHint) return;
-    const onDown = (e) => {
-      if (!rootRef.current?.contains(e.target)) setShowHint(false);
-    };
-    const onKey = (e) => e.key === 'Escape' && setShowHint(false);
-    document.addEventListener('pointerdown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [showHint]);
-
-  const handleClick = useCallback(async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      setDeferredPrompt(null); // هر prompt فقط یک بار قابل استفاده است
-    } else if (ios) {
-      setShowHint((v) => !v);
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsInstalled(true);
     }
-  }, [deferredPrompt, ios]);
+  };
 
-  if (installed || (!deferredPrompt && !ios)) return null;
+  // اگر نصب شده یا مرورگر پشتیبانی نمی‌کند، هیچ چیزی رندر نشود
+  if (isInstalled || !deferredPrompt) return null;
 
   return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        onClick={handleClick}
-        aria-label="نصب برنامه روی دستگاه"
-        aria-expanded={ios && !deferredPrompt ? showHint : undefined}
-        title="نصب برنامه روی دستگاه"
-        className="inline-flex items-center justify-center gap-2 h-10 w-10 sm:w-auto sm:px-3.5 rounded-xl border border-white/10 bg-white/[0.05] text-sm font-medium text-surface-100 transition-colors hover:bg-white/10 active:bg-white/[0.14] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-      >
-        <svg
-          className="w-[18px] h-[18px] shrink-0 text-primary-300"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.8}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
-        </svg>
-        <span className="hidden sm:inline">نصب برنامه</span>
-      </button>
-
-      {showHint && (
-        <div
-          role="dialog"
-          aria-label="راهنمای نصب"
-          className="absolute top-full left-0 mt-2 w-64 p-3.5 rounded-2xl border border-white/10 bg-surface-900 shadow-xl shadow-black/40 text-right z-50"
-        >
-          <p className="text-sm font-medium text-surface-100">نصب روی آیفون / آیپد</p>
-          <ol className="mt-2 space-y-1.5 text-xs leading-6 text-surface-400 list-decimal pr-4">
-            <li>دکمه‌ی «اشتراک‌گذاری» (Share) را در Safari بزن.</li>
-            <li>گزینه‌ی «Add to Home Screen» را انتخاب کن.</li>
-            <li>روی «Add» بزن.</li>
-          </ol>
-        </div>
-      )}
-    </div>
+    <button
+      onClick={handleInstall}
+      className="group relative flex items-center gap-2.5 px-5 py-3 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 text-white font-medium shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 overflow-hidden w-full sm:w-auto justify-center sm:justify-start"
+    >
+      {/* افکت درخشش هنگام هاور */}
+      <span className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      
+      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      <span className="text-sm">نصب اپلیکیشن</span>
+      
+      {/* نقطه‌ی جلب توجه */}
+      <span className="absolute top-2 right-2 flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+      </span>
+    </button>
   );
 }
