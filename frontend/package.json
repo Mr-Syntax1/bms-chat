@@ -15,15 +15,24 @@
   "dependencies": {
     "@ably/pubsub-device": "^3.1.0",
     "@hookform/resolvers": "^6.0.2",
+    "@livekit/components-react": "^2.9.26",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/postprocessing": "^3.2.2",
     "@tailwindcss/vite": "^4.3.3",
+    "ably": "^2.30.0",
     "emoji-picker-react": "^5.1.4",
+    "livekit-client": "^2.25.0",
+    "maath": "^0.10.8",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.91.0",
     "react-router-dom": "^7.18.4",
     "sileo": "^0.1.6",
     "tailwindcss": "^4.3.3",
-    "yup": "^1.7.1"
+    "three": "^0.187.0",
+    "yup": "^1.7.1",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

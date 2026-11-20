@@ -13,6 +13,7 @@ import { useGroupWebRTC } from '../hooks/useGroupWebRTC';
 import CallModal from './CallModal';
 import GroupCallModal from './GroupCallModal';
 import GroupCallBanner from './GroupCallBanner';
+import GameOverlay from '../game/GameOverlay';
 
 export default function Chat({ chat, user, onLogout }) {
   const {
@@ -48,6 +49,7 @@ export default function Chat({ chat, user, onLogout }) {
   const navigate = useNavigate();
   const [sidebar, setSidebar] = useState(null);
   const [groupCallExpanded, setGroupCallExpanded] = useState(true);
+  const [gameRoomId, setGameRoomId] = useState(null);
 
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
@@ -147,6 +149,14 @@ export default function Chat({ chat, user, onLogout }) {
     });
   }, [fetchNotifications, setShowNotifications]);
 
+  // باز کردن کمپ آتش برای اتاق جاری
+  const handleOpenGame = useCallback(() => {
+    if (!currentRoom) return;
+    setGameRoomId(currentRoom);
+  }, [currentRoom]);
+
+  const handleCloseGame = useCallback(() => setGameRoomId(null), []);
+
   return (
     // 🔑 قانون ۱: ارتفاع دقیق داینامیک + جلوگیری مطلق از اسکرول کل صفحه
     <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-transparent text-surface-50">
@@ -169,6 +179,7 @@ export default function Chat({ chat, user, onLogout }) {
           onStartCall={rtc.startCall}
           onGroupCallToggle={handleGroupCallToggle}
           inGroupCall={groupCall.callState !== 'idle'}
+          onOpenGame={handleOpenGame}
         />
       </div>
 
@@ -289,6 +300,15 @@ export default function Chat({ chat, user, onLogout }) {
         onToggleDeafen={rtc.toggleDeafen}
         onToggleScreenShare={rtc.toggleScreenShare}
       />
+
+      {/* کمپ آتش (بازی سه‌بعدی چندنفره) */}
+      {gameRoomId && gameRoomId === currentRoom && (
+        <GameOverlay
+          roomId={gameRoomId}
+          user={user}
+          onClose={handleCloseGame}
+        />
+      )}
 
       {/* سایدبار موبایل */}
       {sidebar && (

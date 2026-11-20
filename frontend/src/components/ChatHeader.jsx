@@ -16,6 +16,7 @@ export default function ChatHeader({
   onStartCall,
   onGroupCallToggle,
   inGroupCall = false,
+  onOpenGame,
 }) {
 
   const handleProfileClick = () => {
@@ -167,6 +168,22 @@ export default function ChatHeader({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
             )}
+          </button>
+        )}
+
+        {/* کمپ آتش (بازی سه‌بعدی) */}
+        {isGroupRoom && (
+          <button
+            type="button"
+            onClick={() => onOpenGame?.(roomName)}
+            className="btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl ml-1 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors cursor-pointer"
+            title="ورود به کمپ آتش"
+            aria-label="ورود به کمپ آتش"
+          >
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 3c1.5 3 4 4.2 4 7.2a4 4 0 11-8 0C8 7.2 10.5 6 12 3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M4 20l1.5-4h13L20 20M4 20h16" />
+            </svg>
           </button>
         )}
 
