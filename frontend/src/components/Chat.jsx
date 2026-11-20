@@ -200,6 +200,8 @@ export default function Chat({ chat, user, onLogout }) {
                   <TypingIndicator
                     users={typingUsers.filter((u) => u && u !== user?.username)}
                   />
+
+                  <ChatInput onSend={sendMessage} onTyping={setTyping} />
                 </>
               ) : (
                 <WelcomeScreen
@@ -210,9 +212,6 @@ export default function Chat({ chat, user, onLogout }) {
                 />
               )}
             </div>
-            
-            {/* ChatInput همیشه در پایین مین نمایش داده شود */}
-            <ChatInput onSend={sendMessage} onTyping={setTyping} />
           </main>
         </div>
 
