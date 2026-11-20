@@ -167,12 +167,8 @@ export default function ChatInput({ onSend, onTyping }) {
         rec.stop();
       }
     };
-  }, []);
-
-  useEffect(() => {
-    if (isRecording && recordingTime >= MAX_RECORD_SECONDS) stopAndSendRecording();
-  }, [recordingTime, isRecording]);
-
+}, []);
+ 
   const handleEmojiSelect = (emoji) => {
     const el = inputRef.current;
 
@@ -349,8 +345,13 @@ export default function ChatInput({ onSend, onTyping }) {
     clearInterval(timerRef.current);
     if (cancel) setRecordingTime(0);
   };
-  const stopAndSendRecording = () => finishRecording(false);
-  const cancelAndStopRecording = () => finishRecording(true);
+
+  const stopAndSendRecording = useCallback(() => finishRecording(false), []);
+  const cancelAndStopRecording = useCallback(() => finishRecording(true), []);
+
+  useEffect(() => {
+    if (isRecording && recordingTime >= MAX_RECORD_SECONDS) stopAndSendRecording();
+  }, [recordingTime, isRecording, stopAndSendRecording]);
 
   const uploadAudio = async (blob, type) => {
     setIsUploading(true);
@@ -388,7 +389,7 @@ export default function ChatInput({ onSend, onTyping }) {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       dir="rtl"
-      className="relative w-full px-2 sm:px-4 lg:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-linear-to-t from-surface-950 via-surface-950/80 to-surface-950/40 border-t border-white/[0.08]"
+      className="relative w-full px-2 sm:px-4 lg:px-6 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-linear-to-t from-surface-950 via-surface-950/80 to-surface-950/40 border-t border-white/[0.08] flex-shrink-0"
 
     >
       <style>{`
@@ -444,13 +445,13 @@ export default function ChatInput({ onSend, onTyping }) {
             role="dialog"
             aria-label="انتخاب ایموجی"
             onMouseDown={(e) => e.preventDefault()}
-            //  لایه‌ی بیرونی: فقط موقعیت‌دهی، بدون هیچ bg
-            className="cic-anim z-50 fixed bottom-0 start-0 end-0 flex justify-end p-2 sm:ml-3
-                       sm:absolute sm:bottom-full sm:right-auto sm:start-0 sm:mb-3 sm:block sm:w-[360px]"
+            // موبایل: fixed در پایین صفحه، دسکتاپ: absolute بالای اینپوت
+            className="cic-anim z-50 fixed bottom-0 left-0 right-0 flex justify-center p-2 sm:ml-3
+                       sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-3 sm:block sm:w-[360px]"
             style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
           >
             {/*  لایه‌ی داخلی: بک‌گراند دقیقاً به اندازه‌ی محتوا (w-fit) */}
-            <div className="w-fit max-w-[calc(100vw-1rem)]
+            <div className="w-full max-w-[calc(100vw-1rem)] sm:w-[360px]
                            bg-surface-900 border border-white/10 shadow-2xl shadow-black/50
                            rounded-t-2xl sm:rounded-2xl
                            flex flex-col overflow-hidden
@@ -554,7 +555,7 @@ export default function ChatInput({ onSend, onTyping }) {
                 enterKeyHint={isTouch ? 'enter' : 'send'}
                 autoComplete="off"
                 spellCheck={false}
-                className="block w-full resize-none bg-transparent px-2 py-[11px] text-[16px] sm:text-[15px] placeholder:text-right leading-[22px]
+                className="block w-full resize-none bg-transparent px-3 py-3 sm:px-3 sm:py-[11px] text-[16px] sm:text-[15px] placeholder:text-right leading-[22px]
                            text-surface-50 placeholder:text-surface-500 outline-none
                            max-h-40 overflow-y-auto scrollbar-thin"
               />

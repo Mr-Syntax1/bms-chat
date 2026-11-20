@@ -57,7 +57,7 @@ export default function ChatHeader({
   };
 
   return (
-    <header className="glass-panel-strong border-b border-white/10 px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 animate-slide-down sticky top-0 z-30">
+    <header className="glass-panel-strong border-b border-white/10 px-3 sm:px-4 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-3 animate-slide-down sticky top-0 z-30 w-full">
 
       {/* سمت چپ: اطلاعات اتاق */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -76,7 +76,7 @@ export default function ChatHeader({
         </button>
 
         <div className="min-w-0 flex flex-col justify-center">
-          <h1 className="font-bold text-surface-50 truncate text-sm sm:text-base max-w-[120px] sm:max-w-xs md:max-w-md lg:max-w-lg transition-all duration-300">
+          <h1 className="font-bold text-surface-50 truncate text-sm sm:text-base max-w-[120px] sm:max-w-xs md:max-w-md lg:max-w-xl transition-all duration-300">
             {displayTitle}
           </h1>
 
@@ -89,6 +89,14 @@ export default function ChatHeader({
             <span className="text-surface-600 text-[10px] sm:text-xs">•</span>
             <span className="text-[10px] sm:text-xs text-surface-400">
               {onlineCount} کاربر آنلاین
+            </span>
+          </div>
+          
+          {/* موبایل: نمایش وضعیت اتصال به صورتCompact */}
+          <div className="sm:hidden flex items-center gap-1.5 mt-0.5">
+            <span className={`status-dot ${isConnected ? 'status-online' : 'status-offline'} animate-pulse-soft`} />
+            <span className="text-[10px] text-surface-400 font-medium">
+              {isConnected ? 'متصل' : 'آفلاین'}
             </span>
           </div>
         </div>
@@ -210,6 +218,16 @@ export default function ChatHeader({
           <svg className="w-4 h-4 text-surface-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
+        </button>
+
+        {/* موبایل: دکمه پروفایل ساده */}
+        <button
+          onClick={handleProfileClick}
+          className="sm:hidden btn-ghost p-2 rounded-xl text-surface-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          title="پروفایل"
+          aria-label="پروفایل"
+        >
+          <Avatar username={user?.username} avatarIndex={user?.avatarIndex} size="sm" status="online" />
         </button>
 
         {/* خروج */}

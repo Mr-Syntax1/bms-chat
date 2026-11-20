@@ -316,10 +316,28 @@ body {
   #root {
     min-height: 100%;
     position: relative;
+    /* جلوگیری از زوم در اینپوت‌ها در iOS */
+    -webkit-text-size-adjust: 100%;
   }
 
   #root {
     z-index: 1;
+  }
+
+  /* Improve sticky header behavior */
+  header.sticky {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  /* Safe area support for mobile */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
   }
 
 /* =========================================
