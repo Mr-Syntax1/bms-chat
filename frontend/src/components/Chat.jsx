@@ -47,16 +47,13 @@ export default function Chat({ chat, user, onLogout }) {
 
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
-  // هماهنگ‌سازی با API جدید useWebRTC
   const rtc = useWebRTC({
     currentUser: user,
     connected: connected,
   });
 
   const handleSwitchRoom = useCallback((roomName, isMobile = false) => {
-    if (isMobile) {
-      closeSidebar();
-    }
+    if (isMobile) closeSidebar();
     startTransition(() => {
       switchRoom(roomName);
     });
@@ -92,9 +89,7 @@ export default function Chat({ chat, user, onLogout }) {
     async (targetUserId, targetUsername) => {
       startTransition(async () => {
         const res = await openDM(targetUserId, targetUsername);
-        if (res?.success) {
-          closeSidebar();
-        }
+        if (res?.success) closeSidebar();
       });
     },
     [openDM, closeSidebar]
@@ -102,22 +97,18 @@ export default function Chat({ chat, user, onLogout }) {
 
   const handleOpenProfile = useCallback(
     (username) => {
-      if (username) {
-        navigate(`/profile/${username}`);
-      } else {
-        navigate('/profile');
-      }
+      if (username) navigate(`/profile/${username}`);
+      else navigate('/profile');
     },
     [navigate]
   );
 
-  // وقتی اتاق عوض شد یا پیام جدید آمد، پیام‌های خوانده‌نشده را مارک کن
   useEffect(() => {
     if (currentRoom && messages.length > 0 && user?.id) {
       const unseenIds = messages
         .filter(m => m.senderId !== user.id && !m.readBy?.includes(user.id))
         .map(m => m.id || m._id)
-        .filter(id => id); // فیلتر کردن مقادیر undefined یا null
+        .filter(id => id);
 
       if (unseenIds.length > 0) {
         markMessagesAsRead(currentRoom, unseenIds);
@@ -134,9 +125,11 @@ export default function Chat({ chat, user, onLogout }) {
   }, [fetchNotifications, setShowNotifications]);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col relative bg-transparent">
-      {/* Header - sticky top */}
-      <div className="relative z-10 flex-shrink-0">
+    // 🔑 قانون ۱: ارتفاع دقیق داینامیک + جلوگیری مطلق از اسکرول کل صفحه
+    <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-surface-950 text-surface-50">
+      
+      {/* 🔑 قانون ۲: هدر هرگز نباید کوچک شود (shrink-0) */}
+      <div className="shrink-0 z-20 relative">
         <ChatHeader
           isConnected={connected}
           rooms={rooms}
@@ -154,10 +147,11 @@ export default function Chat({ chat, user, onLogout }) {
         />
       </div>
 
-      {/* Main content area - takes remaining height */}
-      <div className="flex-1 min-h-0 flex overflow-hidden">
+      {/* 🔑 قانون ۳: بخش میانی تمام فضای باقیمانده را می‌گیرد و overflow آن مخفی است */}
+      <div className="flex-1 flex overflow-hidden min-h-0 relative z-10">
+        
         {/* سایدبار دسکتاپ */}
-        <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong slide-in-left">
+        <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong">
           <RoomList
             rooms={rooms}
             onlineUsers={onlineUsers}
@@ -174,16 +168,18 @@ export default function Chat({ chat, user, onLogout }) {
         </aside>
 
         {/* بخش اصلی چت */}
-        <main className="flex-1 min-w-0 flex flex-col bg-surface-950/30 relative">
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 relative bg-surface-950/30">
           {isPending && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-950/60 backdrop-blur-sm animate-fade-in">
               <LoadingSpinner text="در حال ورود به اتاق..." />
             </div>
           )}
 
-          <div className={`flex-1 min-h-0 flex flex-col transition-all duration-300 ${isPending ? 'opacity-30' : ''}`}>
+          {/* 🔑 قانون ۴: کانتینر داخلی باید flex-col و min-h-0 باشد تا فرزندانش درست رفتار کنند */}
+          <div className={`flex-1 flex flex-col min-h-0 transition-opacity duration-300 ${isPending ? 'opacity-30' : 'opacity-100'}`}>
             {currentRoom ? (
               <>
+                {/* MessageList خودش باید flex-1 min-h-0 داشته باشد */}
                 <MessageList
                   messages={messages}
                   currentUsername={user?.username}
@@ -192,12 +188,14 @@ export default function Chat({ chat, user, onLogout }) {
                   currentUserId={user?.id}
                 />
 
-                {/* TypingIndicator */}
-                <TypingIndicator
-                  users={typingUsers.filter((u) => u && u !== user?.username)}
-                />
+                {/* 🔑 قانون ۵: المان‌های ثابت پایین صفحه باید shrink-0 باشند */}
+                <div className="shrink-0">
+                  <TypingIndicator users={typingUsers.filter((u) => u && u !== user?.username)} />
+                </div>
 
-                <ChatInput onSend={sendMessage} onTyping={setTyping} />
+                <div className="shrink-0">
+                  <ChatInput onSend={sendMessage} onTyping={setTyping} />
+                </div>
               </>
             ) : (
               <WelcomeScreen
@@ -269,7 +267,7 @@ export default function Chat({ chat, user, onLogout }) {
       )}
 
       {/* دراپ‌داون اعلان‌ها */}
-      <div className="notification-dropdown">
+      <div className="notification-dropdown absolute top-16 right-4 z-30">
         <NotificationDropdown
           notifications={notifications}
           unreadCount={unreadCount}

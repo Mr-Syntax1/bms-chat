@@ -28,17 +28,17 @@ export default function ChatHeader({
 
   const dmPartner = currentRoomObj?.isPrivate
     ? {
-        userId: currentRoomObj.dmPartnerId,
-        username: currentRoomObj.dmPartnerUsername,
-        avatarIndex: currentRoomObj.avatarIndex ?? null,
-        isOnline: onlineUsers.some((u) => u.username === currentRoomObj.dmPartnerUsername),
-      }
+      userId: currentRoomObj.dmPartnerId,
+      username: currentRoomObj.dmPartnerUsername,
+      avatarIndex: currentRoomObj.avatarIndex ?? null,
+      isOnline: onlineUsers.some((u) => u.username === currentRoomObj.dmPartnerUsername),
+    }
     : null;
 
   const isGroupRoom = currentRoomObj && !currentRoomObj.isPrivate && currentRoomObj.members;
-  
+
   // نمایش همه کاربران آنلاین
-  const onlineMembers = onlineUsers; 
+  const onlineMembers = onlineUsers;
 
   const displayTitle = resolvedDmName
     ? `گفتگو با ${resolvedDmName}`
@@ -57,7 +57,7 @@ export default function ChatHeader({
   };
 
   return (
-    <header className="glass-panel-strong border-b border-white/10 px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 flex items-center justify-between gap-1.5 sm:gap-2 lg:gap-3 animate-slide-down sticky top-0 z-30 w-full min-h-[52px] sm:min-h-[56px] lg:min-h-[60px]">
+    <header className="glass-panel-strong border-b border-white/10 px-3 sm:px-4 py-2 sm:py-2.5 lg:py-3 flex items-center justify-between gap-1.5 sm:gap-2 lg:gap-3 animate-slide-down sticky top-0 z-30 w-full min-h-[52px] sm:min-h-[56px] lg:min-h-[60px] shrink-0">
 
       {/* سمت چپ: اطلاعات اتاق */}
       <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 min-w-0 flex-1">
@@ -91,7 +91,7 @@ export default function ChatHeader({
               {onlineCount} آنلاین
             </span>
           </div>
-          
+
           {/* موبایل: نمایش وضعیت اتصال به صورت Compact */}
           <div className="sm:hidden flex items-center gap-1 mt-0.5">
             <span className={`status-dot ${isConnected ? 'status-online' : 'status-offline'} animate-pulse-soft`} />

@@ -52,7 +52,7 @@ function DateSeparator({ label }) {
   );
 }
 
-export default function MessageList({ messages, currentUsername, onDeleteMessage, onEditMessage , currentUserId}) {
+export default function MessageList({ messages, currentUsername, onDeleteMessage, onEditMessage, currentUserId }) {
   const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -159,14 +159,13 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
   }, [messages]);
 
   return (
-    <div className="relative flex-1 min-h-0">
+    <div className="relative flex-1 min-h-0 flex flex-col">
+
       {/* کادر شناور تاریخ (مشابه تلگرام) */}
-      <div
-        className={`absolute top-3 left-1/2 ml-1 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none ${isFloatingVisible
-            ? 'opacity-100 -translate-y-0'
-            : 'opacity-0 -translate-y-2'
-          }`}
-      >
+      <div className={`absolute top-3 left-1/2 ml-1 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none ${isFloatingVisible
+        ? 'opacity-100 -translate-y-0'
+        : 'opacity-0 -translate-y-2'}`}>
+
         <div className="px-4 py-1.5 rounded-full bg-surface-800/90 backdrop-blur-md border border-white/10 shadow-lg text-xs font-medium text-surface-200 whitespace-nowrap">
           {floatingDate}
         </div>
@@ -175,7 +174,8 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-auto p-3 sm:p-4 space-y-3 bg-surface-900/30 scrollbar-thin lg:px-8 xl:px-12"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-3 bg-surface-900/30 scrollbar-thin lg:px-8 xl:px-12"
+        style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {messagesWithSeparators.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full py-12 text-center animate-fade-in">
