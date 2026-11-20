@@ -134,15 +134,8 @@ export default function Chat({ chat, user, onLogout }) {
   }, [fetchNotifications, setShowNotifications]);
 
   return (
-    <div className="h-screen flex flex-col bg-aurora overflow-hidden relative">
-      {/* پس‌زمینه‌ی متحرک */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-linear-to-br from-primary-500/20 to-accent-500/20 blur-3xl animate-blob" />
-        <div className="absolute top-1/3 -right-24 w-80 h-80 rounded-full bg-linear-to-br from-cyan-500/15 to-primary-500/15 blur-3xl animate-blob animation-delay-2000" />
-        <div className="absolute bottom-0 left-1/3 w-72 h-72 rounded-full bg-linear-to-br from-accent-500/15 to-pink-500/10 blur-3xl animate-blob animation-delay-4000" />
-      </div>
-
-      <div className="relative z-10 flex flex-col h-full">
+    <div className="min-h-[100dvh] flex flex-col overflow-hidden relative bg-transparent">
+      <div className="relative z-10 flex flex-col min-h-[100dvh]">
         <ChatHeader
           isConnected={connected}
           rooms={rooms}

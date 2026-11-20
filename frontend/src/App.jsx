@@ -24,7 +24,7 @@ function App() {
   useEffect(() => {
     applyUiPrefs(uiPrefs);
     return subscribeUiPrefs(setUiPrefs);
-  }, []); 
+  }, []);
 
   // بررسی احراز هویت هنگام بارگذاری صفحه
   useEffect(() => {
@@ -84,7 +84,7 @@ function App() {
   if (authLoading) {
     return (
       <ToastProvider>
-        <div className="min-h-screen flex items-center justify-center bg-aurora text-white relative overflow-hidden">
+        <div className="h-[100dvh] w-full flex items-center justify-center text-white relative overflow-hidden bg-transparent">
           {uiPrefs.animatedBackground && <HalloweenBackground />}
           {/* کامپوننت لودینگ شما اینجا قرار می‌گیرد و به صورت خودکار وسط‌چین می‌شود */}
           <LoadingSpinner text="در حال بارگذاری..." />
@@ -94,8 +94,13 @@ function App() {
   }
 
   return (
-    <div className="">
-      {uiPrefs.animatedBackground && <HalloweenBackground />}
+    <div className="h-[100dvh] w-full overflow-hidden relative text-surface-50 bg-transparent">
+      {uiPrefs.animatedBackground && (
+        <div className="fixed inset-0 -z-10 pointer-events-none">
+          <HalloweenBackground />
+        </div>
+      )}
+
       <ToastProvider>
         <BrowserRouter>
           <Routes>
@@ -131,7 +136,7 @@ function App() {
                 )
               }
             />
-            <Route 
+            <Route
               path="/profile/:username"
               element={
                 authUser ? (

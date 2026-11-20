@@ -445,9 +445,9 @@ export default function ChatInput({ onSend, onTyping }) {
             role="dialog"
             aria-label="انتخاب ایموجی"
             onMouseDown={(e) => e.preventDefault()}
-            // موبایل: fixed در پایین صفحه، دسکتاپ: absolute بالای اینپوت
-            className="cic-anim z-50 fixed bottom-0 left-0 right-0 flex justify-center p-2 sm:ml-3
-                       sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-3 sm:block sm:w-[360px]"
+            // هم موبایل و هم دسکتاپ: absolute بالای اینپوت
+            className="cic-anim z-50 absolute bottom-full left-0 right-0 flex justify-center p-2 mb-2
+                       sm:mb-3 sm:w-[360px]"
             style={{ animation: 'cic-sheet .28s cubic-bezier(.2,.8,.2,1)' }}
           >
             {/*  لایه‌ی داخلی: بک‌گراند دقیقاً به اندازه‌ی محتوا (w-fit) */}
@@ -455,7 +455,7 @@ export default function ChatInput({ onSend, onTyping }) {
                            bg-surface-900 border border-white/10 shadow-2xl shadow-black/50
                            rounded-t-2xl sm:rounded-2xl
                            flex flex-col overflow-hidden
-                           max-h-[60vh] sm:max-h-[420px]
+                           max-h-[50vh] sm:max-h-[420px]
                            pb-[env(safe-area-inset-bottom)] sm:pb-0">
               <div className="sm:hidden flex justify-center pt-2.5 pb-1 shrink-0">
                 <span className="h-1.5 w-10 rounded-full bg-white/20" />
