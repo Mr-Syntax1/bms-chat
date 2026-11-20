@@ -182,7 +182,7 @@ export default function ChatHeader({
                           }}
                           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-surface-300 hover:bg-white/5 hover:text-white transition-colors"
                         >
-                          <Avatar username={member.username} size="sm" avatarIndex={member.avatarIndex} status="online" />
+                          <Avatar username={member.username} size="xs" avatarIndex={member.avatarIndex} status="online" />
                           <span className="font-medium truncate">{member.username}</span>
                         </button>
                       ))}
@@ -227,7 +227,7 @@ export default function ChatHeader({
           title="پروفایل"
           aria-label="پروفایل"
         >
-          <Avatar username={user?.username} avatarIndex={user?.avatarIndex} size="sm" status="online" />
+          <Avatar username={user?.username} avatarIndex={user?.avatarIndex} size="xs" status="online" />
         </button>
 
         {/* خروج */}
