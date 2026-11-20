@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import ably from '../config/ably.js';
 import { verifyToken } from '../utils/jwt.js';
 import { User } from '../models/User.js';
@@ -14,9 +14,14 @@ export const callsRouter = express.Router();
 const CALL_ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 const USER_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const INVITE_TTL = 2 * 60 * 1000;
-const GROUP_STALE_MS = 2 * 60 * 1000;
+const GROUP_STALE_MS = 5 * 60 * 1000;
+const GROUP_ABSENT_MS = 20 * 1000;
+const GROUP_JOIN_GRACE_MS = 8000;
+const GROUP_CLEANUP_INTERVAL = 3000;
 const RATE_WINDOW = 60 * 1000;
 const RATE_MAX = 20;
+const GROUP_RATE_WINDOW = 60 * 1000;
+const GROUP_RATE_MAX = 900;
 
 const deny = (res, status, message) => res.status(status).json({ error: message });
 
@@ -49,6 +54,7 @@ function requireAuth(req, res, next) {
 // Rate limit
 // ---------------------------------------------------------------------------
 const rateBuckets = new Map();
+const groupRateBuckets = new Map();
 
 function rateLimit(req, res, next) {
   const now = Date.now();
@@ -60,6 +66,20 @@ function rateLimit(req, res, next) {
   }
   hits.push(now);
   rateBuckets.set(req.user.id, hits);
+  return next();
+}
+
+function groupRateLimit(req, res, next) {
+  const now = Date.now();
+  const key = `${req.user.id}`;
+  const hits = (groupRateBuckets.get(key) || []).filter((t) => now - t < GROUP_RATE_WINDOW);
+
+  if (hits.length >= GROUP_RATE_MAX) {
+    groupRateBuckets.set(key, hits);
+    return deny(res, 429, 'تعداد درخواست‌ها زیاد است، کمی صبر کنید');
+  }
+  hits.push(now);
+  groupRateBuckets.set(key, hits);
   return next();
 }
 
@@ -78,28 +98,124 @@ setInterval(() => {
     if (fresh.length) rateBuckets.set(userId, fresh);
     else rateBuckets.delete(userId);
   }
-  const staleBefore = new Date(now - GROUP_STALE_MS);
-  GroupCall.find({ active: true, 'participants.lastSeen': { $lt: staleBefore } })
-    .select('callId roomName')
-    .lean()
-    .then(async (staleCalls) => {
-      if (!staleCalls.length) return;
-      await GroupCall.updateMany(
-        { active: true, 'participants.lastSeen': { $lt: staleBefore } },
-        { $pull: { participants: { lastSeen: { $lt: staleBefore } } } },
-      );
-      const emptied = await GroupCall.find({ active: true, participants: { $size: 0 } }).select('callId roomName').lean();
-      if (emptied.length) {
-        await GroupCall.updateMany({ _id: { $in: emptied.map((call) => call._id) } }, { $set: { active: false } });
-      }
-      const roomNames = new Set([...staleCalls, ...emptied].map((call) => call.roomName));
-      for (const roomName of roomNames) {
-        const live = await GroupCall.findOne({ roomName, active: true }).lean();
-        await publishRoomCallState(roomName, live ? await loadGroupCall(live) : null);
-      }
-    })
-    .catch((err) => console.error('[Calls] Group cleanup error:', err.message));
-}, 60 * 1000).unref();
+  for (const [userId, hits] of groupRateBuckets) {
+    const fresh = hits.filter((t) => now - t < GROUP_RATE_WINDOW);
+    if (fresh.length) groupRateBuckets.set(userId, fresh);
+    else groupRateBuckets.delete(userId);
+  }
+  pruneStaleParticipants().catch((err) => console.error('[Calls] Group cleanup error:', err.message));
+}, GROUP_CLEANUP_INTERVAL).unref();
+
+async function getCallPresenceIds(callId) {
+  try {
+    const result = await ably.channels.get(`private:group-webrtc-${callId}`).presence.get({ limit: 1000 });
+    const items = result?.items ?? result ?? [];
+    return new Set(items.map((member) => String(member.clientId)));
+  } catch (error) {
+    console.warn('[Calls] Group presence lookup failed:', error.message);
+    return null;
+  }
+}
+
+async function publishMemberLeft(callId, userIds) {
+  if (!callId || !userIds?.length) return;
+  const channel = ably.channels.get(`private:group-webrtc-${callId}`);
+  await Promise.all(userIds.map((userId) => channel
+    .publish('group-member-left', { callId, userId: String(userId) })
+    .catch(() => {})));
+}
+
+function staleCandidates(call, presenceIds) {
+  const now = Date.now();
+  const joinCutoff = now - GROUP_JOIN_GRACE_MS;
+  const absentCutoff = new Date(now - GROUP_ABSENT_MS);
+  const silentCutoff = new Date(now - GROUP_STALE_MS);
+  const presenceKnown = presenceIds !== null;
+
+  return (call.participants || []).filter((participant) => {
+    const joinedAt = participant.joinedAt ? new Date(participant.joinedAt).getTime() : 0;
+    if (joinedAt > joinCutoff) return false;
+
+    if (!participant.lastSeen) return false;
+    if (new Date(participant.lastSeen) < silentCutoff) return true;
+    if (!presenceKnown) return false;
+    if (presenceIds.has(String(participant.userId))) return false;
+    return new Date(participant.lastSeen) < absentCutoff;
+  });
+}
+
+async function pruneStaleParticipants() {
+  const now = Date.now();
+  const absentCutoff = new Date(now - GROUP_ABSENT_MS);
+  const candidates = await GroupCall.find({ active: true, 'participants.lastSeen': { $lt: absentCutoff } })
+    .select('callId roomName participants')
+    .lean();
+
+  const touchedRooms = new Set();
+
+  for (const call of candidates) {
+    const presenceIds = await getCallPresenceIds(call.callId);
+    const stale = staleCandidates(call, presenceIds);
+    if (!stale.length) continue;
+    const staleIds = stale.map((participant) => participant.userId);
+    await GroupCall.updateOne(
+      { _id: call._id, active: true },
+      { $pull: { participants: { userId: { $in: staleIds } } } },
+    );
+    await publishMemberLeft(call.callId, staleIds);
+    touchedRooms.add(call.roomName);
+  }
+
+  const emptied = await GroupCall.find({ active: true, participants: { $size: 0 } })
+    .select('_id callId roomName')
+    .lean();
+  if (emptied.length) {
+    await GroupCall.updateMany(
+      { _id: { $in: emptied.map((call) => call._id) }, active: true, participants: { $size: 0 } },
+      { $set: { active: false } },
+    );
+    emptied.forEach((call) => touchedRooms.add(call.roomName));
+  }
+
+  for (const roomName of touchedRooms) {
+    const live = await GroupCall.findOne({ roomName, active: true }).lean();
+    await publishRoomCallState(roomName, live ? await loadGroupCall(live) : null);
+  }
+}
+
+async function resolveActiveGroupCall(roomName) {
+  let call = await GroupCall.findOne({ roomName, active: true });
+  if (!call) return null;
+
+  const now = Date.now();
+  const absentCutoff = now - GROUP_ABSENT_MS;
+  const staleCandidatesDue = (call.participants || []).some(
+    (participant) => !participant.lastSeen || new Date(participant.lastSeen).getTime() < absentCutoff,
+  );
+
+  if (staleCandidatesDue) {
+    const presenceIds = await getCallPresenceIds(call.callId);
+    const stale = staleCandidates(call, presenceIds);
+    if (stale.length) {
+      const staleIds = stale.map((participant) => participant.userId);
+      call = await GroupCall.findOneAndUpdate(
+        { _id: call._id, active: true },
+        { $pull: { participants: { userId: { $in: staleIds } } } },
+        { new: true },
+      ) || await GroupCall.findById(call._id);
+      await publishMemberLeft(call?.callId, staleIds);
+    }
+  }
+
+  if (!call || call.participants.length === 0) {
+    if (call) {
+      await GroupCall.updateOne({ _id: call._id, active: true }, { $set: { active: false } });
+      await publishRoomCallState(call.roomName, null);
+    }
+    return null;
+  }
+  return call;
+}
 
 async function canCallUser(callerId, targetId) {
   return true;
@@ -268,7 +384,7 @@ async function loadGroupCall(call) {
 }
 
 
-callsRouter.get('/group/active', requireAuth, rateLimit, async (req, res) => {
+callsRouter.get('/group/active', requireAuth, groupRateLimit, async (req, res) => {
   const roomName = typeof req.query.roomName === 'string' ? req.query.roomName.trim() : '';
   if (!roomName || roomName.length > 100) return deny(res, 400, 'نام اتاق نامعتبر است');
   if (!mongoose.isValidObjectId(req.user.id)) return deny(res, 401, 'کاربر نامعتبر است');
@@ -279,7 +395,7 @@ callsRouter.get('/group/active', requireAuth, rateLimit, async (req, res) => {
     if (room.isPrivate || !room.members?.some((member) => member.toString() === req.user.id)) {
       return deny(res, 403, 'دسترسی به این اتاق وجود ندارد');
     }
-    const call = await GroupCall.findOne({ roomName: room.name, active: true });
+    const call = await resolveActiveGroupCall(room.name);
     return res.json({ success: true, session: call ? await loadGroupCall(call) : null });
   } catch (error) {
     console.error('[Calls] Active group lookup error:', error.message);
@@ -287,7 +403,7 @@ callsRouter.get('/group/active', requireAuth, rateLimit, async (req, res) => {
   }
 });
 
-callsRouter.post('/group/start', requireAuth, rateLimit, async (req, res) => {
+callsRouter.post('/group/start', requireAuth, groupRateLimit, async (req, res) => {
   const { roomName, callType } = req.body ?? {};
   if (typeof roomName !== 'string' || !roomName.trim() || roomName.trim().length > 100) {
     return deny(res, 400, 'نام اتاق نامعتبر است');
@@ -329,7 +445,7 @@ callsRouter.post('/group/start', requireAuth, rateLimit, async (req, res) => {
   }
 });
 
-callsRouter.post('/group/join', requireAuth, rateLimit, async (req, res) => {
+callsRouter.post('/group/join', requireAuth, groupRateLimit, async (req, res) => {
   const { callId, roomName } = req.body ?? {};
   if (typeof callId !== 'string' || !UUID_RE.test(callId)) return deny(res, 400, 'شناسه تماس نامعتبر است');
   if (typeof roomName !== 'string' || !roomName.trim() || roomName.trim().length > 100) {
@@ -383,7 +499,7 @@ callsRouter.post('/group/join', requireAuth, rateLimit, async (req, res) => {
   }
 });
 
-callsRouter.post('/group/heartbeat', requireAuth, rateLimit, async (req, res) => {
+callsRouter.post('/group/heartbeat', requireAuth, groupRateLimit, async (req, res) => {
   const { callId } = req.body ?? {};
   if (typeof callId !== 'string' || !UUID_RE.test(callId)) return deny(res, 400, 'شناسه تماس نامعتبر است');
   if (!mongoose.isValidObjectId(req.user.id)) return deny(res, 401, 'کاربر نامعتبر است');
@@ -402,7 +518,7 @@ callsRouter.post('/group/heartbeat', requireAuth, rateLimit, async (req, res) =>
   }
 });
 
-callsRouter.post('/group/leave', requireAuth, rateLimit, async (req, res) => {
+callsRouter.post('/group/leave', requireAuth, groupRateLimit, async (req, res) => {
   const { callId, roomName } = req.body ?? {};
   if (typeof callId !== 'string' || !UUID_RE.test(callId)) return deny(res, 400, 'شناسه تماس نامعتبر است');
   if (typeof roomName !== 'string' || !roomName.trim() || roomName.trim().length > 100) {

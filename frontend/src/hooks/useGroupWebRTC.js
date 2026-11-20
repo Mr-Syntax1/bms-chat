@@ -22,9 +22,12 @@ import { apiRequest } from './useChat';
 
 const ICE_FLUSH_DELAY = 150;
 const DISCONNECT_GRACE = 10000;
+const PRESENCE_LEAVE_GRACE = 1200;
 const SUBSCRIBE_TIMEOUT = 10000;
-const HEARTBEAT_INTERVAL = 30000;
-const ROOM_POLL_INTERVAL = 8000;
+const HEARTBEAT_INTERVAL = 6000;
+const ROOM_POLL_INTERVAL = 4000;
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const MAX_INLINE_BYTES = 6000;
 const CHUNK_CHARS = 5000;
@@ -550,10 +553,21 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     if (call) {
       for (const [event, handler] of call.handlers) {
         try {
-          getChannel(call.channelName).unsubscribe(event, handler);
+          if (event === '__presence-leave') {
+            getChannel(call.channelName).presence.unsubscribe('leave', handler);
+          } else if (event === '__presence-enter') {
+            getChannel(call.channelName).presence.unsubscribe('enter', handler);
+          } else {
+            getChannel(call.channelName).unsubscribe(event, handler);
+          }
         } catch {
           /* ignore */
         }
+      }
+      try {
+        getChannel(call.channelName).presence.leave().catch(() => {});
+      } catch {
+        /* ignore */
       }
     }
     callRef.current = null;
@@ -698,10 +712,54 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     on('group-member-joined', 'handleJoined');
     on('group-member-left', 'handleLeft');
 
+    const onPresenceLeave = (member) => {
+      const peerId = String(member?.clientId ?? '');
+      const me = String(userRef.current?.id ?? '');
+      if (!peerId || peerId === me) return;
+      setTimeout(async () => {
+        try {
+          const members = await channel.presence.get();
+          if (members.some((item) => String(item.clientId) === peerId)) return;
+        } catch {
+          /* ignore */
+        }
+        closePeer(peerId);
+        actionsRef.current.refreshActiveRoomCall?.();
+      }, PRESENCE_LEAVE_GRACE);
+    };
+
+    const onPresenceEnter = (member) => {
+      const peerId = String(member?.clientId ?? '');
+      const me = String(userRef.current?.id ?? '');
+      if (!peerId || peerId === me) return;
+      const data = member?.data || {};
+      upsertRemote(peerId, { username: data.username, avatarIndex: data.avatarIndex ?? null });
+      if (peersRef.current.has(peerId)) return;
+      if (me.localeCompare(peerId) < 0) {
+        sendOffer(peerId).catch(() => {});
+      }
+    };
+
+    channel.presence.subscribe('leave', onPresenceLeave);
+    channel.presence.subscribe('enter', onPresenceEnter);
+    handlers.push(['__presence-leave', onPresenceLeave]);
+    handlers.push(['__presence-enter', onPresenceEnter]);
+
     callRef.current = { callId, roomName: room, channelName, handlers };
     await waitForSubscription(channelName);
 
     if (callRef.current?.callId !== callId) throw new Error('تماس گروهی لغو شد');
+
+    try {
+      const me = userRef.current;
+      await channel.presence.enter({
+        id: String(me?.id ?? ''),
+        username: me?.username ?? null,
+        avatarIndex: me?.avatarIndex ?? null,
+      });
+    } catch (err) {
+      console.warn('[GroupWebRTC] presence enter failed:', err?.message);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -855,9 +913,10 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     apiRequest('/api/calls/group/leave', {
       method: 'POST',
       body: JSON.stringify({ callId: call.callId, roomName: call.roomName }),
-    }).catch(() => {});
+    })
+      .catch(() => {})
+      .finally(() => actionsRef.current.refreshActiveRoomCall?.());
     cleanup(reason);
-    setTimeout(() => actionsRef.current.refreshActiveRoomCall?.(), 800);
   }
 
   function toggleMute() {
@@ -994,6 +1053,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     const id = String(data.userId);
     upsertRemote(id, { username: data.username, avatarIndex: data.avatarIndex ?? null });
     publishMediaState();
+    actionsRef.current.refreshActiveRoomCall?.();
     if (me.localeCompare(id) < 0) {
       sendOffer(id).catch((err) => console.warn('[GroupWebRTC] offer on join failed:', err));
     }
@@ -1004,6 +1064,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     const me = String(userRef.current?.id ?? '');
     if (!call || !data?.userId || data.callId !== call.callId || String(data.userId) === me) return;
     closePeer(data.userId);
+    actionsRef.current.refreshActiveRoomCall?.();
   }
 
   async function handleOffer(data) {
@@ -1188,6 +1249,20 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
         method: 'POST',
         body: JSON.stringify({ callId: call.callId }),
       }).catch(() => {});
+      try {
+        const channel = getChannel(call.channelName);
+        channel.presence.get()
+          .then((members) => {
+            const me = String(userRef.current?.id ?? '');
+            if (!members.some((member) => String(member.clientId) === me)) {
+              return channel.presence.enter({ id: me, username: userRef.current?.username ?? null, avatarIndex: userRef.current?.avatarIndex ?? null });
+            }
+            return undefined;
+          })
+          .catch(() => {});
+      } catch {
+        /* ignore */
+      }
     };
     heartbeat();
     const timer = setInterval(heartbeat, HEARTBEAT_INTERVAL);
@@ -1250,13 +1325,18 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
       if (call?.callId) {
         const body = JSON.stringify({ callId: call.callId, roomName: call.roomName });
         try {
-          fetch('/api/calls/group/leave', {
+          fetch(`${API_BASE}/api/calls/group/leave`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body,
             keepalive: true,
             credentials: 'include',
           }).catch(() => {});
+        } catch {
+          /* ignore */
+        }
+        try {
+          getChannel(call.channelName).presence.leave().catch(() => {});
         } catch {
           /* ignore */
         }
