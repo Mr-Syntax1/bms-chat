@@ -12,6 +12,7 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { useGroupWebRTC } from '../hooks/useGroupWebRTC';
 import CallModal from './CallModal';
 import GroupCallModal from './GroupCallModal';
+import GroupCallBanner from './GroupCallBanner';
 
 export default function Chat({ chat, user, onLogout }) {
   const {
@@ -46,6 +47,7 @@ export default function Chat({ chat, user, onLogout }) {
   const [isPending, startTransition] = useTransition();
   const navigate = useNavigate();
   const [sidebar, setSidebar] = useState(null);
+  const [groupCallExpanded, setGroupCallExpanded] = useState(true);
 
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
@@ -59,6 +61,19 @@ export default function Chat({ chat, user, onLogout }) {
     currentRoom,
     privateCallActive: rtc.callState !== 'idle',
   });
+  const handleGroupCallToggle = useCallback((room) => {
+    if (groupCall.callState !== 'idle') {
+      setGroupCallExpanded(true);
+      return;
+    }
+    setGroupCallExpanded(true);
+    groupCall.toggleGroupCall(room);
+  }, [groupCall]);
+
+  const handleJoinGroupCall = useCallback((room) => {
+    setGroupCallExpanded(true);
+    groupCall.joinRoomCall(room);
+  }, [groupCall]);
 
   const handleSwitchRoom = useCallback((roomName, isMobile = false) => {
     if (isMobile) closeSidebar();
@@ -152,11 +167,29 @@ export default function Chat({ chat, user, onLogout }) {
           unreadNotifications={unreadCount}
           onOpenNotifications={handleOpenNotifications}
           onStartCall={rtc.startCall}
-          onStartGroupCall={groupCall.startCall}
-          onJoinGroupCall={groupCall.joinRoomCall}
-          activeRoomCall={groupCall.activeRoomCall}
+          onGroupCallToggle={handleGroupCallToggle}
+          inGroupCall={groupCall.callState !== 'idle'}
         />
       </div>
+
+      {currentRoom && (
+        <div className="shrink-0 z-20 relative">
+          <GroupCallBanner
+            activeCall={groupCall.activeRoomCall}
+            inCall={groupCall.callState !== 'idle'}
+            participants={groupCall.participants}
+            currentUserId={user?.id}
+            duration={groupCall.duration}
+            isMuted={groupCall.isMuted}
+            isVideoOn={groupCall.isVideoOn}
+            isScreenSharing={groupCall.isScreenSharing}
+            onJoin={() => handleJoinGroupCall(currentRoom)}
+            onEnd={groupCall.endCall}
+            onToggleMute={groupCall.toggleMute}
+            onExpand={() => setGroupCallExpanded(true)}
+          />
+        </div>
+      )}
 
       {/* 🔑 قانون ۳: بخش میانی تمام فضای باقیمانده را می‌گیرد و overflow آن مخفی است */}
       <div className="flex-1 flex overflow-hidden min-h-0 relative z-10">
@@ -225,8 +258,9 @@ export default function Chat({ chat, user, onLogout }) {
         call={groupCall}
         user={user}
         title={currentRoom}
-        onJoin={groupCall.joinCall}
-        onDecline={groupCall.declineIncomingCall}
+        expanded={groupCallExpanded}
+        onCollapse={() => setGroupCallExpanded(false)}
+        onExpand={() => setGroupCallExpanded(true)}
       />
       <CallModal
         call={rtc}

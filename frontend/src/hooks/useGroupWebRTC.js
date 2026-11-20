@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getChannel,
-  getNotificationChannelName,
+  getRoomChannelName,
   publishEvent,
-  subscribeToNotifications,
 } from '../lib/ably';
 import { apiRequest } from './useChat';
 
@@ -11,25 +10,21 @@ import { apiRequest } from './useChat';
  * ===========================================================================
  * معماری سیگنالینگ تماس گروهی (Ably + WebRTC mesh)
  * ===========================================================================
- * ۱) دعوت: caller ──POST /api/calls/group/start──► سرور ──'incoming-group-call'──► private:notifications-<userId>
- * ۲) بقیه روی کانال private:group-webrtc-<callId> با publish event:
+ *  - هیچ تماس ورودی‌ای به‌صورت پاپ‌آپ نشان داده نمی‌شود؛ فقط بنر پایین هدر اتاق
+ *  - هنگام شروع/پیوستن/خروج، رویداد 'group-call-updated' روی کانال حضور اتاق منتشر می‌شود
+ *  - سیگنالینگ روی private:group-webrtc-<callId>:
  *      group-offer / group-answer / group-ice-candidates / group-media-state
- *      group-member-joined / group-member-left   signal-chunk (تکه‌های پیام‌های بزرگ)
- *
- * نکات:
- *  - هر شرکت‌کننده با هر شرکت‌کننده‌ی دیگر یک RTCPeerConnection جدا دارد (mesh)
- *  - فقط طرفی که شناسه‌ی کوچک‌تری دارد پیشنهاد (offer) می‌فرستد تا glare رخ ندهد
- *  - ترنسیورهای صدا و تصویر از ابتدا با sendrecv ساخته می‌شوند و تغییر دوربین/اشتراک صفحه
- *    با replaceTrack انجام می‌شود (بدون renegotiation)
- *  - پیام‌های بزرگ (SDP) تکه‌تکه می‌شوند
+ *      group-member-joined / group-member-left   signal-chunk
+ *  - هر شرکت‌کننده با هر شرکت‌کننده‌ی دیگر یک RTCPeerConnection دارد (mesh)
+ *  - فقط طرفی که شناسه‌ی کوچک‌تری دارد offer می‌فرستد (جلوگیری از glare)
  * ===========================================================================
  */
 
 const ICE_FLUSH_DELAY = 150;
 const DISCONNECT_GRACE = 10000;
 const SUBSCRIBE_TIMEOUT = 10000;
-const RING_TIMEOUT = 35000;
 const HEARTBEAT_INTERVAL = 30000;
+const ROOM_POLL_INTERVAL = 8000;
 
 const MAX_INLINE_BYTES = 6000;
 const CHUNK_CHARS = 5000;
@@ -169,7 +164,6 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   const [roomName, setRoomName] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [localStream, setLocalStream] = useState(null);
-  const [remoteStreamVersion, setRemoteStreamVersion] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOnState] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -177,12 +171,11 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState(null);
   const [endReason, setEndReason] = useState(null);
-  const [incomingCall, setIncomingCall] = useState(null);
   const [activeRoomCall, setActiveRoomCall] = useState(null);
 
   const stateRef = useRef('idle');
-  const callRef = useRef(null); // { callId, roomName, title, channelName, handlers }
-  const peersRef = useRef(new Map()); // peerId -> { pc, role, remoteStream, remoteSig, ... }
+  const callRef = useRef(null); // { callId, roomName, channelName, handlers }
+  const peersRef = useRef(new Map());
   const chunkBuffersRef = useRef(new Map());
 
   const cameraRef = useRef(null);
@@ -192,10 +185,10 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   const screenSharingRef = useRef(false);
   const deafenedRef = useRef(false);
 
-  const ringTimerRef = useRef(null);
   const busyRef = useRef(false);
 
   const userRef = useRef(currentUser);
+  const roomRef = useRef(currentRoom);
   const privateActiveRef = useRef(privateCallActive);
   const actionsRef = useRef({});
 
@@ -204,6 +197,10 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   useEffect(() => {
     userRef.current = currentUser;
   }, [currentUser]);
+
+  useEffect(() => {
+    roomRef.current = currentRoom;
+  }, [currentRoom]);
 
   useEffect(() => {
     privateActiveRef.current = privateCallActive;
@@ -220,11 +217,6 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   function setVideoOn(value) {
     videoOnRef.current = value;
     setIsVideoOnState(value);
-  }
-
-  function clearRingTimer() {
-    clearTimeout(ringTimerRef.current);
-    ringTimerRef.current = null;
   }
 
   function sendingVideoTrack() {
@@ -388,9 +380,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     if (!picked.length || signature === entry.remoteSig) return;
 
     entry.remoteSig = signature;
-    const stream = new MediaStream(picked);
-    upsertRemote(id, { stream });
-    setRemoteStreamVersion((value) => value + 1);
+    upsertRemote(id, { stream: new MediaStream(picked) });
   }
 
   function attachTrackHandlers(entry) {
@@ -497,7 +487,6 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
         clearTimeout(entry.disconnectTimer);
         entry.disconnectTimer = null;
         entry.restartTried = false;
-        clearRingTimer();
         applyLocalTracks(pc);
         resyncSoon(id);
         if (stateRef.current !== 'connected') {
@@ -557,13 +546,11 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   }
 
   function cleanup(reason) {
-    clearRingTimer();
     const call = callRef.current;
     if (call) {
       for (const [event, handler] of call.handlers) {
         try {
-          const channel = getChannel(call.channelName);
-          channel.unsubscribe(event, handler);
+          getChannel(call.channelName).unsubscribe(event, handler);
         } catch {
           /* ignore */
         }
@@ -607,7 +594,6 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     setVideoOn(false);
     setIsScreenSharing(false);
     setIsDeafened(false);
-    setIncomingCall(null);
     setEndReason(reason);
     setState('idle');
   }
@@ -685,9 +671,9 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     await Promise.all(peers.map((id) => sendOffer(id)));
   }
 
-  async function openChannel(callId, room, title) {
-    const call = callRef.current;
-    if (call?.callId === callId) return;
+  async function openChannel(callId, room) {
+    const existing = callRef.current;
+    if (existing?.callId === callId) return;
 
     const channelName = `private:group-webrtc-${callId}`;
     const channel = getChannel(channelName);
@@ -712,10 +698,28 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     on('group-member-joined', 'handleJoined');
     on('group-member-left', 'handleLeft');
 
-    callRef.current = { callId, roomName: room, title: title || room, channelName, handlers };
+    callRef.current = { callId, roomName: room, channelName, handlers };
     await waitForSubscription(channelName);
 
     if (callRef.current?.callId !== callId) throw new Error('تماس گروهی لغو شد');
+  }
+
+  // -------------------------------------------------------------------------
+  // بنر تماس فعال اتاق
+  // -------------------------------------------------------------------------
+  async function refreshActiveRoomCall() {
+    const room = roomRef.current;
+    if (!room || String(room).startsWith('dm_')) {
+      setActiveRoomCall(null);
+      return;
+    }
+    try {
+      const response = await apiRequest(`/api/calls/group/active?roomName=${encodeURIComponent(room)}`);
+      if (roomRef.current !== room) return;
+      setActiveRoomCall(response.session || null);
+    } catch {
+      /* ignore */
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -730,7 +734,6 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     busyRef.current = true;
     setError(null);
     setEndReason(null);
-    setIncomingCall(null);
 
     let createdCallId = null;
     try {
@@ -742,14 +745,14 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
       if (!session?.callId) throw new Error(response.error || 'جلسه‌ی تماس ساخته نشد');
       createdCallId = session.callId;
 
-      await openChannel(session.callId, session.roomName, session.roomName);
+      await openChannel(session.callId, session.roomName);
       await prepareLocalMedia(session.callId, effectiveType);
       setRoomName(session.roomTitle || session.roomName);
       addRemoteProfiles(session.participants);
-      setState('calling');
+      setState('connected');
       publishMediaState();
+      refreshActiveRoomCall();
 
-      startRingTimer();
       return { success: true, callId: session.callId };
     } catch (err) {
       if (createdCallId) {
@@ -764,40 +767,35 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     }
   }
 
-  async function joinCall(invitation, mediaType) {
-    const invite = invitation || incomingCall;
+  async function joinCall(invite, mediaType) {
     if (!invite?.callId || !invite?.roomName) return { success: false, error: 'دعوت تماس نامعتبر است' };
     if (privateActiveRef.current) return { success: false, error: 'ابتدا تماس خصوصی را پایان دهید' };
-    if (stateRef.current !== 'idle' && stateRef.current !== 'incoming') {
-      return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
-    }
-    if (busyRef.current) return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
+    if (stateRef.current !== 'idle' || busyRef.current) return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
 
     busyRef.current = true;
     setError(null);
     setEndReason(null);
-    clearRingTimer();
-    setState('connecting');
 
     try {
-      await openChannel(invite.callId, invite.roomName, invite.roomTitle || invite.roomName);
+      await openChannel(invite.callId, invite.roomName);
       const response = await apiRequest('/api/calls/group/join', {
         method: 'POST',
         body: JSON.stringify({ callId: invite.callId, roomName: invite.roomName }),
       });
       const session = response.session;
       if (!session?.callId || session.callId !== invite.callId) {
-        throw new Error(response.error || 'جلسه‌ی تماس با دعوت مطابقت ندارد');
+        throw new Error(response.error || 'در حال حاضر امکان پیوستن نیست');
       }
 
       const effectiveType = mediaType === 'audio' ? 'audio' : (session.callType === 'video' ? 'video' : 'audio');
       await prepareLocalMedia(session.callId, effectiveType);
       setRoomName(session.roomTitle || session.roomName);
       addRemoteProfiles(session.participants);
-      setIncomingCall(null);
+      setState('connecting');
       publishMediaState();
 
       await offerToExisting(session.participants);
+      refreshActiveRoomCall();
 
       return { success: true, callId: session.callId };
     } catch (err) {
@@ -814,27 +812,36 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     }
   }
 
-  function acceptCall(mediaType) {
-    if (stateRef.current !== 'incoming' || !incomingCall) {
-      return Promise.resolve({ success: false, error: 'تماس گروهی ورودی وجود ندارد' });
-    }
-    return joinCall(incomingCall, mediaType);
-  }
-
-  function rejectCall() {
-    if (stateRef.current !== 'incoming') return;
-    clearRingTimer();
-    setIncomingCall(null);
-    setEndReason('rejected-local');
-    setState('idle');
-  }
-
   async function joinRoomCall(room) {
     if (!room) return { success: false, error: 'اتاقی انتخاب نشده است' };
+    if (privateActiveRef.current) return { success: false, error: 'ابتدا تماس خصوصی را پایان دهید' };
+    if (stateRef.current !== 'idle') return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
+
     try {
       const response = await apiRequest(`/api/calls/group/active?roomName=${encodeURIComponent(room)}`);
-      if (!response.session) return { success: false, error: 'تماس فعالی در این اتاق وجود ندارد' };
-      return joinCall({ callId: response.session.callId, roomName: response.session.roomName });
+      const session = response.session;
+      if (!session) {
+        setActiveRoomCall(null);
+        return { success: false, error: 'تماس فعالی در این اتاق وجود ندارد' };
+      }
+      return joinCall(session);
+    } catch (err) {
+      const message = errorMessage(err);
+      setError(message);
+      return { success: false, error: message };
+    }
+  }
+
+  async function toggleGroupCall(room) {
+    const target = room || roomRef.current;
+    if (!target) return { success: false, error: 'اتاقی انتخاب نشده است' };
+    if (stateRef.current !== 'idle') return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
+
+    try {
+      const response = await apiRequest(`/api/calls/group/active?roomName=${encodeURIComponent(target)}`);
+      const session = response.session;
+      if (session) return joinCall(session);
+      return startCall(target, 'audio');
     } catch (err) {
       const message = errorMessage(err);
       setError(message);
@@ -843,10 +850,6 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   }
 
   function endCall(reason = 'local-ended') {
-    if (stateRef.current === 'incoming') {
-      rejectCall();
-      return;
-    }
     const call = callRef.current;
     if (!call) return;
     apiRequest('/api/calls/group/leave', {
@@ -854,6 +857,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
       body: JSON.stringify({ callId: call.callId, roomName: call.roomName }),
     }).catch(() => {});
     cleanup(reason);
+    setTimeout(() => actionsRef.current.refreshActiveRoomCall?.(), 800);
   }
 
   function toggleMute() {
@@ -980,32 +984,9 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     }
   }
 
-  function startRingTimer() {
-    clearRingTimer();
-    ringTimerRef.current = setTimeout(() => {
-      if (stateRef.current === 'calling' || stateRef.current === 'connecting') {
-        const hasConnected = [...peersRef.current.values()].some((entry) => entry.pc.connectionState === 'connected');
-        if (!hasConnected) actionsRef.current.endCall?.('no-answer');
-      }
-    }, RING_TIMEOUT);
-  }
-
   // -------------------------------------------------------------------------
-  // رویدادهای ورودی: اعلان‌ها و سیگنالینگ
+  // رویدادهای ورودی
   // -------------------------------------------------------------------------
-  function onIncoming(data) {
-    const me = userRef.current;
-    if (!me?.id || !data?.callId || !data?.roomName) return;
-    if (String(data.callerId) === String(me.id)) return;
-    if (privateActiveRef.current || stateRef.current !== 'idle' || busyRef.current) return;
-
-    setEndReason(null);
-    setError(null);
-    setIncomingCall({ ...data, callType: data.callType === 'video' ? 'video' : 'audio' });
-    setState('incoming');
-    startRingTimer();
-  }
-
   function handleJoined(data) {
     const call = callRef.current;
     const me = String(userRef.current?.id ?? '');
@@ -1169,17 +1150,15 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
       startCall,
       joinCall,
       joinRoomCall,
-      acceptCall,
-      rejectCall,
+      toggleGroupCall,
       endCall,
       toggleMute,
       toggleDeafen,
       toggleVideo,
       toggleScreenShare,
       sendOffer,
-      startRingTimer,
       publishMediaState,
-      onIncoming,
+      refreshActiveRoomCall,
       handleJoined,
       handleLeft,
       handleOffer,
@@ -1194,39 +1173,14 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   // Effect ها
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!connected || userId == null) return undefined;
-
-    let channel;
-    let channelName;
-    try {
-      channel = subscribeToNotifications(userId);
-      channelName = getNotificationChannelName(userId);
-    } catch (err) {
-      console.warn('[GroupWebRTC] notifications subscribe error:', err);
-      return undefined;
-    }
-
-    const handler = (message) => actionsRef.current.onIncoming?.(message.data);
-    channel.subscribe('incoming-group-call', handler);
-
-    return () => {
-      try {
-        getChannel(channelName).unsubscribe('incoming-group-call', handler);
-      } catch {
-        /* ignore */
-      }
-    };
-  }, [connected, userId]);
-
-  useEffect(() => {
-    if (callState !== 'connected') return undefined;
+    if (callState === 'idle') return undefined;
     const startedAt = Date.now();
     const id = setInterval(() => setDuration(Math.floor((Date.now() - startedAt) / 1000)), 1000);
     return () => clearInterval(id);
   }, [callState]);
 
   useEffect(() => {
-    if (callState === 'idle' || callState === 'incoming') return undefined;
+    if (callState === 'idle') return undefined;
     const heartbeat = () => {
       const call = callRef.current;
       if (!call?.callId) return;
@@ -1241,9 +1195,13 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   }, [callState]);
 
   useEffect(() => {
-    const room = currentRoom;
     let disposed = false;
-    if (!connected || !room || room.startsWith('dm_')) {
+    const load = () => {
+      if (disposed) return;
+      actionsRef.current.refreshActiveRoomCall?.();
+    };
+
+    if (!connected || !currentRoom || currentRoom.startsWith('dm_')) {
       const timer = setTimeout(() => {
         if (!disposed) setActiveRoomCall(null);
       }, 0);
@@ -1252,21 +1210,36 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
         clearTimeout(timer);
       };
     }
-    const load = () => {
-      apiRequest(`/api/calls/group/active?roomName=${encodeURIComponent(room)}`)
-        .then((response) => {
-          if (!disposed) setActiveRoomCall(response.session || null);
-        })
-        .catch(() => {});
-    };
+
     load();
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(load, ROOM_POLL_INTERVAL);
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
     return () => {
       disposed = true;
       clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
     };
   }, [connected, currentRoom]);
 
+  useEffect(() => {
+    if (!connected || !currentRoom || currentRoom.startsWith('dm_')) return undefined;
+    const channelName = getRoomChannelName(currentRoom);
+    const channel = getChannel(channelName);
+
+    const handler = () => actionsRef.current.refreshActiveRoomCall?.();
+    channel.subscribe('group-call-updated', handler);
+    return () => {
+      try {
+        getChannel(channelName).unsubscribe('group-call-updated', handler);
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [connected, currentRoom]);
   useEffect(() => {
     if (userId == null) actionsRef.current.endCall?.('local-ended');
   }, [userId]);
@@ -1303,8 +1276,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   const startCallStable = useCallback((room, type) => actionsRef.current.startCall(room, type), []);
   const joinCallStable = useCallback((invite, mediaType) => actionsRef.current.joinCall(invite, mediaType), []);
   const joinRoomCallStable = useCallback((room) => actionsRef.current.joinRoomCall(room), []);
-  const acceptCallStable = useCallback((mediaType) => actionsRef.current.acceptCall(mediaType), []);
-  const rejectCallStable = useCallback(() => actionsRef.current.rejectCall(), []);
+  const toggleGroupCallStable = useCallback((room) => actionsRef.current.toggleGroupCall(room), []);
   const endCallStable = useCallback(() => actionsRef.current.endCall('local-ended'), []);
   const toggleMuteStable = useCallback(() => actionsRef.current.toggleMute(), []);
   const toggleDeafenStable = useCallback(() => actionsRef.current.toggleDeafen(), []);
@@ -1312,6 +1284,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   const toggleScreenShareStable = useCallback(() => actionsRef.current.toggleScreenShare(), []);
 
   const remoteScreenSharing = participants.some((participant) => !participant.isLocal && participant.screenSharing);
+  const inRoomCall = callState !== 'idle';
 
   return {
     callState,
@@ -1319,7 +1292,6 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     roomName,
     participants,
     localStream,
-    remoteStreamVersion,
     isMuted,
     isCameraOff: !isVideoOn,
     isVideoOn,
@@ -1329,15 +1301,13 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     duration,
     error,
     endReason,
-    incomingCall,
     activeRoomCall,
+    inRoomCall,
 
     startCall: startCallStable,
     joinCall: joinCallStable,
     joinRoomCall: joinRoomCallStable,
-    acceptCall: acceptCallStable,
-    rejectCall: rejectCallStable,
-    declineIncomingCall: rejectCallStable,
+    toggleGroupCall: toggleGroupCallStable,
     endCall: endCallStable,
     toggleMute: toggleMuteStable,
     toggleDeafen: toggleDeafenStable,

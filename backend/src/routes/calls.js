@@ -79,11 +79,25 @@ setInterval(() => {
     else rateBuckets.delete(userId);
   }
   const staleBefore = new Date(now - GROUP_STALE_MS);
-  GroupCall.updateMany(
-    { active: true, 'participants.lastSeen': { $lt: staleBefore } },
-    { $pull: { participants: { lastSeen: { $lt: staleBefore } } } },
-  )
-    .then(() => GroupCall.updateMany({ active: true, participants: { $size: 0 } }, { $set: { active: false } }))
+  GroupCall.find({ active: true, 'participants.lastSeen': { $lt: staleBefore } })
+    .select('callId roomName')
+    .lean()
+    .then(async (staleCalls) => {
+      if (!staleCalls.length) return;
+      await GroupCall.updateMany(
+        { active: true, 'participants.lastSeen': { $lt: staleBefore } },
+        { $pull: { participants: { lastSeen: { $lt: staleBefore } } } },
+      );
+      const emptied = await GroupCall.find({ active: true, participants: { $size: 0 } }).select('callId roomName').lean();
+      if (emptied.length) {
+        await GroupCall.updateMany({ _id: { $in: emptied.map((call) => call._id) } }, { $set: { active: false } });
+      }
+      const roomNames = new Set([...staleCalls, ...emptied].map((call) => call.roomName));
+      for (const roomName of roomNames) {
+        const live = await GroupCall.findOne({ roomName, active: true }).lean();
+        await publishRoomCallState(roomName, live ? await loadGroupCall(live) : null);
+      }
+    })
     .catch((err) => console.error('[Calls] Group cleanup error:', err.message));
 }, 60 * 1000).unref();
 
@@ -96,6 +110,47 @@ function getWebRTCChannelName(id1, id2) {
   // مرتب‌سازی IDها تضمین می‌کند که کانال برای هر دو طرف یکسان باشد
   const sorted = [String(id1), String(id2)].sort();
   return `private:webrtc-${sorted[0]}-${sorted[1]}`;
+}
+
+// 👇 نام کانال اتاق (هم‌نام با encodeChannelPart فرانت‌اند) 👇
+const SAFE_CHAR_RE = /[A-Za-z0-9_.-]/;
+
+function encodeChannelPart(value) {
+  let out = '';
+  for (const ch of String(value)) {
+    if (SAFE_CHAR_RE.test(ch)) {
+      out += ch;
+    } else {
+      for (const byte of Buffer.from(ch, 'utf8')) {
+        out += `=${byte.toString(16).toUpperCase().padStart(2, '0')}`;
+      }
+    }
+  }
+  return out;
+}
+
+function getRoomChannelName(roomName) {
+  return `presence:room-${encodeChannelPart(roomName)}`;
+}
+
+// اعلام تغییر وضعیت تماس گروهی به همه‌ی اعضای اتاق (بدون پاپ‌آپ؛ فقط برای بنر)
+async function publishRoomCallState(roomName, session) {
+  if (!roomName) return;
+  try {
+    await ably.channels.get(getRoomChannelName(roomName)).publish('group-call-updated', {
+      roomName,
+      session: session
+        ? {
+          callId: session.callId,
+          roomName: session.roomName,
+          callType: session.callType,
+          participantCount: session.participants?.length ?? 0,
+        }
+        : null,
+    });
+  } catch (error) {
+    console.warn('[Calls] Room call state publish failed:', error.message);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -251,10 +306,6 @@ callsRouter.post('/group/start', requireAuth, rateLimit, async (req, res) => {
     const existing = await GroupCall.findOne({ roomName: room.name, active: true }).lean();
     if (existing) return deny(res, 409, 'تماس گروهی فعالی در این اتاق وجود دارد');
 
-    const memberUsers = await User.find({ _id: { $in: room.members } }).select('username avatarIndex').lean();
-    const caller = memberUsers.find((member) => member._id.toString() === req.user.id);
-    if (!caller) return deny(res, 401, 'کاربر پیدا نشد');
-
     let call;
     try {
       call = await GroupCall.create({
@@ -268,25 +319,9 @@ callsRouter.post('/group/start', requireAuth, rateLimit, async (req, res) => {
       throw error;
     }
 
-    const notification = {
-      callId: call.callId,
-      roomName: room.name,
-      roomTitle: room.name,
-      callerId: caller._id.toString(),
-      callerName: caller.username,
-      callerAvatarIndex: caller.avatarIndex ?? null,
-      callType,
-    };
-    try {
-      await Promise.all(memberUsers
-        .filter((member) => member._id.toString() !== req.user.id)
-        .map((member) => ably.channels.get(`private:notifications-${member._id}`).publish('incoming-group-call', notification)));
-    } catch (error) {
-      await GroupCall.updateOne({ _id: call._id, active: true }, { $set: { active: false } });
-      throw error;
-    }
-
     const session = await loadGroupCall(call);
+    await publishRoomCallState(room.name, session);
+
     return res.status(201).json({ success: true, session, participants: session.participants });
   } catch (error) {
     console.error('[Calls] Group start error:', error.message);
@@ -340,6 +375,7 @@ callsRouter.post('/group/join', requireAuth, rateLimit, async (req, res) => {
     }
 
     const session = await loadGroupCall(call);
+    if (updated) await publishRoomCallState(call.roomName, session);
     return res.json({ success: true, session, participants: session.participants });
   } catch (error) {
     console.error('[Calls] Group join error:', error.message);
@@ -402,7 +438,9 @@ callsRouter.post('/group/leave', requireAuth, rateLimit, async (req, res) => {
       call.active = false;
     }
 
-    return res.json({ success: true, session: await loadGroupCall(call) });
+    const session = await loadGroupCall(call);
+    await publishRoomCallState(call.roomName, call.active ? session : null);
+    return res.json({ success: true, session });
   } catch (error) {
     console.error('[Calls] Group leave error:', error.message);
     return deny(res, 500, 'خروج از تماس گروهی با خطا مواجه شد');

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sileo } from 'sileo';
 import { END_REASON_TEXT } from '../hooks/useWebRTC';
 
@@ -7,7 +7,7 @@ import { END_REASON_TEXT } from '../hooks/useWebRTC';
  *
  *   const groupCall = useGroupWebRTC({ currentUser: user, connected, currentRoom });
  *   ...
- *   <GroupCallModal call={groupCall} user={user} />
+ *   <GroupCallModal call={groupCall} user={user} expanded={expanded} onCollapse={...} onExpand={...} />
  *
  * کلیدهای میانبر در تماس (مستقل از زبان کیبورد): M میکروفون، D قطع صدا، V دوربین، S اشتراک صفحه
  */
@@ -42,19 +42,15 @@ function getAvatarIndex(username) {
 const CSS = `
 @keyframes cm-eq { 0%,100% { transform: scaleY(.3) } 50% { transform: scaleY(1) } }
 @keyframes cm-speak { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55) } 100% { box-shadow: 0 0 0 16px rgba(52,211,153,0) } }
-@keyframes cm-ripple { 0% { transform: scale(1); opacity: .5 } 100% { transform: scale(2.2); opacity: 0 } }
 @keyframes cm-fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes cm-rise { from { opacity: 0; transform: translateY(14px) scale(.98) } to { opacity: 1; transform: none } }
-@keyframes cm-drop { from { opacity: 0; transform: translate(-50%, -12px) } to { opacity: 1; transform: translate(-50%, 0) } }
 .cm-eq-bar { animation: cm-eq .9s ease-in-out infinite; transform-origin: bottom }
 .cm-speaking { animation: cm-speak 1.2s ease-out infinite }
-.cm-ripple { animation: cm-ripple 2.6s ease-out infinite }
 .cm-fade { animation: cm-fade .25s ease-out both }
 .cm-rise { animation: cm-rise .3s cubic-bezier(.2,.8,.2,1) both }
-.cm-drop { animation: cm-drop .3s ease-out both }
 .cm-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent }
 @media (prefers-reduced-motion: reduce) {
-  .cm-eq-bar, .cm-speaking, .cm-ripple, .cm-fade, .cm-rise, .cm-drop { animation: none !important }
+  .cm-eq-bar, .cm-speaking, .cm-fade, .cm-rise { animation: none !important }
 }
 `;
 
@@ -104,8 +100,7 @@ const isEditable = (el) =>
   (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 
 function gridClassFor(count) {
-  if (count <= 1) return 'grid-cols-1';
-  if (count === 2) return 'grid-cols-1 sm:grid-cols-2';
+  if (count <= 2) return 'grid-cols-1 sm:grid-cols-2';
   if (count <= 4) return 'grid-cols-1 sm:grid-cols-2';
   if (count <= 6) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
   return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
@@ -577,159 +572,6 @@ function Tile({
 }
 
 // ===========================================================================
-// صفحه‌ی زنگ (تماس گروهی ورودی / خروجی)
-// ===========================================================================
-function RingingScreen({
-  mode,
-  name,
-  roomTitle,
-  avatarIndex,
-  callType,
-  localStream,
-  participantCount,
-  onAccept,
-  onDecline,
-  onCancel,
-}) {
-  const incoming = mode === 'incoming';
-  const isVideo = callType === 'video';
-  const showSelf = !incoming && isVideo && hasAnyVideo(localStream);
-  const hue = hueOf(name);
-
-  return (
-    <div
-      dir="rtl"
-      role="dialog"
-      aria-modal="true"
-      aria-label={incoming ? 'تماس گروهی ورودی' : 'در حال تماس گروهی'}
-      className="cm-fade fixed inset-0 z-[100] flex flex-col items-center justify-between overflow-hidden bg-[#0b0c0f] px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(3rem,env(safe-area-inset-top))] text-white"
-    >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background: `radial-gradient(70% 50% at 50% 30%, hsl(${hue} 65% 32% / .55), transparent 70%), radial-gradient(60% 40% at 50% 100%, hsl(${(hue + 60) % 360} 60% 25% / .35), transparent 70%)`,
-        }}
-      />
-      {showSelf && (
-        <StreamVideo
-          stream={localStream}
-          mirror
-          className="absolute inset-0 w-full h-full object-cover opacity-25 blur-2xl scale-110"
-        />
-      )}
-
-      <div className="relative z-10 text-center">
-        <p className="flex items-center justify-center gap-2 text-sm text-white/70">
-          {isVideo ? <VideoIcon className="w-4 h-4" /> : <PhoneIcon className="w-4 h-4" />}
-          {incoming
-            ? isVideo
-              ? 'تماس تصویری گروهی ورودی'
-              : 'تماس صوتی گروهی ورودی'
-            : isVideo
-              ? 'تماس تصویری گروهی'
-              : 'تماس صوتی گروهی'}
-        </p>
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="relative grid place-items-center">
-          {[0, 0.8, 1.6].map((delay) => (
-            <span
-              key={delay}
-              aria-hidden="true"
-              className="cm-ripple absolute h-36 w-36 rounded-full border border-white/25 md:h-44 md:w-44"
-              style={{ animationDelay: `${delay}s` }}
-            />
-          ))}
-          <Avatar name={name} avatarIndex={avatarIndex} className="w-36 h-36 text-5xl md:w-44 md:h-44 md:text-6xl" />
-        </div>
-        <h2 className="mt-8 max-w-[80vw] truncate text-2xl font-bold md:text-3xl">{name}</h2>
-        {roomTitle && roomTitle !== name && (
-          <p className="mt-1.5 max-w-[80vw] truncate text-sm text-white/55">{roomTitle}</p>
-        )}
-        <p className="mt-2 flex items-center gap-2 text-sm text-white/65">
-          {incoming ? (
-            <>
-              <UsersIcon className="w-4 h-4" />
-              {participantCount > 1
-                ? `${participantCount.toLocaleString('fa-IR')} نفر در این تماس هستند`
-                : 'در حال زنگ زدن به شما…'}
-            </>
-          ) : (
-            <>
-              <Spinner className="w-3.5 h-3.5" />
-              در انتظار پیوستن دیگران…
-            </>
-          )}
-        </p>
-      </div>
-
-      <div className="relative z-10 flex items-end justify-center gap-8">
-        {incoming ? (
-          <>
-            <div className="flex flex-col items-center gap-2">
-              <button
-                type="button"
-                onClick={onDecline}
-                aria-label="رد تماس"
-                title="رد تماس"
-                className="grid h-16 w-16 place-items-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-              >
-                <PhoneIcon className="h-7 w-7 rotate-[135deg]" />
-              </button>
-              <span className="text-xs text-white/70">رد کردن</span>
-            </div>
-
-            {isVideo && (
-              <div className="flex flex-col items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onAccept('audio')}
-                  aria-label="پاسخ صوتی"
-                  title="پیوستن فقط با صدا (دوربین روشن نمی‌شود)"
-                  className="grid h-16 w-16 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition hover:scale-105 hover:bg-white/25 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-                >
-                  <VolumeIcon className="h-7 w-7" />
-                </button>
-                <span className="text-xs text-white/70">پیوستن صوتی</span>
-              </div>
-            )}
-
-            <div className="flex flex-col items-center gap-2">
-              <button
-                type="button"
-                autoFocus
-                onClick={() => onAccept(isVideo ? 'video' : 'audio')}
-                aria-label={isVideo ? 'پیوستن تصویری' : 'پیوستن'}
-                title={isVideo ? 'پیوستن تصویری' : 'پیوستن'}
-                className="grid h-16 w-16 place-items-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition hover:scale-105 hover:bg-emerald-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-              >
-                {isVideo ? <VideoIcon className="h-7 w-7" /> : <PhoneIcon className="h-7 w-7" />}
-              </button>
-              <span className="text-xs text-white/70">{isVideo ? 'پیوستن تصویری' : 'پیوستن'}</span>
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              aria-label="لغو تماس"
-              title="لغو تماس"
-              className="grid h-16 w-16 place-items-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:scale-105 hover:bg-rose-400 active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
-            >
-              <PhoneIcon className="h-7 w-7 rotate-[135deg]" />
-            </button>
-            <span className="text-xs text-white/70">لغو تماس</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ===========================================================================
 // پنجره‌ی کوچک (وقتی تماس minimize است)
 // ===========================================================================
 function MiniCall({
@@ -807,7 +649,7 @@ function MiniCall({
 // ===========================================================================
 // کاشی شرکت‌کننده (با تشخیص صحبت اختصاصی)
 // ===========================================================================
-function ParticipantTile({ participant, connected, compact, presenting, className }) {
+function ParticipantTile({ participant, connected, compact, className }) {
   const speaking = useSpeaking(participant.stream, connected && !(participant.isLocal && participant.muted));
   const showVideo = participant.screenSharing
     ? hasAnyVideo(participant.stream)
@@ -825,23 +667,45 @@ function ParticipantTile({ participant, connected, compact, presenting, classNam
       deafened={participant.isDeafened}
       isLocal={participant.isLocal}
       compact={compact}
-      presenting={participant.screenSharing || presenting}
+      presenting={participant.screenSharing}
       className={className}
     />
+  );
+}
+
+function ParticipantRow({ row, connected }) {
+  const speaking = useSpeaking(row.stream, connected);
+  return (
+    <li
+      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition ${speaking ? 'bg-emerald-400/10' : 'hover:bg-white/5'}`}
+    >
+      <Avatar name={row.name} avatarIndex={row.avatarIndex} speaking={speaking} className="w-10 h-10 text-sm" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">
+          {row.name}
+          {row.you && <span className="ms-1.5 text-xs text-white/50">(شما)</span>}
+        </p>
+        {speaking && <p className="text-[11px] text-emerald-300">در حال صحبت…</p>}
+      </div>
+      <div className="flex items-center gap-1.5 text-white/70">
+        {speaking && <Equalizer />}
+        {row.muted && <MicOffIcon className="h-4 w-4 text-rose-400" />}
+        {row.video && <VideoIcon className="h-4 w-4 text-emerald-400" />}
+        {row.screen && <ScreenIcon className="h-4 w-4 text-indigo-300" />}
+      </div>
+    </li>
   );
 }
 
 // ===========================================================================
 // GroupCallModal
 // ===========================================================================
-export default function GroupCallModal({ call, user, title, onJoin, onDecline }) {
+export default function GroupCallModal({ call, user, title, expanded = true, onCollapse, onExpand }) {
   const c = call || {};
   const {
     callState = 'idle',
-    callType,
     roomName,
     participants = [],
-    localStream,
     isMuted = false,
     isDeafened = false,
     isVideoOn = false,
@@ -850,9 +714,6 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
     duration = 0,
     error,
     endReason,
-    incomingCall,
-    acceptCall,
-    rejectCall,
     endCall,
     toggleMute,
     toggleDeafen,
@@ -861,7 +722,6 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
     toggleScreenShare,
   } = c;
 
-  const [minimized, setMinimized] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [dismissedError, setDismissedError] = useState(null);
   const [audioBlocked, setAudioBlocked] = useState(false);
@@ -872,7 +732,7 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
   const active = callState !== 'idle';
   const inCall = callState === 'connecting' || callState === 'connected';
   const connected = callState === 'connected';
-  const ringing = callState === 'calling';
+  const minimized = inCall && !expanded;
 
   const remotes = useMemo(() => participants.filter((p) => !p.isLocal), [participants]);
   const localP = useMemo(() => participants.find((p) => p.isLocal) || null, [participants]);
@@ -882,8 +742,6 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
   const myAvatarIndex = user?.avatarIndex ?? null;
 
   const primaryRemote = remotes[0] || null;
-  const callerName = incomingCall?.callerName || primaryRemote?.username || roomTitle;
-  const callerAvatarIndex = incomingCall?.callerAvatarIndex ?? primaryRemote?.avatarIndex ?? null;
 
   const presentingRemote = remotes.find((p) => p.screenSharing) || null;
   const presenting = Boolean(presentingRemote) || isScreenSharing;
@@ -921,13 +779,10 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
   }, [audioBlocked, resumeAudio]);
 
   useEffect(() => {
-    if (inCall || callState === 'incoming') return undefined;
-    const reset = setTimeout(() => {
-      setMinimized(false);
-      if (!active) setPanelOpen(false);
-    }, 0);
+    if (active) return undefined;
+    const reset = setTimeout(() => setPanelOpen(false), 0);
     return () => clearTimeout(reset);
-  }, [inCall, active, callState]);
+  }, [active]);
 
   useEffect(() => {
     if (callState === 'idle' && (error || (endReason && !QUIET_END_REASONS.has(endReason)))) {
@@ -951,13 +806,13 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
   }, [callState, error, endReason]);
 
   useEffect(() => {
-    if (!active || minimized) return undefined;
+    if (!inCall || minimized) return undefined;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [active, minimized]);
+  }, [inCall, minimized]);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -966,7 +821,7 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
   }, []);
 
   useEffect(() => {
-    if (!inCall) return undefined;
+    if (!inCall || minimized) return undefined;
     const onKey = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey || isEditable(e.target)) return;
       switch (e.code) {
@@ -991,6 +846,7 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
     return () => window.removeEventListener('keydown', onKey);
   }, [
     inCall,
+    minimized,
     toggleMute,
     toggleDeafen,
     onToggleVideo,
@@ -1003,10 +859,7 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
     else rootRef.current?.requestFullscreen?.().catch(() => { });
   };
 
-  if (!call) return null;
-
-  const showIncoming = callState === 'incoming' && Boolean(incomingCall);
-  if (!showIncoming && !active) return null;
+  if (!call || !inCall) return null;
 
   const connecting = callState === 'connecting';
   const participantCount = participants.length || 1;
@@ -1037,32 +890,7 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
         />
       ))}
 
-      {showIncoming && (
-        <RingingScreen
-          mode="incoming"
-          name={callerName}
-          roomTitle={roomTitle}
-          avatarIndex={callerAvatarIndex}
-          callType={incomingCall?.callType || callType}
-          participantCount={participantCount}
-          onAccept={(type) => (onJoin || acceptCall)?.(incomingCall, type)}          onDecline={() => (onDecline || rejectCall)?.()}
-        />
-      )}
-
-      {ringing && (
-        <RingingScreen
-          mode="outgoing"
-          name={roomTitle}
-          roomTitle={null}
-          avatarIndex={myAvatarIndex}
-          callType={callType}
-          localStream={localStream}
-          participantCount={participantCount}
-          onCancel={() => endCall?.()}
-        />
-      )}
-
-      {inCall && minimized && (
+      {minimized && (
         <MiniCall
           title={roomTitle}
           name={miniParticipant?.isLocal ? myName : miniParticipant?.username || roomTitle}
@@ -1080,11 +908,11 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
           isMuted={isMuted}
           onToggleMute={() => toggleMute?.()}
           onEnd={() => endCall?.()}
-          onExpand={() => setMinimized(false)}
+          onExpand={() => onExpand?.()}
         />
       )}
 
-      {inCall && !minimized && (
+      {!minimized && (
         <div
           ref={rootRef}
           dir="rtl"
@@ -1097,7 +925,7 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                onClick={() => setMinimized(true)}
+                onClick={() => onCollapse?.()}
                 title="کوچک کردن تماس (بازگشت به چت)"
                 aria-label="کوچک کردن تماس"
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white transition hover:bg-white/20 outline-none focus-visible:ring-2 focus-visible:ring-white/80 cursor-pointer"
@@ -1222,7 +1050,6 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
                       participant={participant}
                       connected={connected}
                       compact
-                      presenting={false}
                       className="aspect-video w-40 shrink-0 sm:w-52 lg:w-full"
                     />
                   ))}
@@ -1242,7 +1069,7 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
                     <div className="flex flex-col items-center text-center">
                       <Spinner className="h-6 w-6 text-white/60" />
                       <p className="mt-3 text-sm text-white/60">در انتظار پیوستن دیگران…</p>
-                      <p className="mt-1 text-xs text-white/40">لینک این اتاق را با هم‌تیمی‌هایتان به اشتراک بگذارید</p>
+                      <p className="mt-1 text-xs text-white/40">بنر بالای چت را هم‌تیمی‌هایتان می‌بینند و می‌توانند بپیوندند</p>
                     </div>
                   </div>
                 )}
@@ -1390,29 +1217,5 @@ export default function GroupCallModal({ call, user, title, onJoin, onDecline })
         </div>
       )}
     </>
-  );
-}
-
-function ParticipantRow({ row, connected }) {
-  const speaking = useSpeaking(row.stream, connected);
-  return (
-    <li
-      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 transition ${speaking ? 'bg-emerald-400/10' : 'hover:bg-white/5'}`}
-    >
-      <Avatar name={row.name} avatarIndex={row.avatarIndex} speaking={speaking} className="w-10 h-10 text-sm" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {row.name}
-          {row.you && <span className="ms-1.5 text-xs text-white/50">(شما)</span>}
-        </p>
-        {speaking && <p className="text-[11px] text-emerald-300">در حال صحبت…</p>}
-      </div>
-      <div className="flex items-center gap-1.5 text-white/70">
-        {speaking && <Equalizer />}
-        {row.muted && <MicOffIcon className="h-4 w-4 text-rose-400" />}
-        {row.video && <VideoIcon className="h-4 w-4 text-emerald-400" />}
-        {row.screen && <ScreenIcon className="h-4 w-4 text-indigo-300" />}
-      </div>
-    </li>
   );
 }
