@@ -134,15 +134,16 @@ export default function Chat({ chat, user, onLogout }) {
   }, [fetchNotifications, setShowNotifications]);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col overflow-hidden relative bg-transparent">
-      <div className="relative z-10 flex flex-col min-h-[100dvh]">
+    <div className="min-h-[100dvh] flex flex-col relative bg-transparent">
+      {/* Header - sticky top */}
+      <div className="relative z-10 flex-shrink-0">
         <ChatHeader
           isConnected={connected}
           rooms={rooms}
           onGoHome={handleGoHome}
           user={user}
           onlineUsers={onlineUsers}
-          onlineCount={onlineUsers.length} // 👈 حالا به درستی شامل خود کاربر هم می‌شود
+          onlineCount={onlineUsers.length}
           roomName={currentRoom}
           onLogout={onLogout}
           onToggleSidebar={() => toggleSidebar('rooms')}
@@ -151,120 +152,121 @@ export default function Chat({ chat, user, onLogout }) {
           onOpenNotifications={handleOpenNotifications}
           onStartCall={rtc.startCall}
         />
-
-        <div className="flex-1 flex overflow-hidden">
-          {/* سایدبار دسکتاپ */}
-          <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong slide-in-left">
-            <RoomList
-              rooms={rooms}
-              onlineUsers={onlineUsers}
-              currentRoom={currentRoom}
-              onSwitch={(name) => handleSwitchRoom(name, false)}
-              onCreate={createRoom}
-              onDelete={deleteRoom}
-              onLeave={leaveRoom}
-              onOpenDM={handleOpenDM}
-              onSearchRooms={searchRooms}
-              onOpenProfile={handleOpenProfile}
-              currentUser={user?.id}
-            />
-          </aside>
-
-          {/* بخش اصلی چت */}
-          <main className="flex-1 flex flex-col min-w-0 bg-surface-950/30 relative">
-            {isPending && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-950/60 backdrop-blur-sm animate-fade-in">
-                <LoadingSpinner text="در حال ورود به اتاق..." />
-              </div>
-            )}
-
-            <div className={`flex-1 overflow-hidden flex flex-col transition-all duration-300 ${isPending ? 'opacity-30' : ''}`}>
-              {currentRoom ? (
-                <>
-                  <MessageList
-                    messages={messages}
-                    currentUsername={user?.username}
-                    onDeleteMessage={deleteMessage}
-                    onEditMessage={editMessage}
-                    currentUserId={user?.id}
-                  />
-
-                  {/* اصلاح TypingIndicator: فیلتر ایمن‌تر برای جلوگیری از خطا */}
-                  <TypingIndicator
-                    users={typingUsers.filter((u) => u && u !== user?.username)}
-                  />
-
-                  <ChatInput onSend={sendMessage} onTyping={setTyping} />
-                </>
-              ) : (
-                <WelcomeScreen
-                  user={user}
-                  rooms={rooms}
-                  onSelectRoom={handleSwitchRoom}
-                  onCreateRoom={createRoom}
-                />
-              )}
-            </div>
-          </main>
-        </div>
-
-        {/* مودال تماس */}
-        <CallModal
-          call={rtc}
-          user={user}
-          isCalling={rtc.callState === 'calling' || rtc.callState === 'connecting' || rtc.callState === 'connected'}
-          incomingCall={rtc.incomingCall}
-          remoteUser={rtc.peer}
-          localStream={rtc.localStream}
-          remoteStream={rtc.remoteStream}
-          callState={rtc.callState}
-          callType={rtc.callType}
-          isMuted={rtc.isMuted}
-          isVideoOn={!rtc.isCameraOff}
-          duration={rtc.duration}
-          error={rtc.error}
-          endReason={rtc.endReason}
-          onAnswer={rtc.acceptCall}
-          onDecline={rtc.rejectCall}
-          onEnd={rtc.endCall}
-          onToggleMute={rtc.toggleMute}
-          onToggleVideo={rtc.toggleCamera}
-          isScreenSharing={rtc.isScreenSharing}
-          isDeafened={rtc.isDeafened}
-          remoteScreenSharing={rtc.remoteScreenSharing}
-          participants={rtc.participants}
-          onToggleDeafen={rtc.toggleDeafen}
-          onToggleScreenShare={rtc.toggleScreenShare}
-        />
-
-        {/* سایدبار موبایل */}
-        {sidebar && (
-          <>
-            <div
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in lg:hidden"
-              onClick={closeSidebar}
-            />
-            <div className="fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong flex flex-col shadow-2xl right-0 left-auto slide-in-right lg:hidden">
-              {sidebar === 'rooms' && (
-                <RoomList
-                  rooms={rooms}
-                  onlineUsers={onlineUsers}
-                  currentRoom={currentRoom}
-                  onSwitch={(name) => handleSwitchRoom(name, true)}
-                  onCreate={createRoom}
-                  onDelete={deleteRoom}
-                  onLeave={leaveRoom}
-                  onOpenDM={handleOpenDM}
-                  onSearchRooms={searchRooms}
-                  onOpenProfile={handleOpenProfile}
-                  currentUser={user?.id}
-                  onClose={closeSidebar}
-                />
-              )}
-            </div>
-          </>
-        )}
       </div>
+
+      {/* Main content area - takes remaining height */}
+      <div className="flex-1 min-h-0 flex overflow-hidden">
+        {/* سایدبار دسکتاپ */}
+        <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong slide-in-left">
+          <RoomList
+            rooms={rooms}
+            onlineUsers={onlineUsers}
+            currentRoom={currentRoom}
+            onSwitch={(name) => handleSwitchRoom(name, false)}
+            onCreate={createRoom}
+            onDelete={deleteRoom}
+            onLeave={leaveRoom}
+            onOpenDM={handleOpenDM}
+            onSearchRooms={searchRooms}
+            onOpenProfile={handleOpenProfile}
+            currentUser={user?.id}
+          />
+        </aside>
+
+        {/* بخش اصلی چت */}
+        <main className="flex-1 min-w-0 flex flex-col bg-surface-950/30 relative">
+          {isPending && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-surface-950/60 backdrop-blur-sm animate-fade-in">
+              <LoadingSpinner text="در حال ورود به اتاق..." />
+            </div>
+          )}
+
+          <div className={`flex-1 min-h-0 flex flex-col transition-all duration-300 ${isPending ? 'opacity-30' : ''}`}>
+            {currentRoom ? (
+              <>
+                <MessageList
+                  messages={messages}
+                  currentUsername={user?.username}
+                  onDeleteMessage={deleteMessage}
+                  onEditMessage={editMessage}
+                  currentUserId={user?.id}
+                />
+
+                {/* TypingIndicator */}
+                <TypingIndicator
+                  users={typingUsers.filter((u) => u && u !== user?.username)}
+                />
+
+                <ChatInput onSend={sendMessage} onTyping={setTyping} />
+              </>
+            ) : (
+              <WelcomeScreen
+                user={user}
+                rooms={rooms}
+                onSelectRoom={handleSwitchRoom}
+                onCreateRoom={createRoom}
+              />
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* مودال تماس */}
+      <CallModal
+        call={rtc}
+        user={user}
+        isCalling={rtc.callState === 'calling' || rtc.callState === 'connecting' || rtc.callState === 'connected'}
+        incomingCall={rtc.incomingCall}
+        remoteUser={rtc.peer}
+        localStream={rtc.localStream}
+        remoteStream={rtc.remoteStream}
+        callState={rtc.callState}
+        callType={rtc.callType}
+        isMuted={rtc.isMuted}
+        isVideoOn={!rtc.isCameraOff}
+        duration={rtc.duration}
+        error={rtc.error}
+        endReason={rtc.endReason}
+        onAnswer={rtc.acceptCall}
+        onDecline={rtc.rejectCall}
+        onEnd={rtc.endCall}
+        onToggleMute={rtc.toggleMute}
+        onToggleVideo={rtc.toggleCamera}
+        isScreenSharing={rtc.isScreenSharing}
+        isDeafened={rtc.isDeafened}
+        remoteScreenSharing={rtc.remoteScreenSharing}
+        participants={rtc.participants}
+        onToggleDeafen={rtc.toggleDeafen}
+        onToggleScreenShare={rtc.toggleScreenShare}
+      />
+
+      {/* سایدبار موبایل */}
+      {sidebar && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in lg:hidden"
+            onClick={closeSidebar}
+          />
+          <div className="fixed top-0 z-50 h-full w-80 max-w-[85vw] glass-panel-strong flex flex-col shadow-2xl right-0 left-auto slide-in-right lg:hidden">
+            {sidebar === 'rooms' && (
+              <RoomList
+                rooms={rooms}
+                onlineUsers={onlineUsers}
+                currentRoom={currentRoom}
+                onSwitch={(name) => handleSwitchRoom(name, true)}
+                onCreate={createRoom}
+                onDelete={deleteRoom}
+                onLeave={leaveRoom}
+                onOpenDM={handleOpenDM}
+                onSearchRooms={searchRooms}
+                onOpenProfile={handleOpenProfile}
+                currentUser={user?.id}
+                onClose={closeSidebar}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       {/* دراپ‌داون اعلان‌ها */}
       <div className="notification-dropdown">
