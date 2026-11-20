@@ -223,6 +223,8 @@ export default function Chat({ chat, user, onLogout }) {
       {/* مودال تماس */}
       <GroupCallModal
         call={groupCall}
+        user={user}
+        title={currentRoom}
         onJoin={groupCall.joinCall}
         onDecline={groupCall.declineIncomingCall}
       />

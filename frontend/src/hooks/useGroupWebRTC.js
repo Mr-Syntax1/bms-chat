@@ -1,77 +1,205 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getChannel, subscribeToNotifications } from '../lib/ably';
+import {
+  getChannel,
+  getNotificationChannelName,
+  publishEvent,
+  subscribeToNotifications,
+} from '../lib/ably';
 import { apiRequest } from './useChat';
 
+/*
+ * ===========================================================================
+ * معماری سیگنالینگ تماس گروهی (Ably + WebRTC mesh)
+ * ===========================================================================
+ * ۱) دعوت: caller ──POST /api/calls/group/start──► سرور ──'incoming-group-call'──► private:notifications-<userId>
+ * ۲) بقیه روی کانال private:group-webrtc-<callId> با publish event:
+ *      group-offer / group-answer / group-ice-candidates / group-media-state
+ *      group-member-joined / group-member-left   signal-chunk (تکه‌های پیام‌های بزرگ)
+ *
+ * نکات:
+ *  - هر شرکت‌کننده با هر شرکت‌کننده‌ی دیگر یک RTCPeerConnection جدا دارد (mesh)
+ *  - فقط طرفی که شناسه‌ی کوچک‌تری دارد پیشنهاد (offer) می‌فرستد تا glare رخ ندهد
+ *  - ترنسیورهای صدا و تصویر از ابتدا با sendrecv ساخته می‌شوند و تغییر دوربین/اشتراک صفحه
+ *    با replaceTrack انجام می‌شود (بدون renegotiation)
+ *  - پیام‌های بزرگ (SDP) تکه‌تکه می‌شوند
+ * ===========================================================================
+ */
+
+const ICE_FLUSH_DELAY = 150;
+const DISCONNECT_GRACE = 10000;
+const SUBSCRIBE_TIMEOUT = 10000;
+const RING_TIMEOUT = 35000;
+const HEARTBEAT_INTERVAL = 30000;
+
+const MAX_INLINE_BYTES = 6000;
+const CHUNK_CHARS = 5000;
+const CHUNK_TTL = 15000;
+const MAX_CHUNK_BUFFERS = 16;
+
+const CHUNKABLE = {
+  'group-offer': 'handleOffer',
+  'group-answer': 'handleAnswer',
+  'group-ice-candidates': 'handleIce',
+};
+
+const BITRATE = { camera: 1_500_000, screen: 2_500_000 };
+
+const VIDEO_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } };
+
+const encoder = new TextEncoder();
+
+async function setVideoSenderParameters(sender, profile = 'camera') {
+  if (!sender?.track || sender.track.kind !== 'video') return;
+  try {
+    if ('contentHint' in sender.track) {
+      sender.track.contentHint = profile === 'screen' ? 'detail' : 'motion';
+    }
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+    params.encodings[0].maxBitrate = BITRATE[profile];
+    if (profile === 'screen') params.encodings[0].maxFramerate = 15;
+    else delete params.encodings[0].maxFramerate;
+    params.degradationPreference = profile === 'screen' ? 'maintain-resolution' : 'balanced';
+    await sender.setParameters(params);
+  } catch (err) {
+    console.debug('[GroupWebRTC] setParameters skipped:', err?.message);
+  }
+}
+
 function buildIceServers() {
-  const servers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  const servers = [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    { urls: 'stun:stun.relay.metered.ca:80' },
+  ];
+
   const meteredUser = import.meta.env.VITE_METERED_USERNAME;
   const meteredCredential = import.meta.env.VITE_METERED_CREDENTIAL;
   if (meteredUser && meteredCredential) {
     servers.push(
       { urls: 'turn:global.relay.metered.ca:80', username: meteredUser, credential: meteredCredential },
+      { urls: 'turn:global.relay.metered.ca:80?transport=tcp', username: meteredUser, credential: meteredCredential },
       { urls: 'turn:global.relay.metered.ca:443', username: meteredUser, credential: meteredCredential },
       { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: meteredUser, credential: meteredCredential },
     );
   }
+
   const turnUrl = import.meta.env.VITE_TURN_URL;
   const username = import.meta.env.VITE_TURN_USERNAME;
   const credential = import.meta.env.VITE_TURN_CREDENTIAL;
   if (turnUrl && username && credential) {
     servers.push({ urls: turnUrl.split(',').map((url) => url.trim()), username, credential });
   }
+
   return servers;
 }
 
+const newCallId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
 function stopStream(stream) {
   stream?.getTracks().forEach((track) => {
-    track.onended = null;
-    track.stop();
+    try {
+      track.onended = null;
+      track.stop();
+    } catch {
+      /* ignore */
+    }
   });
 }
 
-function normalizeParticipant(participant) {
-  const participantId = participant.id ?? participant.userId;
-  if (participantId == null) return null;
-  return {
-    id: String(participantId),
-    username: participant.username || 'کاربر',
-    avatarIndex: participant.avatarIndex ?? null,
-    stream: null,
-    isLocal: false,
-    isMuted: Boolean(participant.isMuted ?? participant.muted),
-    isVideoOn: Boolean(participant.isVideoOn ?? participant.video),
-  };
+async function getMedia(type) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('مرورگر شما از تماس پشتیبانی نمی‌کند (نیازمند HTTPS است)');
+  }
+  return navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    video: type === 'video' ? { ...VIDEO_CONSTRAINTS, facingMode: 'user' } : false,
+  });
 }
 
-function mediaError(err) {
-  if (['NotAllowedError', 'SecurityError'].includes(err?.name)) return 'دسترسی به میکروفون یا دوربین مجاز نیست';
-  if (['NotFoundError', 'OverconstrainedError'].includes(err?.name)) return 'میکروفون یا دوربین پیدا نشد';
-  if (err?.name === 'NotReadableError') return 'میکروفون یا دوربین در برنامه دیگری استفاده می‌شود';
-  return err?.message || 'خطا در تماس گروهی';
+function errorMessage(err) {
+  switch (err?.name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'دسترسی به میکروفون/دوربین مجاز نیست';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'میکروفون یا دوربین پیدا نشد';
+    case 'NotReadableError':
+      return 'میکروفون یا دوربین توسط برنامه‌ی دیگری استفاده می‌شود';
+    default:
+      return err?.message || 'خطای ناشناخته در تماس گروهی';
+  }
+}
+
+function waitForSubscription(channelName, timeout = SUBSCRIBE_TIMEOUT) {
+  return new Promise((resolve, reject) => {
+    const channel = getChannel(channelName);
+    if (channel.state === 'attached') return resolve(channel);
+
+    let timer;
+    const done = (fn, arg) => {
+      clearTimeout(timer);
+      channel.off('attached', onOk);
+      channel.off('failed', onErr);
+      fn(arg);
+    };
+    const onOk = () => done(resolve, channel);
+    const onErr = (err) => done(reject, new Error(`دسترسی به کانال تماس گروهی رد شد: ${err?.message || err?.reason?.message || ''}`));
+
+    channel.on('attached', onOk);
+    channel.on('failed', onErr);
+    timer = setTimeout(() => done(reject, new Error('اتصال به کانال تماس گروهی زمان‌بر شد')), timeout);
+
+    if (channel.state === 'initialized' || channel.state === 'detached') channel.attach?.();
+  });
+}
+
+function findTransceiver(pc, kind) {
+  return pc.getTransceivers().find(
+    (item) => item.receiver?.track?.kind === kind || item.sender?.track?.kind === kind,
+  );
 }
 
 export function useGroupWebRTC({ currentUser, connected = false, currentRoom = null, privateCallActive = false } = {}) {
-  const [callState, setCallState] = useState('idle');
+  const [callState, setCallStateRaw] = useState('idle');
   const [callType, setCallType] = useState(null);
   const [roomName, setRoomName] = useState(null);
   const [participants, setParticipants] = useState([]);
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStreamVersion, setRemoteStreamVersion] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOn, setIsVideoOn] = useState(false);
+  const [isVideoOn, setIsVideoOnState] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isDeafened, setIsDeafened] = useState(false);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState(null);
+  const [endReason, setEndReason] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [activeRoomCall, setActiveRoomCall] = useState(null);
-  const activeRef = useRef(null);
+
+  const stateRef = useRef('idle');
+  const callRef = useRef(null); // { callId, roomName, title, channelName, handlers }
+  const peersRef = useRef(new Map()); // peerId -> { pc, role, remoteStream, remoteSig, ... }
+  const chunkBuffersRef = useRef(new Map());
+
+  const cameraRef = useRef(null);
+  const screenRef = useRef(null);
+  const mutedRef = useRef(false);
+  const videoOnRef = useRef(false);
+  const screenSharingRef = useRef(false);
+  const deafenedRef = useRef(false);
+
+  const ringTimerRef = useRef(null);
   const busyRef = useRef(false);
-  const mediaRef = useRef(null);
-  const pcsRef = useRef(new Map());
-  const streamsRef = useRef(new Map());
-  const candidatesRef = useRef(new Map());
-  const callStateRef = useRef('idle');
+
   const userRef = useRef(currentUser);
-  const isMutedRef = useRef(false);
-  const isVideoOnRef = useRef(false);
   const privateActiveRef = useRef(privateCallActive);
+  const actionsRef = useRef({});
+
+  const userId = currentUser?.id;
 
   useEffect(() => {
     userRef.current = currentUser;
@@ -81,515 +209,1047 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     privateActiveRef.current = privateCallActive;
   }, [privateCallActive]);
 
-  const updateCallState = useCallback((next) => {
-    callStateRef.current = next;
-    setCallState(next);
-  }, []);
+  // -------------------------------------------------------------------------
+  // کمک‌ها
+  // -------------------------------------------------------------------------
+  function setState(next) {
+    stateRef.current = next;
+    setCallStateRaw(next);
+  }
 
-  const updateParticipant = useCallback((id, patch) => {
+  function setVideoOn(value) {
+    videoOnRef.current = value;
+    setIsVideoOnState(value);
+  }
+
+  function clearRingTimer() {
+    clearTimeout(ringTimerRef.current);
+    ringTimerRef.current = null;
+  }
+
+  function sendingVideoTrack() {
+    if (screenSharingRef.current) return screenRef.current?.getVideoTracks()[0] || null;
+    return videoOnRef.current ? cameraRef.current?.getVideoTracks()[0] || null : null;
+  }
+
+  function updateLocal(patch) {
+    setParticipants((previous) =>
+      previous.map((participant) => (participant.isLocal ? { ...participant, ...patch } : participant)),
+    );
+  }
+
+  function upsertRemote(id, patch = {}) {
     const key = String(id);
-    setParticipants((previous) => previous.map((participant) => (
-      participant.id === key ? { ...participant, ...patch } : participant
-    )));
-  }, []);
-
-  const updateRoster = useCallback((roster) => {
-    if (!Array.isArray(roster)) return;
-    const me = String(userRef.current?.id ?? '');
-    const normalized = roster.map(normalizeParticipant).filter((p) => p && p.id !== me);
     setParticipants((previous) => {
-      const local = previous.find((participant) => participant.isLocal);
-      const existing = new Map(previous.filter((p) => !p.isLocal).map((p) => [p.id, p]));
-      return [
-        ...(local ? [local] : []),
-        ...normalized.map((participant) => ({ ...existing.get(participant.id), ...participant, stream: streamsRef.current.get(participant.id) || null })),
-      ];
+      const index = previous.findIndex((participant) => !participant.isLocal && participant.id === key);
+      if (index === -1) {
+        return [...previous, {
+          id: key,
+          username: patch.username || 'کاربر',
+          avatarIndex: patch.avatarIndex ?? null,
+          stream: patch.stream || null,
+          isLocal: false,
+          muted: Boolean(patch.muted),
+          video: Boolean(patch.video),
+          screenSharing: Boolean(patch.screenSharing),
+        }];
+      }
+      const next = [...previous];
+      next[index] = { ...next[index], ...patch };
+      return next;
     });
-  }, []);
+  }
 
-  const publish = useCallback((event, to, data = {}) => {
-    const call = activeRef.current;
-    if (!call) return;
-    const channel = getChannel(call.channelName);
-    channel.publish(event, {
-      ...data,
-      to: String(to),
-      from: String(userRef.current?.id),
-      callId: call.callId,
-      peerId: String(to),
-    }).catch((err) => setError(err?.message || 'ارسال سیگنال ناموفق بود'));
-  }, []);
+  function sendSignal(event, to, data = {}) {
+    const call = callRef.current;
+    const me = userRef.current;
+    if (!call || !to) return false;
 
-  const publishState = useCallback(() => {
-    const call = activeRef.current;
+    const payload = { callId: call.callId, from: me?.id, to: String(to), ...data };
+    const json = JSON.stringify(payload);
+    const bytes = encoder.encode(json).length;
+
+    if (import.meta.env.DEV) console.debug(`[GroupWebRTC] ${event} -> ${to} (${bytes} bytes)`);
+
+    if (bytes <= MAX_INLINE_BYTES) {
+      publishEvent(call.channelName, event, payload).catch((err) => {
+        console.warn(`[GroupWebRTC] signal "${event}" failed:`, err);
+      });
+      return true;
+    }
+
+    const msgId = newCallId().slice(0, 8);
+    const total = Math.ceil(json.length / CHUNK_CHARS);
+    for (let index = 0; index < total; index += 1) {
+      publishEvent(call.channelName, 'signal-chunk', {
+        callId: call.callId,
+        from: me?.id,
+        to: String(to),
+        msgId,
+        event,
+        index,
+        total,
+        part: json.slice(index * CHUNK_CHARS, (index + 1) * CHUNK_CHARS),
+      }).catch((err) => console.warn('[GroupWebRTC] chunk publish failed:', err));
+    }
+    return true;
+  }
+
+  function publishMediaState() {
+    const call = callRef.current;
     if (!call) return;
-    getChannel(call.channelName).publish('group-member-state', {
+    const me = userRef.current;
+    publishEvent(call.channelName, 'group-media-state', {
       callId: call.callId,
-      from: String(userRef.current?.id),
+      from: me?.id,
       to: 'all',
-      isMuted: isMutedRef.current,
-      isVideoOn: isVideoOnRef.current,
+      muted: mutedRef.current,
+      video: videoOnRef.current,
+      screenSharing: screenSharingRef.current,
+      username: me?.username ?? null,
+      avatarIndex: me?.avatarIndex ?? null,
     }).catch(() => {});
-  }, []);
+  }
 
-  const makePeer = useCallback((peerId) => {
-    const call = activeRef.current;
-    if (!call || String(peerId) === String(userRef.current?.id)) return null;
+  function flushIce(peerId) {
+    const entry = peersRef.current.get(String(peerId));
+    if (!entry) return;
+    clearTimeout(entry.iceTimer);
+    entry.iceTimer = null;
+    const batch = entry.outbound.splice(0);
+    if (batch.length) sendSignal('group-ice-candidates', peerId, { candidates: batch });
+  }
+
+  function applyLocalTracks(pc) {
+    if (!pc) return;
+    const audio = cameraRef.current?.getAudioTracks()[0] || null;
+    const video = sendingVideoTrack();
+
+    const audioTransceiver = findTransceiver(pc, 'audio');
+    const videoTransceiver = findTransceiver(pc, 'video');
+
+    if (audioTransceiver) {
+      audioTransceiver.sender.replaceTrack(audio).catch(() => {});
+    } else if (audio) {
+      try {
+        pc.addTrack(audio, new MediaStream([audio]));
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (videoTransceiver) {
+      videoTransceiver.sender.replaceTrack(video).catch(() => {});
+      if (video) setVideoSenderParameters(videoTransceiver.sender, screenSharingRef.current ? 'screen' : 'camera');
+    } else if (video) {
+      try {
+        const sender = pc.addTrack(video, new MediaStream([video]));
+        setVideoSenderParameters(sender, screenSharingRef.current ? 'screen' : 'camera');
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  function syncTracksToPeers() {
+    peersRef.current.forEach((entry) => applyLocalTracks(entry.pc));
+  }
+
+  function refreshLocalPreview() {
+    const mic = cameraRef.current?.getAudioTracks()[0] || null;
+    if (screenSharingRef.current) {
+      const screen = screenRef.current?.getVideoTracks()[0] || null;
+      const preview = new MediaStream(screen ? (mic ? [screen, mic] : [screen]) : (mic ? [mic] : []));
+      setLocalStream(preview);
+      updateLocal({ stream: preview, screenSharing: true, video: true });
+      return;
+    }
+    const preview = cameraRef.current;
+    setLocalStream(preview);
+    updateLocal({ stream: preview, screenSharing: false, video: videoOnRef.current });
+  }
+
+  function resyncPeer(peerId) {
     const id = String(peerId);
-    const existing = pcsRef.current.get(id);
+    const entry = peersRef.current.get(id);
+    if (!entry || !entry.remoteStream) return;
+
+    const live = entry.remoteStream.getTracks().filter((track) => track && track.readyState !== 'ended');
+    const audio = live.filter((track) => track.kind === 'audio');
+    const video = live.filter((track) => track.kind === 'video');
+    const activeVideo = video.find((track) => !track.muted && track.enabled) || null;
+
+    audio.forEach((track) => {
+      track.enabled = !deafenedRef.current;
+    });
+
+    const picked = activeVideo ? [...audio, activeVideo] : audio;
+    const signature = picked.map((track) => `${track.id}:${track.muted ? 'm' : 'u'}`).join('|');
+    if (!picked.length || signature === entry.remoteSig) return;
+
+    entry.remoteSig = signature;
+    const stream = new MediaStream(picked);
+    upsertRemote(id, { stream });
+    setRemoteStreamVersion((value) => value + 1);
+  }
+
+  function attachTrackHandlers(entry) {
+    if (!entry?.pc) return;
+    entry.pc.getReceivers().forEach((receiver) => {
+      const track = receiver.track;
+      if (!track || track._groupHandlersAttached) return;
+      track._groupHandlersAttached = true;
+      track.onmute = () => resyncPeer(entry.peerId);
+      track.onunmute = () => resyncPeer(entry.peerId);
+      track.onended = () => setTimeout(() => resyncPeer(entry.peerId), 100);
+    });
+  }
+
+  function resyncSoon(peerId) {
+    const entry = peersRef.current.get(String(peerId));
+    if (!entry) return;
+    attachTrackHandlers(entry);
+    resyncPeer(peerId);
+    setTimeout(() => resyncPeer(peerId), 400);
+  }
+
+  function closePeer(peerId) {
+    const id = String(peerId);
+    const entry = peersRef.current.get(id);
+    if (!entry) return;
+    clearTimeout(entry.disconnectTimer);
+    clearTimeout(entry.iceTimer);
+    entry.pc.onicecandidate = null;
+    entry.pc.ontrack = null;
+    entry.pc.onconnectionstatechange = null;
+    try {
+      entry.pc.close();
+    } catch {
+      /* ignore */
+    }
+    peersRef.current.delete(id);
+    setParticipants((previous) => previous.filter((participant) => participant.isLocal || participant.id !== id));
+  }
+
+  function createPeer(peerId, role) {
+    const call = callRef.current;
+    const me = String(userRef.current?.id ?? '');
+    const id = String(peerId);
+    if (!call || !me || id === me) return null;
+
+    const existing = peersRef.current.get(id);
     if (existing) return existing;
 
-    const pc = new RTCPeerConnection({ iceServers: buildIceServers(), bundlePolicy: 'max-bundle' });
-    const local = mediaRef.current;
-    const audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
-    const videoTransceiver = pc.addTransceiver('video', { direction: 'sendrecv' });
-    const audioTrack = local?.getAudioTracks()[0];
-    const videoTrack = local?.getVideoTracks()[0];
-    pc.groupTrackReady = Promise.all([
-      audioTrack ? audioTransceiver.sender.replaceTrack(audioTrack) : Promise.resolve(),
-      videoTrack ? videoTransceiver.sender.replaceTrack(videoTrack) : Promise.resolve(),
-    ]);
-    pcsRef.current.set(id, pc);
+    const pc = new RTCPeerConnection({
+      iceServers: buildIceServers(),
+      bundlePolicy: 'max-bundle',
+    });
+    const entry = {
+      peerId: id,
+      pc,
+      role,
+      remoteStream: new MediaStream(),
+      remoteSig: '',
+      outbound: [],
+      pending: [],
+      iceTimer: null,
+      disconnectTimer: null,
+      restartTried: false,
+    };
+    peersRef.current.set(id, entry);
+
+    try {
+      if (role === 'offerer') {
+        pc.addTransceiver('audio', { direction: 'sendrecv' });
+        pc.addTransceiver('video', { direction: 'sendrecv' });
+        applyLocalTracks(pc);
+      }
+    } catch (err) {
+      console.warn('[GroupWebRTC] transceiver setup failed:', err?.message);
+    }
 
     pc.onicecandidate = (event) => {
-      if (event.candidate && activeRef.current?.callId === call.callId) {
-        publish('ice-candidates', id, { candidate: event.candidate.toJSON() });
+      if (peersRef.current.get(id) !== entry) return;
+      if (event.candidate) {
+        entry.outbound.push(event.candidate.toJSON());
+        if (!entry.iceTimer) entry.iceTimer = setTimeout(() => flushIce(id), ICE_FLUSH_DELAY);
+      } else {
+        flushIce(id);
       }
     };
+
     pc.ontrack = (event) => {
-      if (activeRef.current?.callId !== call.callId) return;
-      let stream = streamsRef.current.get(id);
-      if (!stream) {
-        stream = new MediaStream();
-        streamsRef.current.set(id, stream);
+      if (peersRef.current.get(id) !== entry) return;
+      if (event.track.kind === 'audio') event.track.enabled = !deafenedRef.current;
+      if (!entry.remoteStream.getTracks().some((track) => track.id === event.track.id)) {
+        entry.remoteStream.addTrack(event.track);
       }
-      if (!stream.getTracks().some((track) => track.id === event.track.id)) stream.addTrack(event.track);
-      const syncRemote = () => updateParticipant(id, {
-        stream: new MediaStream(stream.getTracks()),
-        isVideoOn: stream.getVideoTracks().some((track) => track.readyState === 'live' && !track.muted),
-      });
-      event.track.onended = () => {
-        stream.removeTrack(event.track);
-        syncRemote();
-      };
-      event.track.onmute = syncRemote;
-      event.track.onunmute = syncRemote;
-      syncRemote();
+      attachTrackHandlers(entry);
+      resyncPeer(id);
+      resyncSoon(id);
     };
+
     pc.onconnectionstatechange = () => {
-      if (activeRef.current?.callId !== call.callId) return;
-      if (pc.connectionState === 'connected') updateCallState('connected');
-      if (pc.connectionState === 'failed') setError(`ارتباط با ${id} ناموفق بود`);
-    };
+      if (peersRef.current.get(id) !== entry) return;
+      const state = pc.connectionState;
 
-    return pc;
-  }, [publish, updateCallState, updateParticipant]);
-
-  const sendOffer = useCallback(async (peerId) => {
-    const call = activeRef.current;
-    const pc = pcsRef.current.get(String(peerId)) || makePeer(peerId);
-    if (!call || !pc || pc.signalingState !== 'stable') return;
-    await pc.groupTrackReady;
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    if (activeRef.current?.callId !== call.callId) return;
-    publish('offer', peerId, { sdp: pc.localDescription });
-  }, [makePeer, publish]);
-
-  const flushCandidates = useCallback(async (peerId, pc) => {
-    const pending = candidatesRef.current.get(String(peerId)) || [];
-    candidatesRef.current.delete(String(peerId));
-    for (const candidate of pending) {
-      try {
-        await pc.addIceCandidate(candidate);
-      } catch {
-        continue;
-      }
-    }
-  }, []);
-
-  const syncLocalTracks = useCallback((stream) => {
-    const audioTrack = stream?.getAudioTracks()[0] ?? null;
-    const videoTrack = stream?.getVideoTracks()[0] ?? null;
-    pcsRef.current.forEach((pc) => {
-      const transceivers = pc.getTransceivers();
-      const audioSender = transceivers.find((item) => item.receiver?.track?.kind === 'audio')?.sender;
-      const videoSender = transceivers.find((item) => item.receiver?.track?.kind === 'video')?.sender;
-      audioSender?.replaceTrack(audioTrack).catch(() => {});
-      videoSender?.replaceTrack(videoTrack).catch(() => {});
-    });
-  }, []);
-
-  const onSignal = useCallback(async (event, data) => {
-    const call = activeRef.current;
-    const me = String(userRef.current?.id ?? '');
-    const recipient = String(data?.to ?? data?.peerId ?? '');
-    if (!call || !data || data.callId !== call.callId || (recipient !== me && recipient !== 'all') || String(data.from) === me) return;
-    const peerId = String(data.from);
-    if (!call.roomName || call.roomName !== data.roomName && data.roomName) return;
-
-    if (event === 'offer' && data.sdp) {
-      const pc = pcsRef.current.get(peerId) || makePeer(peerId);
-      if (!pc) return;
-      await pc.groupTrackReady;
-      await pc.setRemoteDescription(data.sdp);
-      await flushCandidates(peerId, pc);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      publish('answer', peerId, { sdp: pc.localDescription });
-      return;
-    }
-    if (event === 'answer' && data.sdp) {
-      const pc = pcsRef.current.get(peerId);
-      if (!pc || pc.signalingState !== 'have-local-offer') return;
-      await pc.setRemoteDescription(data.sdp);
-      await flushCandidates(peerId, pc);
-      return;
-    }
-    if (event === 'ice-candidates') {
-      const candidates = Array.isArray(data.candidates) ? data.candidates : data.candidate ? [data.candidate] : [];
-      const pc = pcsRef.current.get(peerId);
-      for (const candidate of candidates) {
-        if (pc?.remoteDescription) {
+      if (state === 'connected') {
+        clearTimeout(entry.disconnectTimer);
+        entry.disconnectTimer = null;
+        entry.restartTried = false;
+        clearRingTimer();
+        applyLocalTracks(pc);
+        resyncSoon(id);
+        if (stateRef.current !== 'connected') {
+          setState('connected');
+          publishMediaState();
+        }
+      } else if (state === 'disconnected') {
+        if (!entry.disconnectTimer) {
+          entry.disconnectTimer = setTimeout(() => closePeer(id), DISCONNECT_GRACE);
+        }
+      } else if (state === 'failed') {
+        if (role === 'offerer' && !entry.restartTried) {
+          entry.restartTried = true;
           try {
-            await pc.addIceCandidate(candidate);
+            pc.restartIce();
           } catch {
-            continue;
+            /* ignore */
           }
-        } else {
-          candidatesRef.current.set(peerId, [...(candidatesRef.current.get(peerId) || []), candidate]);
+          actionsRef.current.sendOffer?.(id, { iceRestart: true });
+        }
+        if (!entry.disconnectTimer) {
+          entry.disconnectTimer = setTimeout(() => closePeer(id), DISCONNECT_GRACE);
         }
       }
-      return;
-    }
-    if (event === 'group-member-state') {
-      updateParticipant(peerId, {
-        isMuted: Boolean(data.isMuted),
-        isVideoOn: Boolean(data.isVideoOn),
-      });
-    }
-  }, [flushCandidates, makePeer, publish, updateParticipant]);
+    };
 
-  const onMemberJoined = useCallback((data) => {
-    const call = activeRef.current;
-    const me = String(userRef.current?.id ?? '');
-    if (!call || data?.callId !== call.callId || !data.userId || String(data.userId) === me) return;
-    const id = String(data.userId);
-    setParticipants((previous) => {
-      if (previous.some((participant) => participant.id === id)) return previous;
-      return [...previous, normalizeParticipant({ ...data, id })];
+    return entry;
+  }
+
+  async function sendOffer(peerId, { iceRestart = false } = {}) {
+    const call = callRef.current;
+    if (!call) return;
+    const entry = createPeer(peerId, 'offerer');
+    if (!entry) return;
+    if (entry.pc.signalingState !== 'stable') return;
+
+    try {
+      if (iceRestart) entry.pc.restartIce();
+      applyLocalTracks(entry.pc);
+      await entry.pc.setLocalDescription(await entry.pc.createOffer());
+      if (callRef.current?.callId !== call.callId) return;
+      sendSignal('group-offer', peerId, { sdp: entry.pc.localDescription });
+    } catch (err) {
+      console.warn('[GroupWebRTC] offer failed:', err?.message);
+    }
+  }
+
+  async function flushPendingCandidates(peerId, entry) {
+    const pending = entry.pending.splice(0);
+    for (const candidate of pending) {
+      try {
+        await entry.pc.addIceCandidate(candidate);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  function cleanup(reason) {
+    clearRingTimer();
+    const call = callRef.current;
+    if (call) {
+      for (const [event, handler] of call.handlers) {
+        try {
+          const channel = getChannel(call.channelName);
+          channel.unsubscribe(event, handler);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    callRef.current = null;
+
+    peersRef.current.forEach((entry) => {
+      clearTimeout(entry.disconnectTimer);
+      clearTimeout(entry.iceTimer);
+      entry.pc.onicecandidate = null;
+      entry.pc.ontrack = null;
+      entry.pc.onconnectionstatechange = null;
+      try {
+        entry.pc.close();
+      } catch {
+        /* ignore */
+      }
     });
-    publishState();
-    if (me.localeCompare(id) < 0) {
-      setTimeout(() => sendOffer(id).catch((err) => setError(mediaError(err))), 0);
-    }
-  }, [publishState, sendOffer]);
+    peersRef.current.clear();
 
-  const closePeer = useCallback((peerId) => {
-    const id = String(peerId);
-    const pc = pcsRef.current.get(id);
-    if (pc) {
-      pc.onicecandidate = null;
-      pc.ontrack = null;
-      pc.onconnectionstatechange = null;
-      pc.close();
-      pcsRef.current.delete(id);
-    }
-    streamsRef.current.delete(id);
-    candidatesRef.current.delete(id);
-    setParticipants((previous) => previous.filter((participant) => participant.id !== id));
-  }, []);
+    for (const buffer of chunkBuffersRef.current.values()) clearTimeout(buffer.timer);
+    chunkBuffersRef.current.clear();
 
-  const onMemberLeft = useCallback((data) => {
-    const call = activeRef.current;
-    const me = String(userRef.current?.id ?? '');
-    if (!call || data?.callId !== call.callId || !data.userId || String(data.userId) === me) return;
-    closePeer(data.userId);
-  }, [closePeer]);
+    stopStream(screenRef.current);
+    stopStream(cameraRef.current);
+    screenRef.current = null;
+    cameraRef.current = null;
 
-  const detachCallChannel = useCallback((call) => {
-    if (!call?.channel) return;
-    for (const [event, handler] of call.handlers) call.channel.unsubscribe(event, handler);
-    if (call.channel.state === 'attached') call.channel.detach().catch(() => {});
-  }, []);
+    mutedRef.current = false;
+    videoOnRef.current = false;
+    screenSharingRef.current = false;
+    deafenedRef.current = false;
 
-  const resetCall = useCallback((keepError = false) => {
-    const call = activeRef.current;
-    activeRef.current = null;
-    detachCallChannel(call);
-    pcsRef.current.forEach((pc) => {
-      pc.onicecandidate = null;
-      pc.ontrack = null;
-      pc.onconnectionstatechange = null;
-      pc.close();
-    });
-    pcsRef.current.clear();
-    streamsRef.current.clear();
-    candidatesRef.current.clear();
-    stopStream(mediaRef.current);
-    mediaRef.current = null;
-    isMutedRef.current = false;
-    isVideoOnRef.current = false;
     setParticipants([]);
-    setCallType(null);
+    setLocalStream(null);
     setRoomName(null);
+    setCallType(null);
     setDuration(0);
     setIsMuted(false);
-    setIsVideoOn(false);
-    updateCallState('idle');
-    if (!keepError) setError(null);
-  }, [detachCallChannel, updateCallState]);
+    setVideoOn(false);
+    setIsScreenSharing(false);
+    setIsDeafened(false);
+    setIncomingCall(null);
+    setEndReason(reason);
+    setState('idle');
+  }
 
-  const attachCallChannel = useCallback(async (callId, room) => {
+  function failCall(err) {
+    console.error('[GroupWebRTC] call failed:', err);
+    const message = errorMessage(err);
+    cleanup('error');
+    setError(message);
+    return { success: false, error: message };
+  }
+
+  async function prepareLocalMedia(callId, type) {
+    const stream = await getMedia(type);
+    if (callRef.current?.callId !== callId) {
+      stopStream(stream);
+      throw new Error('تماس گروهی دیگر فعال نیست');
+    }
+    cameraRef.current = stream;
+    const videoOn = type === 'video' && stream.getVideoTracks().length > 0;
+    setVideoOn(videoOn);
+    setCallType(type);
+    setLocalStream(stream);
+
+    const me = userRef.current;
+    setParticipants([{
+      id: String(me?.id ?? ''),
+      username: me?.username || 'شما',
+      avatarIndex: me?.avatarIndex ?? null,
+      stream,
+      isLocal: true,
+      muted: false,
+      video: videoOn,
+      screenSharing: false,
+    }]);
+    return stream;
+  }
+
+  function addRemoteProfiles(list) {
+    const me = String(userRef.current?.id ?? '');
+    const remotes = (list || [])
+      .map((participant) => ({
+        id: String(participant.id ?? participant.userId ?? ''),
+        username: participant.username || 'کاربر',
+        avatarIndex: participant.avatarIndex ?? null,
+      }))
+      .filter((participant) => participant.id && participant.id !== me);
+
+    if (!remotes.length) return;
+    setParticipants((previous) => {
+      const next = [...previous];
+      remotes.forEach((remote) => {
+        if (!next.some((participant) => !participant.isLocal && participant.id === remote.id)) {
+          next.push({
+            id: remote.id,
+            username: remote.username,
+            avatarIndex: remote.avatarIndex,
+            stream: null,
+            isLocal: false,
+            muted: false,
+            video: false,
+            screenSharing: false,
+          });
+        }
+      });
+      return next;
+    });
+  }
+
+  async function offerToExisting(list) {
+    const me = String(userRef.current?.id ?? '');
+    const peers = (list || [])
+      .map((participant) => String(participant.id ?? participant.userId ?? ''))
+      .filter((id) => id && id !== me && me.localeCompare(id) < 0);
+    await Promise.all(peers.map((id) => sendOffer(id)));
+  }
+
+  async function openChannel(callId, room, title) {
+    const call = callRef.current;
+    if (call?.callId === callId) return;
+
     const channelName = `private:group-webrtc-${callId}`;
     const channel = getChannel(channelName);
     const handlers = [];
-    const subscribe = (event, callback) => {
+    const on = (event, handlerName) => {
       const handler = (message) => {
-        try {
-          Promise.resolve(callback(message.data)).catch((err) => setError(mediaError(err)));
-        } catch (err) {
-          setError(mediaError(err));
-        }
+        const fn = actionsRef.current?.[handlerName];
+        if (!fn) return;
+        Promise.resolve(fn(message.data)).catch((err) => {
+          console.warn('[GroupWebRTC] handler error:', err);
+        });
       };
       channel.subscribe(event, handler);
       handlers.push([event, handler]);
     };
-    subscribe('offer', (data) => onSignal('offer', data));
-    subscribe('answer', (data) => onSignal('answer', data));
-    subscribe('ice-candidates', (data) => onSignal('ice-candidates', data));
-    subscribe('group-member-state', (data) => onSignal('group-member-state', data));
-    subscribe('group-member-joined', onMemberJoined);
-    subscribe('group-member-left', onMemberLeft);
-    const call = { callId, roomName: room, channelName, channel, handlers };
-    activeRef.current = call;
-    if (channel.state !== 'attached') {
-      await new Promise((resolve, reject) => {
-        const onAttached = () => {
-          channel.off('attached', onAttached);
-          channel.off('failed', onFailed);
-          resolve();
-        };
-        const onFailed = (stateChange) => {
-          channel.off('attached', onAttached);
-          channel.off('failed', onFailed);
-          reject(new Error(stateChange?.reason?.message || 'دسترسی به کانال تماس ممکن نشد'));
-        };
-        channel.on('attached', onAttached);
-        channel.on('failed', onFailed);
-        if (channel.state === 'attached') onAttached();
-        else if (channel.state === 'initialized' || channel.state === 'detached') channel.attach();
-      });
-    }
-    return call;
-  }, [onMemberJoined, onMemberLeft, onSignal]);
 
-  const initializeSession = useCallback(async (session, type) => {
-    const me = userRef.current;
-    if (!me?.id) throw new Error('کاربر مشخص نیست');
-    if (!navigator.mediaDevices?.getUserMedia) throw new Error('تماس نیازمند مرورگر امن و دسترسی رسانه است');
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: type === 'video' ? { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } : false,
-    });
-    if (activeRef.current?.callId !== session.callId) {
-      stopStream(stream);
-      throw new Error('تماس دیگر فعال نیست');
-    }
-    mediaRef.current = stream;
-    setCallType(type);
-    setRoomName(session.roomName);
-    setIsMuted(false);
-    const videoOn = type === 'video' && stream.getVideoTracks().length > 0;
-    setIsVideoOn(videoOn);
-    isMutedRef.current = false;
-    isVideoOnRef.current = videoOn;
-    setParticipants([
-      {
-        id: String(me.id),
-        username: me.username || 'شما',
-        avatarIndex: me.avatarIndex ?? null,
-        stream,
-        isLocal: true,
-        isMuted: false,
-        isVideoOn: videoOn,
-      },
-    ]);
-    updateRoster(session.participants || []);
-    updateCallState('connecting');
-    syncLocalTracks(stream);
-    publishState();
-    const peers = (session.participants || [])
-      .map((participant) => String(participant.id ?? participant.userId))
-      .filter((id) => id && id !== String(me.id) && String(me.id).localeCompare(id) < 0);
-    await Promise.all(peers.map((id) => sendOffer(id)));
-  }, [publishState, sendOffer, syncLocalTracks, updateCallState, updateRoster]);
+    on('group-offer', 'handleOffer');
+    on('group-answer', 'handleAnswer');
+    on('group-ice-candidates', 'handleIce');
+    on('signal-chunk', 'handleSignalChunk');
+    on('group-media-state', 'handleMediaState');
+    on('group-member-joined', 'handleJoined');
+    on('group-member-left', 'handleLeft');
 
-  const startCall = useCallback(async (requestedRoomName, type = 'audio') => {
-    if (privateCallActive) return { success: false, error: 'ابتدا تماس خصوصی را پایان دهید' };
-    if (busyRef.current || callStateRef.current !== 'idle') return { success: false, error: 'تماس دیگری فعال است' };
-    if (!requestedRoomName) return { success: false, error: 'اتاقی انتخاب نشده است' };
+    callRef.current = { callId, roomName: room, title: title || room, channelName, handlers };
+    await waitForSubscription(channelName);
+
+    if (callRef.current?.callId !== callId) throw new Error('تماس گروهی لغو شد');
+  }
+
+  // -------------------------------------------------------------------------
+  // اقدام‌های کاربر
+  // -------------------------------------------------------------------------
+  async function startCall(room, type = 'audio') {
+    if (!room) return { success: false, error: 'اتاقی انتخاب نشده است' };
+    if (privateActiveRef.current) return { success: false, error: 'ابتدا تماس خصوصی را پایان دهید' };
+    if (stateRef.current !== 'idle' || busyRef.current) return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
+    const effectiveType = type === 'video' ? 'video' : 'audio';
+
     busyRef.current = true;
     setError(null);
+    setEndReason(null);
     setIncomingCall(null);
+
+    let createdCallId = null;
     try {
       const response = await apiRequest('/api/calls/group/start', {
         method: 'POST',
-        body: JSON.stringify({ roomName: requestedRoomName, callType: type === 'video' ? 'video' : 'audio' }),
+        body: JSON.stringify({ roomName: room, callType: effectiveType }),
       });
       const session = response.session;
-      if (!session?.callId) throw new Error(response.error || 'جلسه تماس ساخته نشد');
-      const call = await attachCallChannel(session.callId, session.roomName);
-      if (activeRef.current !== call) throw new Error('تماس لغو شد');
-      await initializeSession(session, type === 'video' ? 'video' : 'audio');
+      if (!session?.callId) throw new Error(response.error || 'جلسه‌ی تماس ساخته نشد');
+      createdCallId = session.callId;
+
+      await openChannel(session.callId, session.roomName, session.roomName);
+      await prepareLocalMedia(session.callId, effectiveType);
+      setRoomName(session.roomTitle || session.roomName);
+      addRemoteProfiles(session.participants);
+      setState('calling');
+      publishMediaState();
+
+      startRingTimer();
       return { success: true, callId: session.callId };
     } catch (err) {
-      const call = activeRef.current;
-      if (call?.callId) {
-        apiRequest('/api/calls/group/leave', { method: 'POST', body: JSON.stringify({ callId: call.callId, roomName: call.roomName }) }).catch(() => {});
+      if (createdCallId) {
+        apiRequest('/api/calls/group/leave', {
+          method: 'POST',
+          body: JSON.stringify({ callId: createdCallId, roomName: room }),
+        }).catch(() => {});
       }
-      resetCall(true);
-      const message = mediaError(err);
-      setError(message);
-      return { success: false, error: message };
+      return failCall(err);
     } finally {
       busyRef.current = false;
     }
-  }, [attachCallChannel, initializeSession, privateCallActive, resetCall]);
+  }
 
-  const joinCall = useCallback(async (invitation = incomingCall) => {
-    if (privateCallActive) return { success: false, error: 'ابتدا تماس خصوصی را پایان دهید' };
-    if (busyRef.current || callStateRef.current !== 'idle') return { success: false, error: 'تماس دیگری فعال است' };
-    if (!invitation?.callId || !invitation?.roomName) return { success: false, error: 'دعوت تماس نامعتبر است' };
+  async function joinCall(invitation, mediaType) {
+    const invite = invitation || incomingCall;
+    if (!invite?.callId || !invite?.roomName) return { success: false, error: 'دعوت تماس نامعتبر است' };
+    if (privateActiveRef.current) return { success: false, error: 'ابتدا تماس خصوصی را پایان دهید' };
+    if (stateRef.current !== 'idle' && stateRef.current !== 'incoming') {
+      return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
+    }
+    if (busyRef.current) return { success: false, error: 'در حال حاضر یک تماس فعال دارید' };
+
     busyRef.current = true;
     setError(null);
+    setEndReason(null);
+    clearRingTimer();
+    setState('connecting');
+
     try {
-      const call = await attachCallChannel(invitation.callId, invitation.roomName);
+      await openChannel(invite.callId, invite.roomName, invite.roomTitle || invite.roomName);
       const response = await apiRequest('/api/calls/group/join', {
         method: 'POST',
-        body: JSON.stringify({ callId: invitation.callId, roomName: invitation.roomName }),
+        body: JSON.stringify({ callId: invite.callId, roomName: invite.roomName }),
       });
       const session = response.session;
-      if (!session?.callId || session.callId !== invitation.callId || session.roomName !== invitation.roomName) {
-        throw new Error(response.error || 'جلسه تماس با دعوت مطابقت ندارد');
+      if (!session?.callId || session.callId !== invite.callId) {
+        throw new Error(response.error || 'جلسه‌ی تماس با دعوت مطابقت ندارد');
       }
-      if (activeRef.current !== call) throw new Error('تماس لغو شد');
+
+      const effectiveType = mediaType === 'audio' ? 'audio' : (session.callType === 'video' ? 'video' : 'audio');
+      await prepareLocalMedia(session.callId, effectiveType);
+      setRoomName(session.roomTitle || session.roomName);
+      addRemoteProfiles(session.participants);
       setIncomingCall(null);
-      await initializeSession(session, session.callType === 'video' ? 'video' : 'audio');
+      publishMediaState();
+
+      await offerToExisting(session.participants);
+
       return { success: true, callId: session.callId };
     } catch (err) {
-      const call = activeRef.current;
+      const call = callRef.current;
       if (call?.callId) {
         apiRequest('/api/calls/group/leave', {
           method: 'POST',
           body: JSON.stringify({ callId: call.callId, roomName: call.roomName }),
         }).catch(() => {});
       }
-      resetCall(true);
-      const message = mediaError(err);
-      setError(message);
-      return { success: false, error: message };
+      return failCall(err);
     } finally {
       busyRef.current = false;
     }
-  }, [attachCallChannel, incomingCall, initializeSession, privateCallActive, resetCall]);
+  }
 
-  const declineIncomingCall = useCallback(() => setIncomingCall(null), []);
+  function acceptCall(mediaType) {
+    if (stateRef.current !== 'incoming' || !incomingCall) {
+      return Promise.resolve({ success: false, error: 'تماس گروهی ورودی وجود ندارد' });
+    }
+    return joinCall(incomingCall, mediaType);
+  }
 
-  const joinRoomCall = useCallback(async (room) => {
+  function rejectCall() {
+    if (stateRef.current !== 'incoming') return;
+    clearRingTimer();
+    setIncomingCall(null);
+    setEndReason('rejected-local');
+    setState('idle');
+  }
+
+  async function joinRoomCall(room) {
     if (!room) return { success: false, error: 'اتاقی انتخاب نشده است' };
     try {
       const response = await apiRequest(`/api/calls/group/active?roomName=${encodeURIComponent(room)}`);
-      if (!response.session) return { success: false, error: 'تماس فعالی در اتاق وجود ندارد' };
+      if (!response.session) return { success: false, error: 'تماس فعالی در این اتاق وجود ندارد' };
       return joinCall({ callId: response.session.callId, roomName: response.session.roomName });
     } catch (err) {
-      const message = mediaError(err);
+      const message = errorMessage(err);
       setError(message);
       return { success: false, error: message };
     }
-  }, [joinCall]);
+  }
 
-  const endCall = useCallback(async () => {
-    const call = activeRef.current;
-    if (!call || busyRef.current) return;
-    busyRef.current = true;
-    let failed = false;
-    try {
-      await apiRequest('/api/calls/group/leave', {
-        method: 'POST',
-        body: JSON.stringify({ callId: call.callId, roomName: call.roomName }),
-      });
-    } catch (err) {
-      failed = true;
-      setError(err.message || 'خروج از تماس ناموفق بود');
-    } finally {
-      resetCall(failed);
-      busyRef.current = false;
+  function endCall(reason = 'local-ended') {
+    if (stateRef.current === 'incoming') {
+      rejectCall();
+      return;
     }
-  }, [resetCall]);
+    const call = callRef.current;
+    if (!call) return;
+    apiRequest('/api/calls/group/leave', {
+      method: 'POST',
+      body: JSON.stringify({ callId: call.callId, roomName: call.roomName }),
+    }).catch(() => {});
+    cleanup(reason);
+  }
 
-  const toggleMute = useCallback(() => {
-    const tracks = mediaRef.current?.getAudioTracks() || [];
+  function toggleMute() {
+    const tracks = cameraRef.current?.getAudioTracks() ?? [];
     if (!tracks.length) return;
-    const nextMuted = tracks.some((track) => track.enabled);
-    tracks.forEach((track) => { track.enabled = !nextMuted; });
-    isMutedRef.current = nextMuted;
-    setIsMuted(nextMuted);
-    updateParticipant(userRef.current?.id, { isMuted: nextMuted });
-    publishState();
-  }, [publishState, updateParticipant]);
+    const wasEnabled = tracks.some((track) => track.enabled);
+    tracks.forEach((track) => {
+      track.enabled = !wasEnabled;
+    });
+    mutedRef.current = wasEnabled;
+    setIsMuted(wasEnabled);
+    updateLocal({ muted: wasEnabled });
+    publishMediaState();
+  }
 
-  const toggleVideo = useCallback(async () => {
-    if (!activeRef.current || !mediaRef.current) return;
-    try {
-      if (isVideoOn) {
-        const track = mediaRef.current.getVideoTracks()[0];
-        await Promise.all(Array.from(pcsRef.current.values()).map((pc) => {
-          const sender = pc.getSenders().find((item) => item.track?.kind === 'video' || item === pc.getTransceivers().find((t) => t.receiver.track.kind === 'video')?.sender);
-          return sender?.replaceTrack(null);
-        }));
-        track?.stop();
-        const next = new MediaStream(mediaRef.current.getAudioTracks());
-        mediaRef.current = next;
-        isVideoOnRef.current = false;
-        setParticipants((previous) => previous.map((participant) => participant.isLocal ? { ...participant, stream: next, isVideoOn: false } : participant));
-        setIsVideoOn(false);
-        setCallType('audio');
-        publishState();
-        return;
-      }
-      const camera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-      const track = camera.getVideoTracks()[0];
-      if (!track || !activeRef.current) {
-        stopStream(camera);
-        return;
-      }
-      await Promise.all(Array.from(pcsRef.current.values()).map(async (pc) => {
-        const transceiver = pc.getTransceivers().find((item) => item.receiver.track.kind === 'video');
-        await transceiver?.sender.replaceTrack(track);
-      }));
-      const next = new MediaStream([...mediaRef.current.getAudioTracks(), track]);
-      mediaRef.current = next;
-      isVideoOnRef.current = true;
-      setParticipants((previous) => previous.map((participant) => participant.isLocal ? { ...participant, stream: next, isVideoOn: true } : participant));
-      setIsVideoOn(true);
-      setCallType('video');
-      publishState();
-    } catch (err) {
-      setError(mediaError(err));
+  function toggleDeafen() {
+    const next = !deafenedRef.current;
+    deafenedRef.current = next;
+    setIsDeafened(next);
+    peersRef.current.forEach((entry) => {
+      entry.remoteStream?.getAudioTracks().forEach((track) => {
+        track.enabled = !next;
+      });
+    });
+  }
+
+  async function toggleVideo() {
+    if (!callRef.current || !cameraRef.current) return;
+    if (screenSharingRef.current) {
+      setError('در حال اشتراک صفحه نمی‌توانید دوربین را تغییر دهید');
+      return;
     }
-  }, [isVideoOn, publishState]);
+
+    if (!videoOnRef.current) {
+      let camStream;
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video: VIDEO_CONSTRAINTS, audio: false });
+      } catch (err) {
+        console.error('[GroupWebRTC] Cannot access camera:', err);
+        setError(errorMessage(err));
+        return;
+      }
+      const track = camStream.getVideoTracks()[0];
+      if (!track || !callRef.current) {
+        stopStream(camStream);
+        return;
+      }
+
+      const combined = new MediaStream([...cameraRef.current.getAudioTracks(), track]);
+      cameraRef.current = combined;
+      setVideoOn(true);
+      setCallType('video');
+      refreshLocalPreview();
+      syncTracksToPeers();
+      publishMediaState();
+    } else {
+      const track = cameraRef.current.getVideoTracks()[0];
+      if (!track) {
+        setVideoOn(false);
+        return;
+      }
+      const next = new MediaStream(cameraRef.current.getAudioTracks());
+      cameraRef.current = next;
+      setVideoOn(false);
+      setCallType('audio');
+      refreshLocalPreview();
+      syncTracksToPeers();
+      track.stop();
+      publishMediaState();
+    }
+  }
+
+  function stopScreenShareInternal() {
+    screenSharingRef.current = false;
+    stopStream(screenRef.current);
+    screenRef.current = null;
+    setIsScreenSharing(false);
+    setCallType(videoOnRef.current ? 'video' : 'audio');
+    refreshLocalPreview();
+    syncTracksToPeers();
+    publishMediaState();
+  }
+
+  async function toggleScreenShare() {
+    if (screenSharingRef.current) {
+      stopScreenShareInternal();
+      return;
+    }
+    if (!callRef.current) return;
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      setError('مرورگر شما از اشتراک صفحه پشتیبانی نمی‌کند');
+      return;
+    }
+
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always', frameRate: { ideal: 15, max: 30 } },
+        audio: false,
+      });
+      const screenTrack = screenStream.getVideoTracks()[0];
+      if (!screenTrack || !callRef.current) {
+        stopStream(screenStream);
+        return;
+      }
+      screenRef.current = screenStream;
+      screenSharingRef.current = true;
+      setIsScreenSharing(true);
+      setCallType('screen');
+      refreshLocalPreview();
+      syncTracksToPeers();
+      publishMediaState();
+
+      screenTrack.onended = () => {
+        if (screenSharingRef.current) stopScreenShareInternal();
+      };
+    } catch (err) {
+      if (err?.name !== 'NotAllowedError') {
+        console.error('[GroupWebRTC] Cannot share screen:', err);
+        setError(errorMessage(err));
+      }
+      stopStream(screenRef.current);
+      screenRef.current = null;
+      screenSharingRef.current = false;
+    }
+  }
+
+  function startRingTimer() {
+    clearRingTimer();
+    ringTimerRef.current = setTimeout(() => {
+      if (stateRef.current === 'calling' || stateRef.current === 'connecting') {
+        const hasConnected = [...peersRef.current.values()].some((entry) => entry.pc.connectionState === 'connected');
+        if (!hasConnected) actionsRef.current.endCall?.('no-answer');
+      }
+    }, RING_TIMEOUT);
+  }
+
+  // -------------------------------------------------------------------------
+  // رویدادهای ورودی: اعلان‌ها و سیگنالینگ
+  // -------------------------------------------------------------------------
+  function onIncoming(data) {
+    const me = userRef.current;
+    if (!me?.id || !data?.callId || !data?.roomName) return;
+    if (String(data.callerId) === String(me.id)) return;
+    if (privateActiveRef.current || stateRef.current !== 'idle' || busyRef.current) return;
+
+    setEndReason(null);
+    setError(null);
+    setIncomingCall({ ...data, callType: data.callType === 'video' ? 'video' : 'audio' });
+    setState('incoming');
+    startRingTimer();
+  }
+
+  function handleJoined(data) {
+    const call = callRef.current;
+    const me = String(userRef.current?.id ?? '');
+    if (!call || !data?.userId || data.callId !== call.callId || String(data.userId) === me) return;
+    const id = String(data.userId);
+    upsertRemote(id, { username: data.username, avatarIndex: data.avatarIndex ?? null });
+    publishMediaState();
+    if (me.localeCompare(id) < 0) {
+      sendOffer(id).catch((err) => console.warn('[GroupWebRTC] offer on join failed:', err));
+    }
+  }
+
+  function handleLeft(data) {
+    const call = callRef.current;
+    const me = String(userRef.current?.id ?? '');
+    if (!call || !data?.userId || data.callId !== call.callId || String(data.userId) === me) return;
+    closePeer(data.userId);
+  }
+
+  async function handleOffer(data) {
+    const call = callRef.current;
+    const me = String(userRef.current?.id ?? '');
+    if (!call || !data?.sdp || String(data.to) !== me) return;
+    const peerId = String(data.from);
+    if (!peerId || peerId === me) return;
+
+    const entry = createPeer(peerId, 'answerer');
+    if (!entry) return;
+
+    try {
+      if (entry.pc.signalingState === 'have-local-offer') {
+        await entry.pc.setLocalDescription({ type: 'rollback' });
+      }
+      await entry.pc.setRemoteDescription(data.sdp);
+      await flushPendingCandidates(peerId, entry);
+      applyLocalTracks(entry.pc);
+      attachTrackHandlers(entry);
+      const answer = await entry.pc.createAnswer();
+      await entry.pc.setLocalDescription(answer);
+      if (callRef.current?.callId !== call.callId) return;
+      sendSignal('group-answer', peerId, { sdp: entry.pc.localDescription });
+      resyncSoon(peerId);
+    } catch (err) {
+      console.error('[GroupWebRTC] offer handling failed:', err);
+    }
+  }
+
+  async function handleAnswer(data) {
+    const me = String(userRef.current?.id ?? '');
+    if (!data?.sdp || String(data.to) !== me) return;
+    const peerId = String(data.from);
+    const entry = peersRef.current.get(peerId);
+    if (!entry || entry.pc.signalingState !== 'have-local-offer') return;
+
+    try {
+      await entry.pc.setRemoteDescription(data.sdp);
+      await flushPendingCandidates(peerId, entry);
+      resyncSoon(peerId);
+    } catch (err) {
+      console.error('[GroupWebRTC] answer handling failed:', err);
+    }
+  }
+
+  async function handleIce(data) {
+    const me = String(userRef.current?.id ?? '');
+    if (!data || String(data.to) !== me) return;
+    const peerId = String(data.from);
+    const entry = peersRef.current.get(peerId);
+    const candidates = Array.isArray(data.candidates) ? data.candidates : data.candidate ? [data.candidate] : [];
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      if (entry?.pc.remoteDescription) {
+        try {
+          await entry.pc.addIceCandidate(candidate);
+        } catch {
+          /* ignore */
+        }
+      } else if (entry) {
+        entry.pending.push(candidate);
+      }
+    }
+  }
+
+  function handleMediaState(data) {
+    const call = callRef.current;
+    const me = String(userRef.current?.id ?? '');
+    if (!call || !data || data.callId !== call.callId) return;
+    if (data.from == null || String(data.from) === me) return;
+    if (data.to !== 'all' && String(data.to) !== me) return;
+
+    const screen = Boolean(data.screenSharing);
+    const patch = {
+      muted: Boolean(data.muted),
+      video: Boolean(data.video) || screen,
+      screenSharing: screen,
+    };
+    if (data.username) patch.username = data.username;
+    if (data.avatarIndex != null) patch.avatarIndex = data.avatarIndex;
+    upsertRemote(String(data.from), patch);
+    if (screen) resyncSoon(String(data.from));
+  }
+
+  function handleSignalChunk(data) {
+    const me = String(userRef.current?.id ?? '');
+    if (!data || String(data.to) !== me) return;
+    const handlerName = CHUNKABLE[data.event];
+    if (
+      !handlerName ||
+      typeof data.msgId !== 'string' ||
+      typeof data.part !== 'string' ||
+      !Number.isInteger(data.index) ||
+      !Number.isInteger(data.total) ||
+      data.total < 1 ||
+      data.total > 20 ||
+      data.index < 0 ||
+      data.index >= data.total
+    ) {
+      return;
+    }
+
+    const key = `${data.from}:${data.msgId}`;
+    const buffers = chunkBuffersRef.current;
+    let buffer = buffers.get(key);
+    if (!buffer) {
+      if (buffers.size >= MAX_CHUNK_BUFFERS) {
+        const oldest = buffers.keys().next().value;
+        clearTimeout(buffers.get(oldest)?.timer);
+        buffers.delete(oldest);
+      }
+      buffer = {
+        parts: new Array(data.total),
+        count: 0,
+        total: data.total,
+        timer: setTimeout(() => buffers.delete(key), CHUNK_TTL),
+      };
+      buffers.set(key, buffer);
+    }
+
+    if (buffer.parts[data.index] === undefined) {
+      buffer.parts[data.index] = data.part;
+      buffer.count += 1;
+    }
+    if (buffer.count < buffer.total) return;
+
+    clearTimeout(buffer.timer);
+    buffers.delete(key);
+
+    let payload;
+    try {
+      payload = JSON.parse(buffer.parts.join(''));
+    } catch {
+      console.warn('[GroupWebRTC] invalid chunked payload');
+      return;
+    }
+    actionsRef.current[handlerName]?.(payload);
+  }
+
+  useEffect(() => {
+    actionsRef.current = {
+      startCall,
+      joinCall,
+      joinRoomCall,
+      acceptCall,
+      rejectCall,
+      endCall,
+      toggleMute,
+      toggleDeafen,
+      toggleVideo,
+      toggleScreenShare,
+      sendOffer,
+      startRingTimer,
+      publishMediaState,
+      onIncoming,
+      handleJoined,
+      handleLeft,
+      handleOffer,
+      handleAnswer,
+      handleIce,
+      handleMediaState,
+      handleSignalChunk,
+    };
+  });
+
+  // -------------------------------------------------------------------------
+  // Effect ها
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    if (!connected || userId == null) return undefined;
+
+    let channel;
+    let channelName;
+    try {
+      channel = subscribeToNotifications(userId);
+      channelName = getNotificationChannelName(userId);
+    } catch (err) {
+      console.warn('[GroupWebRTC] notifications subscribe error:', err);
+      return undefined;
+    }
+
+    const handler = (message) => actionsRef.current.onIncoming?.(message.data);
+    channel.subscribe('incoming-group-call', handler);
+
+    return () => {
+      try {
+        getChannel(channelName).unsubscribe('incoming-group-call', handler);
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [connected, userId]);
+
+  useEffect(() => {
+    if (callState !== 'connected') return undefined;
+    const startedAt = Date.now();
+    const id = setInterval(() => setDuration(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [callState]);
+
+  useEffect(() => {
+    if (callState === 'idle' || callState === 'incoming') return undefined;
+    const heartbeat = () => {
+      const call = callRef.current;
+      if (!call?.callId) return;
+      apiRequest('/api/calls/group/heartbeat', {
+        method: 'POST',
+        body: JSON.stringify({ callId: call.callId }),
+      }).catch(() => {});
+    };
+    heartbeat();
+    const timer = setInterval(heartbeat, HEARTBEAT_INTERVAL);
+    return () => clearInterval(timer);
+  }, [callState]);
 
   useEffect(() => {
     const room = currentRoom;
     let disposed = false;
     if (!connected || !room || room.startsWith('dm_')) {
-      const clearTimer = setTimeout(() => {
+      const timer = setTimeout(() => {
         if (!disposed) setActiveRoomCall(null);
       }, 0);
       return () => {
         disposed = true;
-        clearTimeout(clearTimer);
+        clearTimeout(timer);
       };
     }
     const load = () => {
@@ -600,89 +1260,91 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
         .catch(() => {});
     };
     load();
-    const timer = setInterval(load, 15000);
+    const interval = setInterval(load, 15000);
     return () => {
       disposed = true;
-      clearInterval(timer);
+      clearInterval(interval);
     };
   }, [connected, currentRoom]);
 
   useEffect(() => {
-    const userId = currentUser?.id;
-    if (!connected || userId == null) return undefined;
-    let channel;
-    try {
-      channel = subscribeToNotifications(userId);
-    } catch {
-      return undefined;
-    }
-    const handler = (message) => {
-      const invite = message.data;
-      if (!invite?.callId || !invite?.roomName || String(invite.callerId) === String(userId)) return;
-      if (privateActiveRef.current || callStateRef.current !== 'idle' || busyRef.current) return;
-      setIncomingCall({ ...invite, callType: invite.callType === 'video' ? 'video' : 'audio' });
+    if (userId == null) actionsRef.current.endCall?.('local-ended');
+  }, [userId]);
+
+  useEffect(() => {
+    const onPageHide = () => {
+      const call = callRef.current;
+      if (call?.callId) {
+        const body = JSON.stringify({ callId: call.callId, roomName: call.roomName });
+        try {
+          fetch('/api/calls/group/leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+            keepalive: true,
+            credentials: 'include',
+          }).catch(() => {});
+        } catch {
+          /* ignore */
+        }
+      }
+      actionsRef.current.endCall?.('local-ended');
     };
-    channel.subscribe('incoming-group-call', handler);
-    return () => channel.unsubscribe('incoming-group-call', handler);
-  }, [connected, currentUser?.id]);
-
-  useEffect(() => {
-    if (callState !== 'connected') return undefined;
-    const startedAt = Date.now();
-    const interval = setInterval(() => setDuration(Math.floor((Date.now() - startedAt) / 1000)), 1000);
-    return () => clearInterval(interval);
-  }, [callState]);
-
-  useEffect(() => {
-    if (callState === 'idle') return undefined;
-    const sendHeartbeat = () => {
-      const call = activeRef.current;
-      if (!call?.callId) return;
-      apiRequest('/api/calls/group/heartbeat', {
-        method: 'POST',
-        body: JSON.stringify({ callId: call.callId }),
-      }).catch(() => {});
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      actionsRef.current.endCall?.('unmounted');
     };
-    sendHeartbeat();
-    const interval = setInterval(sendHeartbeat, 30000);
-    return () => clearInterval(interval);
-  }, [callState]);
+  }, []);
 
-  useEffect(() => {
-    if (!currentUser?.id && activeRef.current) resetCall(true);
-  }, [currentUser?.id, resetCall]);
+  // -------------------------------------------------------------------------
+  // API پایدار
+  // -------------------------------------------------------------------------
+  const startCallStable = useCallback((room, type) => actionsRef.current.startCall(room, type), []);
+  const joinCallStable = useCallback((invite, mediaType) => actionsRef.current.joinCall(invite, mediaType), []);
+  const joinRoomCallStable = useCallback((room) => actionsRef.current.joinRoomCall(room), []);
+  const acceptCallStable = useCallback((mediaType) => actionsRef.current.acceptCall(mediaType), []);
+  const rejectCallStable = useCallback(() => actionsRef.current.rejectCall(), []);
+  const endCallStable = useCallback(() => actionsRef.current.endCall('local-ended'), []);
+  const toggleMuteStable = useCallback(() => actionsRef.current.toggleMute(), []);
+  const toggleDeafenStable = useCallback(() => actionsRef.current.toggleDeafen(), []);
+  const toggleVideoStable = useCallback(() => actionsRef.current.toggleVideo(), []);
+  const toggleScreenShareStable = useCallback(() => actionsRef.current.toggleScreenShare(), []);
 
-  useEffect(() => () => {
-    const call = activeRef.current;
-    if (call) {
-      apiRequest('/api/calls/group/leave', {
-        method: 'POST',
-        body: JSON.stringify({ callId: call.callId, roomName: call.roomName }),
-      }).catch(() => {});
-    }
-    resetCall();
-  }, [resetCall]);
-
-  const stableStartCall = useCallback((...args) => startCall(...args), [startCall]);
-  const stableJoinCall = useCallback((...args) => joinCall(...args), [joinCall]);
+  const remoteScreenSharing = participants.some((participant) => !participant.isLocal && participant.screenSharing);
 
   return {
     callState,
     callType,
     roomName,
-    activeRoomCall,
     participants,
+    localStream,
+    remoteStreamVersion,
     isMuted,
+    isCameraOff: !isVideoOn,
     isVideoOn,
+    isScreenSharing,
+    isDeafened,
+    remoteScreenSharing,
     duration,
     error,
+    endReason,
     incomingCall,
-    startCall: stableStartCall,
-    joinCall: stableJoinCall,
-    joinRoomCall,
-    declineIncomingCall,
-    endCall,
-    toggleMute,
-    toggleVideo,
+    activeRoomCall,
+
+    startCall: startCallStable,
+    joinCall: joinCallStable,
+    joinRoomCall: joinRoomCallStable,
+    acceptCall: acceptCallStable,
+    rejectCall: rejectCallStable,
+    declineIncomingCall: rejectCallStable,
+    endCall: endCallStable,
+    toggleMute: toggleMuteStable,
+    toggleDeafen: toggleDeafenStable,
+    toggleCamera: toggleVideoStable,
+    toggleVideo: toggleVideoStable,
+    toggleScreenShare: toggleScreenShareStable,
   };
 }
+
+export { newCallId as createGroupCallId };
