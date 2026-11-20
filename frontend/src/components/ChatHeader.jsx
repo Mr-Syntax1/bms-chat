@@ -15,6 +15,9 @@ export default function ChatHeader({
   onOpenNotifications,
   onGoHome,
   onStartCall,
+  onStartGroupCall,
+  onJoinGroupCall,
+  activeRoomCall,
 }) {
 
   const handleProfileClick = () => {
@@ -35,10 +38,7 @@ export default function ChatHeader({
     }
     : null;
 
-  const isGroupRoom = currentRoomObj && !currentRoomObj.isPrivate && currentRoomObj.members;
-
-  // نمایش همه کاربران آنلاین
-  const onlineMembers = onlineUsers;
+  const isGroupRoom = Boolean(currentRoomObj && !currentRoomObj.isPrivate && !roomName?.startsWith('dm_'));
 
   const displayTitle = resolvedDmName
     ? `گفتگو با ${resolvedDmName}`
@@ -48,11 +48,13 @@ export default function ChatHeader({
 
   const [showCallMenu, setShowCallMenu] = useState(false);
 
-  const handleGroupCall = () => {
-    if (onlineMembers.length > 0) {
-      const firstMember = onlineMembers[0];
-      onStartCall(firstMember.id, firstMember.username, undefined, firstMember.avatarIndex ?? null);
-    }
+  const handleGroupCall = (type = 'audio') => {
+    if (roomName) onStartGroupCall?.(roomName, type);
+    setShowCallMenu(false);
+  };
+
+  const handleJoinGroupCall = () => {
+    if (roomName) onJoinGroupCall?.(roomName);
     setShowCallMenu(false);
   };
 
@@ -151,53 +153,38 @@ export default function ChatHeader({
         )}
 
         {/* تماس گروهی */}
-        {isGroupRoom && onlineMembers.length > 0 && (
+        {isGroupRoom && (
           <div className="relative">
             <button
-              onClick={() => setShowCallMenu(!showCallMenu)}
-              className="btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl ml-1 text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 transition-colors cursor-pointer"
-              title={`تماس گروهی با ${onlineMembers.length} عضو آنلاین`}
-              aria-label="تماس گروهی"
+              type="button"
+              onClick={() => (activeRoomCall ? handleJoinGroupCall() : handleGroupCall('audio'))}
+              className="btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 transition-colors cursor-pointer"
+              title={activeRoomCall ? 'پیوستن به تماس گروهی فعال' : 'شروع تماس صوتی گروهی'}
+              aria-label={activeRoomCall ? 'پیوستن به تماس گروهی فعال' : 'شروع تماس صوتی گروهی'}
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </button>
-
+            <button
+              type="button"
+              onClick={() => setShowCallMenu((value) => !value)}
+              className="btn-ghost -ms-2 p-1 text-primary-400 hover:bg-primary-500/10 cursor-pointer"
+              aria-label="گزینه‌های تماس گروهی"
+              title="انتخاب نوع تماس گروهی"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m6 9 6 6 6-6" /></svg>
+            </button>
             {showCallMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowCallMenu(false)} />
-                <div className="absolute right-0 top-full mt-2 w-52 sm:w-60 bg-surface-900/95 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl z-50 animate-fade-in origin-top-right">
-                  <div className="p-2">
-                    <p className="px-3 py-2 text-xs text-surface-500 font-medium uppercase tracking-wider">
-                      اعضا برای تماس
-                    </p>
-                    <div className="max-h-48 overflow-y-auto scrollbar-thin">
-                      {onlineMembers.map((member) => (
-                        <button
-                          key={member.id}
-                          onClick={() => {
-                            onStartCall(member.id, member.username, undefined, member.avatarIndex ?? null);
-                            setShowCallMenu(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-surface-300 hover:bg-white/5 hover:text-white transition-colors"
-                        >
-                          <Avatar username={member.username} size="sm" avatarIndex={member.avatarIndex} status="online" />
-                          <span className="font-medium truncate">{member.username}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <hr className="border-white/10 my-1" />
-                    <button
-                      onClick={handleGroupCall}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-primary-400 hover:bg-primary-500/10 hover:text-primary-300 transition-colors font-medium text-sm"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                      </svg>
-                      تماس با همه ({onlineMembers.length})
-                    </button>
-                  </div>
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/10 bg-surface-900/95 p-2 shadow-2xl backdrop-blur-xl z-50 animate-fade-in">
+                  <p className="px-3 py-2 text-xs text-surface-500">تماس گروهی</p>
+                  {activeRoomCall && (
+                    <button type="button" onClick={handleJoinGroupCall} className="w-full rounded-lg px-3 py-2 text-start text-sm text-emerald-300 hover:bg-emerald-500/10">پیوستن به تماس فعال</button>
+                  )}
+                  <button type="button" onClick={() => handleGroupCall('audio')} className="w-full rounded-lg px-3 py-2 text-start text-sm text-surface-200 hover:bg-white/10">تماس صوتی</button>
+                  <button type="button" onClick={() => handleGroupCall('video')} className="w-full rounded-lg px-3 py-2 text-start text-sm text-surface-200 hover:bg-white/10">تماس تصویری</button>
                 </div>
               </>
             )}

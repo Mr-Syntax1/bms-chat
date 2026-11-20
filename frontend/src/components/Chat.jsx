@@ -9,7 +9,9 @@ import NotificationDropdown from './NotificationDropdown';
 import WelcomeScreen from './WelcomeScreen';
 import LoadingSpinner from './LoadingSpinner';
 import { useWebRTC } from '../hooks/useWebRTC';
+import { useGroupWebRTC } from '../hooks/useGroupWebRTC';
 import CallModal from './CallModal';
+import GroupCallModal from './GroupCallModal';
 
 export default function Chat({ chat, user, onLogout }) {
   const {
@@ -50,6 +52,12 @@ export default function Chat({ chat, user, onLogout }) {
   const rtc = useWebRTC({
     currentUser: user,
     connected: connected,
+  });
+  const groupCall = useGroupWebRTC({
+    currentUser: user,
+    connected,
+    currentRoom,
+    privateCallActive: rtc.callState !== 'idle',
   });
 
   const handleSwitchRoom = useCallback((roomName, isMobile = false) => {
@@ -144,6 +152,9 @@ export default function Chat({ chat, user, onLogout }) {
           unreadNotifications={unreadCount}
           onOpenNotifications={handleOpenNotifications}
           onStartCall={rtc.startCall}
+          onStartGroupCall={groupCall.startCall}
+          onJoinGroupCall={groupCall.joinRoomCall}
+          activeRoomCall={groupCall.activeRoomCall}
         />
       </div>
 
@@ -210,6 +221,11 @@ export default function Chat({ chat, user, onLogout }) {
       </div>
 
       {/* مودال تماس */}
+      <GroupCallModal
+        call={groupCall}
+        onJoin={groupCall.joinCall}
+        onDecline={groupCall.declineIncomingCall}
+      />
       <CallModal
         call={rtc}
         user={user}
