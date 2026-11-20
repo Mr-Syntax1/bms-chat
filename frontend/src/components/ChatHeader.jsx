@@ -65,7 +65,7 @@ export default function ChatHeader({
         <button
           type="button"
           onClick={onGoHome}
-          className="group ml-1 relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-surface-900 ring-2 ring-primary-500/50 shadow-[0_0_20px_-4px] shadow-primary-500/60 hover:ring-primary-600 hover:shadow-primary-400/80 transition-all duration-200 cursor-pointer shrink-0"
+          className="group ml-1 sm:ml-0 relative p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-surface-900 ring-2 ring-primary-500/50 shadow-[0_0_20px_-4px] shadow-primary-500/60 hover:ring-primary-600 hover:shadow-primary-400/80 transition-all duration-200 cursor-pointer shrink-0"
         >
           <img
             className="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg object-contain drop-shadow"
