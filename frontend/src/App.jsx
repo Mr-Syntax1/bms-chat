@@ -95,8 +95,9 @@ function App() {
 
   return (
     <div className="h-[100dvh] w-full overflow-hidden relative text-surface-50 bg-transparent">
+      
       {uiPrefs.animatedBackground && (
-        <div className="fixed inset-0 -z-10 pointer-events-none">
+        <div className="fixed inset-0 z-0 pointer-events-none">
           <HalloweenBackground />
         </div>
       )}

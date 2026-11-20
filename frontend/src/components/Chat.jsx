@@ -126,8 +126,8 @@ export default function Chat({ chat, user, onLogout }) {
 
   return (
     // 🔑 قانون ۱: ارتفاع دقیق داینامیک + جلوگیری مطلق از اسکرول کل صفحه
-    <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-surface-950 text-surface-50">
-      
+    <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-transparent text-surface-50">
+
       {/* 🔑 قانون ۲: هدر هرگز نباید کوچک شود (shrink-0) */}
       <div className="shrink-0 z-20 relative">
         <ChatHeader
@@ -149,7 +149,7 @@ export default function Chat({ chat, user, onLogout }) {
 
       {/* 🔑 قانون ۳: بخش میانی تمام فضای باقیمانده را می‌گیرد و overflow آن مخفی است */}
       <div className="flex-1 flex overflow-hidden min-h-0 relative z-10">
-        
+
         {/* سایدبار دسکتاپ */}
         <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-white/10 glass-panel-strong">
           <RoomList
