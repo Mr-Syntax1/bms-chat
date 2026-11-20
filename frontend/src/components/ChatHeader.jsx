@@ -83,11 +83,11 @@ export default function ChatHeader({
           {/* 👈 این بخش از سایز sm به بالا نمایش داده می‌شود (تبلت و دسکتاپ) */}
           <div className="hidden sm:flex items-center gap-1 sm:gap-1.5 mt-0.5">
             <span className={`status-dot ${isConnected ? 'status-online' : 'status-offline'} animate-pulse-soft scale-75 sm:scale-100`} />
-            <span className="text-[9px] sm:text-xs text-surface-400 font-medium">
+            <span className="text-xs text-surface-400 font-medium">
               {isConnected ? 'متصل' : 'قطع شده'}
             </span>
-            <span className="text-surface-600 text-[9px] sm:text-xs">•</span>
-            <span className="text-[9px] sm:text-xs text-surface-400">
+            <span className="text-surface-600 text-xs">•</span>
+            <span className="text-xs text-surface-400">
               {onlineCount} آنلاین
             </span>
           </div>
@@ -95,7 +95,7 @@ export default function ChatHeader({
           {/* موبایل: نمایش وضعیت اتصال به صورت Compact */}
           <div className="sm:hidden flex items-center gap-1 mt-0.5">
             <span className={`status-dot ${isConnected ? 'status-online' : 'status-offline'} animate-pulse-soft`} />
-            <span className="text-[9px] text-surface-400 font-medium">
+            <span className="text-xs text-surface-400 font-medium">
               {isConnected ? 'متصل' : 'آفلاین'}
             </span>
           </div>
@@ -108,7 +108,7 @@ export default function ChatHeader({
         {/* دکمه منو (همبرگری) - فقط موبایل و تبلت */}
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-surface-400 cursor-pointer hover:text-white hover:bg-white/10 transition-colors"
+          className="lg:hidden btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl ml-1 text-surface-400 cursor-pointer hover:text-white hover:bg-white/10 transition-colors"
           title="اتاق‌ها"
           aria-label="منوی اتاق‌ها"
         >
@@ -122,7 +122,7 @@ export default function ChatHeader({
           type="button"
           data-notification-toggle
           onClick={onOpenNotifications}
-          className="relative btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-surface-400 cursor-pointer hover:text-white hover:bg-white/10 transition-colors"
+          className="relative btn-ghost ml-1 p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-surface-400 cursor-pointer hover:text-white hover:bg-white/10 transition-colors"
           title="اعلان‌ها"
           aria-label="اعلان‌ها"
         >
@@ -140,7 +140,7 @@ export default function ChatHeader({
         {dmPartner && (
           <button
             onClick={() => onStartCall(dmPartner.userId, dmPartner.username, undefined, dmPartner.avatarIndex ?? null)}
-            className="btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-green-400 hover:text-green-300 hover:bg-green-500/10 transition-colors cursor-pointer"
+            className="btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl ml-1 text-green-400 hover:text-green-300 hover:bg-green-500/10 transition-colors cursor-pointer"
             title={`تماس با ${dmPartner.username}`}
             aria-label="تماس تصویری"
           >
@@ -155,7 +155,7 @@ export default function ChatHeader({
           <div className="relative">
             <button
               onClick={() => setShowCallMenu(!showCallMenu)}
-              className="btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 transition-colors cursor-pointer"
+              className="btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl ml-1 text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 transition-colors cursor-pointer"
               title={`تماس گروهی با ${onlineMembers.length} عضو آنلاین`}
               aria-label="تماس گروهی"
             >
