@@ -193,6 +193,7 @@ messagesRouter.post('/delete', async (req, res) => {
     if (deleteForEveryone) {
       if (!isSender) return res.status(403).json({ error: 'فقط فرستنده می‌تواند پیام را برای همه حذف کند.' });
       message.isDeletedForEveryone = true;
+      message.deletedAt = new Date();
       await message.save();
 
       const channelName = getChannelName(message.room);

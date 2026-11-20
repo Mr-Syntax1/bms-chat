@@ -50,6 +50,7 @@ const messageSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    deletedAt: { type: Date, default: null },
 
     readBy: [{ type: String }], // آرایه‌ای از ID کاربرانی که پیام را خوانده‌اند
 
@@ -61,6 +62,8 @@ const messageSchema = new mongoose.Schema({
 
 // ایندکس برای مرتب‌سازی سریع پیام‌ها
 messageSchema.index({ createdAt: -1 });
+// حذف خودکار پس از ۱ روز (۲۴ * ۶۰ * ۶۰ = ۸۶۴۰۰ ثانیه)
+messageSchema.index({ deletedAt: 1 }, { expireAfterSeconds: 86400 });
 messageSchema.index({ room: 1, createdAt: -1 });
 
 export const Message = mongoose.model('Message', messageSchema);
