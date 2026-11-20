@@ -86,7 +86,7 @@ export default function ChatHeader({
             <span className="text-xs text-surface-400 font-medium">
               {isConnected ? 'متصل' : 'قطع شده'}
             </span>
-            <span className="text-surface-600 text-xs">•</span>
+            <span className="text-surface-600 text-[8px] sm:text-xs">•</span>
             <span className="text-xs text-surface-400">
               {onlineCount} آنلاین
             </span>
