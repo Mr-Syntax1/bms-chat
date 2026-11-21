@@ -5,6 +5,7 @@ import { User } from '../models/User.js';
 import mongoose from 'mongoose';
 import { Room } from '../models/Room.js';
 import { GroupCall } from '../models/GroupCall.js';
+import { AccessToken } from 'livekit-server-sdk';
 
 export const callsRouter = express.Router();
 
@@ -567,16 +568,25 @@ callsRouter.post('/group/leave', requireAuth, groupRateLimit, async (req, res) =
 // ===================================
 // game backend
 // ===================================
-router.post('/livekit/token', authMiddleware, async (req, res) => {
-  const { roomId } = req.body;
+callsRouter.post('/livekit/token', requireAuth, async (req, res) => {
+  try {
+    const { roomId } = req.body;
 
-  const at = new AccessToken(
-    process.env.LIVEKIT_API_KEY,
-    process.env.LIVEKIT_API_SECRET,
-    { identity: req.user.id }
-  );
+    if (!roomId) {
+      return res.status(400).json({ error: 'roomId الزامی است' });
+    }
 
-  at.addGrant({ room: roomId, roomJoin: true });
+    const at = new AccessToken(
+      process.env.LIVEKIT_API_KEY,
+      process.env.LIVEKIT_API_SECRET,
+      { identity: String(req.user.id) }
+    );
 
-  res.json({ token: await at.toJwt() });
+    at.addGrant({ room: String(roomId), roomJoin: true });
+
+    res.json({ token: await at.toJwt() });
+  } catch (error) {
+    console.error('[Calls] LiveKit token error:', error.message);
+    res.status(500).json({ error: 'خطا در تولید توکن LiveKit' });
+  }
 });
