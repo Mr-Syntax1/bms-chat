@@ -4,145 +4,140 @@ import { Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { FIRE_KEEPOUT, FIRE_STONES, SEAT_SPOTS } from '../sceneLayout';
 import { registerInteractable } from '../interactionRegistry';
+import { usePlayerStore } from '../stores/usePlayerStore';
+import { Model as BonfireModel } from '../models/Bonfire';
+import { Model as ChoppedLogModel } from '../models/ChoppedLog';
+
+// کنده‌ی نشستن: جعبه‌ی مدل x -0.65..2.03 (مرکز ۰.۶۹) و پایین‌ترین y = -۰.۵۱
+const SEAT_LOG_SCALE = 0.55;
+const SEAT_LOG_OFFSET_X = -0.69; // مرکز طول کنده روی مبدأ
+const SEAT_LOG_OFFSET_Y = 0.51; // پایین‌ترین نقطه‌ی مدل روی زمین
 
 export default function Campfire() {
-  const flameRef = useRef(null);
-  const innerFlameRef = useRef(null);
   const lightRef = useRef(null);
-  const logGroupRef = useRef(null);
+  const emberRef = useRef(null);
+  const glowRef = useRef(null);
   const fireGroupRef = useRef(null);
   const stoneRef = useRef(null);
+  const marshmallowRef = useRef(null);
+  const marshmallow = usePlayerStore((s) => s.marshmallow);
+  const action = usePlayerStore((s) => s.action);
 
   useEffect(() => {
     const unsubscribe = registerInteractable('campfire', fireGroupRef.current);
     return unsubscribe;
   }, []);
 
-  // ماتریس سنگ‌ها یک بار ست می‌شود
+  // ماتریس سنگ‌های دور گودال (یک‌بار)
   useEffect(() => {
     const stones = stoneRef.current;
     if (!stones) return;
     const dummy = new THREE.Object3D();
     FIRE_STONES.forEach((stone, i) => {
-      dummy.position.set(stone.x, stone.scale * 0.45, stone.z);
+      dummy.position.set(stone.x, stone.scale * 0.9, stone.z);
       dummy.rotation.set(0, stone.rotation, 0);
-      dummy.scale.setScalar(stone.scale);
+      dummy.scale.setScalar(stone.scale * 2.4);
       dummy.updateMatrix();
       stones.setMatrixAt(i, dummy.matrix);
     });
     stones.instanceMatrix.needsUpdate = true;
+    stones.computeBoundingSphere();
   }, []);
 
-  // نور و شعله با نویز سینوسی تپش می‌کنند (بدون setState)
+  // تپش نور و درخشش آتش + چرخش آرام هسته‌ی نارنجی
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    const flicker = 0.82 + Math.sin(t * 8.3) * 0.09 + Math.sin(t * 13.7) * 0.06;
+    const flicker = 0.84 + Math.sin(t * 7.9) * 0.08 + Math.sin(t * 12.3 + 1.7) * 0.05;
 
     if (lightRef.current) {
-      lightRef.current.intensity = 9 * flicker;
-      lightRef.current.position.y = 1.05 + Math.sin(t * 5.1) * 0.05;
+      lightRef.current.intensity = 38 * flicker;
+      lightRef.current.position.y = 1.25 + Math.sin(t * 4.7) * 0.07;
+    }
+    if (emberRef.current) {
+      emberRef.current.intensity = 9 * flicker;
+    }
+    if (glowRef.current) {
+      const s = 0.92 + Math.sin(t * 5.3) * 0.07;
+      glowRef.current.scale.setScalar(s);
+      glowRef.current.material.opacity = 0.13 * flicker;
     }
 
-    if (flameRef.current) {
-      const s = 0.94 + Math.sin(t * 7.4) * 0.09;
-      flameRef.current.scale.set(s, 1.15 + Math.sin(t * 9.1) * 0.13, s);
-      flameRef.current.rotation.y = t * 0.9;
-    }
-
-    if (innerFlameRef.current) {
-      const s2 = 0.88 + Math.sin(t * 11.2 + 1.4) * 0.1;
-      innerFlameRef.current.scale.set(s2, 1 + Math.sin(t * 8.6) * 0.12, s2);
-      innerFlameRef.current.rotation.y = -t * 1.3;
+    // مارشمالوی روی سیخ: کمی تکان می‌خورد
+    if (marshmallowRef.current && marshmallow === 'roasting') {
+      marshmallowRef.current.rotation.z = Math.sin(t * 2.2) * 0.12;
     }
   });
+
+  const marshmallowColor =
+    marshmallow === 'ready' ? '#b5763c' : marshmallow === 'burnt' ? '#2b1d15' : '#fff6e0';
 
   return (
     <group>
       {/* گودال آتش */}
-      <mesh position={[0, 0.03, 0]} receiveShadow>
-        <cylinderGeometry args={[FIRE_KEEPOUT, FIRE_KEEPOUT * 1.06, 0.09, 24]} />
-        <meshStandardMaterial color="#2b2320" roughness={1} flatShading />
+      <mesh position={[0, 0.02, 0]} receiveShadow>
+        <cylinderGeometry args={[FIRE_KEEPOUT, FIRE_KEEPOUT * 1.08, 0.1, 24]} />
+        <meshStandardMaterial color="#2a221c" roughness={1} />
       </mesh>
 
       {/* سنگ‌های دور گودال */}
-      <instancedMesh
-        ref={stoneRef}
-        args={[undefined, undefined, FIRE_STONES.length]}
-        castShadow
-        receiveShadow
-      >
-        <dodecahedronGeometry args={[1, 0]} />
-        <meshStandardMaterial color="#4b4b52" roughness={0.9} flatShading />
+      <instancedMesh ref={stoneRef} args={[undefined, undefined, FIRE_STONES.length]} castShadow receiveShadow>
+        <dodecahedronGeometry args={[0.2, 0]} />
+        <meshStandardMaterial color="#4a4a52" roughness={0.92} flatShading />
       </instancedMesh>
 
-      {/* چوب‌های هیزم چلیپایی */}
-      <group ref={logGroupRef} position={[0, 0.16, 0]}>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <mesh
-            key={i}
-            position={[Math.cos((i / 5) * Math.PI * 2) * 0.34, 0.06 + i * 0.03, Math.sin((i / 5) * Math.PI * 2) * 0.34]}
-            rotation={[Math.PI / 2.4, (i / 5) * Math.PI * 2, 0.22]}
-            castShadow
-          >
-            <cylinderGeometry args={[0.09, 0.11, 1.25, 6]} />
-            <meshStandardMaterial color={i % 2 ? '#3d2a1e' : '#4a3324'} roughness={1} flatShading />
-          </mesh>
-        ))}
+      {/* مدل واقعی Bonfire */}
+      <group ref={fireGroupRef} position={[0, 0, 0]}>
+        <BonfireModel scale={0.55} />
       </group>
 
-      {/* شعله‌ها + نور اصلی کمپ */}
-      <group ref={fireGroupRef} position={[0, 0.35, 0]}>
-        <mesh ref={flameRef} position={[0, 0.42, 0]}>
-          <icosahedronGeometry args={[0.52, 0]} />
-          <meshBasicMaterial color="#ff7a2f" transparent opacity={0.92} />
-        </mesh>
-        <mesh ref={innerFlameRef} position={[0, 0.3, 0]}>
-          <icosahedronGeometry args={[0.3, 0]} />
-          <meshBasicMaterial color="#ffd76a" />
-        </mesh>
-        <mesh position={[0, 0.62, 0]}>
-          <icosahedronGeometry args={[0.16, 0]} />
-          <meshBasicMaterial color="#fff3c4" transparent opacity={0.85} />
-        </mesh>
-
-        <pointLight
-          ref={lightRef}
-          color="#ff8c42"
-          intensity={9}
-          distance={22}
-          decay={1.7}
-          castShadow
-          shadow-bias={-0.0012}
-          shadow-mapSize={[1024, 1024]}
-        />
-      </group>
-
-      {/* جرقه‌های معلق */}
-      <Sparkles
-        count={26}
-        scale={[1.5, 2.1, 1.5]}
-        position={[0, 1.25, 0]}
-        size={2.4}
-        speed={0.32}
-        opacity={0.75}
-        color="#ffb066"
+      {/* نور اصلی و شعاع گرم */}
+      <pointLight
+        ref={lightRef}
+        color="#ff8a3d"
+        intensity={38}
+        distance={30}
+        decay={1.6}
+        castShadow
+        shadow-bias={-0.0015}
+        shadow-mapSize={[1024, 1024]}
       />
+      {/* نور کمکی نزدیک زمین برای روشن کردن کنده‌ها */}
+      <pointLight ref={emberRef} position={[0, 0.5, 0]} color="#ff6b2c" intensity={9} distance={11} decay={2} />
 
-      {/* کنده‌های نشستن دور آتش (محور خوابیده و مماس بر دایره) */}
+      {/* هاله‌ی نوری روی زمین */}
+      <mesh ref={glowRef} position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[FIRE_KEEPOUT + 2.4, 32]} />
+        <meshBasicMaterial color="#ff8c42" transparent opacity={0.13} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+
+      {/* جرقه‌ها */}
+      <Sparkles count={38} scale={[2, 2.8, 2]} position={[0, 1.5, 0]} size={2.8} speed={0.35} opacity={0.85} color="#ffb066" />
+
+      {/* کنده‌های نشستن دور آتش؛ محور طولی کنده مماس بر دایره است */}
       {SEAT_SPOTS.map((spot, i) => (
-        <group key={i} position={[spot.x, 0.34, spot.z]} rotation={[0, -spot.rotation, 0]}>
-          <mesh rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
-            <cylinderGeometry args={[0.3, 0.32, 1.5, 8]} />
-            <meshStandardMaterial color={i % 2 ? '#5a4230' : '#4c3728'} roughness={0.95} flatShading />
-          </mesh>
+        <group key={i} position={[spot.x, 0, spot.z]} rotation={[0, spot.rotation, 0]} scale={SEAT_LOG_SCALE}>
+          <ChoppedLogModel position={[SEAT_LOG_OFFSET_X, SEAT_LOG_OFFSET_Y, 0]} />
         </group>
       ))}
 
-      {/* حلقه‌ی نوری گرم روی زمین */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <ringGeometry args={[FIRE_KEEPOUT + 0.1, FIRE_KEEPOUT + 1.1, 32]} />
-        <meshBasicMaterial color="#ff8c42" transparent opacity={0.07} side={THREE.DoubleSide} />
-      </mesh>
+      {/* سیخ مارشمالو وقتی اکشن فعال است */}
+      {action === 'marshmallow' && (
+        <group position={[0.75, 0.2, 0.55]} rotation={[0, -0.5, 0]}>
+          <mesh position={[0, 0.9, 0]} rotation={[0, 0, 0.35]}>
+            <cylinderGeometry args={[0.022, 0.022, 1.9, 5]} />
+            <meshStandardMaterial color="#8a6b4a" roughness={0.9} />
+          </mesh>
+          <mesh ref={marshmallowRef} position={[0.32, 1.62, 0]}>
+            <cylinderGeometry args={[0.09, 0.09, 0.14, 10]} />
+            <meshStandardMaterial
+              color={marshmallowColor}
+              emissive={marshmallow === 'ready' ? '#c97b34' : '#000000'}
+              emissiveIntensity={marshmallow === 'ready' ? 0.35 : 0}
+              roughness={0.85}
+            />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }

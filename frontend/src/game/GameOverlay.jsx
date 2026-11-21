@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { usePlayerStore } from './stores/usePlayerStore';
 import { SPAWN } from './sceneLayout';
+import SpatialVoice from './components/SpatialVoice';
 
 // Canvas فقط وقتی مودال باز است لود می‌شود (کاهش هزینه‌ی اولیه)
 const GameCanvas = lazy(() => import('./GameCanvas'));
@@ -49,6 +50,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
   const seated = usePlayerStore((s) => s.seated);
   const hovered = usePlayerStore((s) => s.hovered);
   const headlights = usePlayerStore((s) => s.headlights);
+  const action = usePlayerStore((s) => s.action);
   const setSeat = usePlayerStore((s) => s.setSeat);
   const sitAuto = usePlayerStore((s) => s.sitAuto);
   const setVirtualInput = usePlayerStore((s) => s.setVirtualInput);
@@ -75,12 +77,16 @@ export default function GameOverlay({ roomId, user, onClose }) {
     syncStatus === 'connected' ? 'متصل' : syncStatus === 'connecting' ? 'در حال اتصال...' : 'آفلاین';
 
   const hint = seated
-    ? 'E برای بلند شدن'
+    ? 'E برای بلند شدن • 1-5 ایموت'
     : nearFire
-      ? 'E برای نشستن کنار آتش'
+      ? action === 'guitar'
+        ? 'G برای توقف گیتار • M مارشمالو • 1-5 ایموت'
+        : action === 'marshmallow'
+          ? 'M برای برداشتن سیخ • G گیتار • 1-5 ایموت'
+          : 'E نشستن • G گیتار • M مارشمالو • 1-5 ایموت'
       : hovered === 'van'
         ? 'F برای روشن/خاموش کردن چراغ ون'
-        : 'WASD برای حرکت • Shift برای دویدن • درگ موس برای چرخش دوربین';
+        : 'WASD حرکت • Shift دویدن • درگ موس چرخش دوربین';
 
   return (
     <div className="fixed inset-0 z-[80] bg-surface-950">
@@ -101,9 +107,8 @@ export default function GameOverlay({ roomId, user, onClose }) {
       <div className="absolute top-0 inset-x-0 z-20 p-3 sm:p-4 flex items-start justify-between gap-2 pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-950/70 border border-white/10 backdrop-blur-md">
           <span
-            className={`h-2 w-2 rounded-full ${
-              syncStatus === 'connected' ? 'bg-success-500 animate-pulse' : 'bg-surface-500'
-            }`}
+            className={`h-2 w-2 rounded-full ${syncStatus === 'connected' ? 'bg-success-500 animate-pulse' : 'bg-surface-500'
+              }`}
           />
           <div className="flex flex-col leading-tight">
             <span className="text-[11px] text-surface-400">کمپ {roomId}</span>
@@ -114,6 +119,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
         </div>
 
         <div className="pointer-events-auto flex items-center gap-2">
+          <SpatialVoice roomId={roomId} enabled={syncStatus !== 'idle'} />
           {headlights && (
             <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-warning-500/15 border border-warning-500/30 text-[11px] text-warning-500">
               چراغ ون روشن
@@ -151,13 +157,12 @@ export default function GameOverlay({ roomId, user, onClose }) {
             type="button"
             onClick={() => sitAuto()}
             disabled={!nearFire && !seated}
-            className={`px-4 h-12 rounded-2xl border text-sm font-semibold transition-colors backdrop-blur ${
-              seated
-                ? 'bg-primary-500/25 border-primary-400/50 text-primary-100'
-                : nearFire
-                  ? 'bg-success-500/20 border-success-500/40 text-success-500'
-                  : 'bg-surface-900/60 border-white/10 text-surface-500 cursor-not-allowed'
-            }`}
+            className={`px-4 h-12 rounded-2xl border text-sm font-semibold transition-colors backdrop-blur ${seated
+              ? 'bg-primary-500/25 border-primary-400/50 text-primary-100'
+              : nearFire
+                ? 'bg-success-500/20 border-success-500/40 text-success-500'
+                : 'bg-surface-900/60 border-white/10 text-surface-500 cursor-not-allowed'
+              }`}
           >
             {seated ? 'بلند شدن' : 'نشستن'}
           </button>

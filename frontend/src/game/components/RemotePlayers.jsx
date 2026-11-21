@@ -1,10 +1,11 @@
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { remoteMap, usePlayerStore } from '../stores/usePlayerStore';
-import { SEAT_SPOTS, SEAT_HEIGHT } from '../sceneLayout';
+import { SEAT_SPOTS } from '../sceneLayout';
+import Character from './Character';
 
-// رنگ آواتار بر اساس شناسه‌ی کاربر (پایدار و یکتا)
+// رنگ حلقه‌ی نشانگر بر اساس شناسه‌ی کاربر (پایدار و یکتا)
 const PALETTE = ['#8ab4f8', '#f28b82', '#fdd663', '#81c995', '#c58af9', '#78d9ec', '#f6aea9', '#b6e3a8'];
 
 function colorForId(id) {
@@ -19,21 +20,40 @@ const ROT_LERP = 0.2;
 
 function RemoteAvatar({ id }) {
   const groupRef = useRef(null);
-  const bodyRef = useRef(null);
-  const color = useMemo(() => colorForId(id), [id]);
+  const color = colorForId(id);
+  const movingRef = useRef(false);
+  const runningRef = useRef(false);
+  const seatedRef = useRef(false);
 
   useFrame(() => {
     const entry = remoteMap.get(id);
     const group = groupRef.current;
     if (!entry || !group) return;
 
+    const now = Date.now();
+    // پاک‌سازی ایموت/اکشن منقضی‌شده
+    if (entry.emoteUntil && now > entry.emoteUntil) {
+      entry.emote = null;
+      entry.emoteUntil = 0;
+    }
+    if (entry.actionUntil && now > entry.actionUntil) {
+      entry.action = null;
+      entry.actionUntil = 0;
+    }
+
     // اگر روی صندلی نشسته، موقعیت ثابت صندلی
-    if (entry.seat !== null && entry.seat !== undefined && SEAT_SPOTS[entry.seat]) {
-      const spot = SEAT_SPOTS[entry.seat];
-      entry.current.x += (spot.x - entry.current.x) * LERP_FACTOR;
-      entry.current.z += (spot.z - entry.current.z) * LERP_FACTOR;
-      entry.rot += (spot.rotation - entry.rot) * ROT_LERP;
-      if (bodyRef.current) bodyRef.current.position.y += (SEAT_HEIGHT - bodyRef.current.position.y) * 0.2;
+    const seatSpot =
+      entry.seat !== null && entry.seat !== undefined ? SEAT_SPOTS[entry.seat] : null;
+
+    if (seatSpot) {
+      entry.current.x += (seatSpot.x - entry.current.x) * LERP_FACTOR;
+      entry.current.z += (seatSpot.z - entry.current.z) * LERP_FACTOR;
+      let rotDelta = seatSpot.rotation - entry.rot;
+      while (rotDelta > Math.PI) rotDelta -= Math.PI * 2;
+      while (rotDelta < -Math.PI) rotDelta += Math.PI * 2;
+      entry.rot += rotDelta * ROT_LERP;
+      movingRef.current = false;
+      runningRef.current = false;
     } else {
       entry.current.x += (entry.target.x - entry.current.x) * LERP_FACTOR;
       entry.current.z += (entry.target.z - entry.current.z) * LERP_FACTOR;
@@ -43,17 +63,14 @@ function RemoteAvatar({ id }) {
       while (rotDelta < -Math.PI) rotDelta += Math.PI * 2;
       entry.rot += rotDelta * ROT_LERP;
 
-      if (bodyRef.current) bodyRef.current.position.y += (0 - bodyRef.current.position.y) * 0.2;
+      const speed = Math.hypot(entry.target.x - entry.current.x, entry.target.z - entry.current.z);
+      movingRef.current = speed > 0.03;
+      runningRef.current = speed > 0.14;
     }
 
+    seatedRef.current = Boolean(seatSpot);
     group.position.set(entry.current.x, 0, entry.current.z);
     group.rotation.y = entry.rot;
-
-    // بوب ملایم راه رفتن بر اساس فاصله تا هدف
-    if (bodyRef.current && (entry.seat === null || entry.seat === undefined)) {
-      const speed = Math.hypot(entry.target.x - entry.current.x, entry.target.z - entry.current.z);
-      bodyRef.current.position.y = speed > 0.02 ? Math.sin(performance.now() * 0.012) * 0.045 : 0;
-    }
   });
 
   const entry = remoteMap.get(id);
@@ -61,37 +78,23 @@ function RemoteAvatar({ id }) {
 
   return (
     <group ref={groupRef}>
-      <group ref={bodyRef}>
-        <mesh position={[0, 0.85, 0]} castShadow>
-          <capsuleGeometry args={[0.32, 0.86, 4, 10]} />
-          <meshStandardMaterial color={color} roughness={0.7} />
-        </mesh>
-        <mesh position={[0, 1.72, 0]} castShadow>
-          <sphereGeometry args={[0.26, 14, 12]} />
-          <meshStandardMaterial color="#ffd9b3" roughness={0.8} />
-        </mesh>
-        <mesh position={[0, 0.92, 0]} castShadow>
-          <cylinderGeometry args={[0.36, 0.42, 0.68, 10]} />
-          <meshStandardMaterial color={color} roughness={0.85} flatShading />
-        </mesh>
-        <mesh position={[0.1, 1.76, 0.22]}>
-          <sphereGeometry args={[0.035, 8, 8]} />
-          <meshStandardMaterial color="#20202a" />
-        </mesh>
-        <mesh position={[-0.1, 1.76, 0.22]}>
-          <sphereGeometry args={[0.035, 8, 8]} />
-          <meshStandardMaterial color="#20202a" />
-        </mesh>
-      </group>
+      <Character
+        moving={movingRef}
+        running={runningRef}
+        emote={() => remoteMap.get(id)?.emote ?? null}
+        action={() => remoteMap.get(id)?.action ?? null}
+        seated={seatedRef}
+        castShadow
+      />
 
       {/* حلقه‌ی نشانگر بازیکن ریموت */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.46, 0.56, 24]} />
-        <meshBasicMaterial color={color} transparent opacity={0.5} />
+        <meshBasicMaterial color={color} transparent opacity={0.5} depthWrite={false} />
       </mesh>
 
       {/* نام بازیکن */}
-      <Html center position={[0, 2.35, 0]} distanceFactor={14} occlude={false} zIndexRange={[20, 0]}>
+      <Html center position={[0, 2.15, 0]} distanceFactor={14} occlude={false} zIndexRange={[20, 0]}>
         <div className="px-2 py-0.5 rounded-full bg-surface-950/75 border border-white/15 text-[11px] text-surface-50 whitespace-nowrap backdrop-blur-sm">
           {username}
         </div>

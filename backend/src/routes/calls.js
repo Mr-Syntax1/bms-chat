@@ -122,7 +122,7 @@ async function publishMemberLeft(callId, userIds) {
   const channel = ably.channels.get(`private:group-webrtc-${callId}`);
   await Promise.all(userIds.map((userId) => channel
     .publish('group-member-left', { callId, userId: String(userId) })
-    .catch(() => {})));
+    .catch(() => { })));
 }
 
 function staleCandidates(call, presenceIds) {
@@ -320,7 +320,7 @@ callsRouter.post('/signal', requireAuth, rateLimit, async (req, res) => {
         pendingCalls.delete(callId);
         throw err;
       }
-    } 
+    }
     else if (type === 'cancel') {
       const record = pendingCalls.get(callId);
       if (!record || record.callerId !== me.id || record.targetId !== target) {
@@ -332,7 +332,7 @@ callsRouter.post('/signal', requireAuth, rateLimit, async (req, res) => {
         callId,
         callerId: me.id,
       });
-    } 
+    }
     // ✅ تغییر ۲: مدیریت end و reject برای بستن تماس در طرف مقابل
     else if (type === 'end' || type === 'reject') {
       // پاک کردن از لیست انتظار (اگر هنوز در حال زنگ خوردن بوده)
@@ -561,4 +561,22 @@ callsRouter.post('/group/leave', requireAuth, groupRateLimit, async (req, res) =
     console.error('[Calls] Group leave error:', error.message);
     return deny(res, 500, 'خروج از تماس گروهی با خطا مواجه شد');
   }
+});
+
+
+// ===================================
+// game backend
+// ===================================
+router.post('/livekit/token', authMiddleware, async (req, res) => {
+  const { roomId } = req.body;
+
+  const at = new AccessToken(
+    process.env.LIVEKIT_API_KEY,
+    process.env.LIVEKIT_API_SECRET,
+    { identity: req.user.id }
+  );
+
+  at.addGrant({ room: roomId, roomJoin: true });
+
+  res.json({ token: await at.toJwt() });
 });

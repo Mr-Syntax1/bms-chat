@@ -53,7 +53,9 @@ export default defineConfig(({ mode }) => {
         },
         
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}']
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+          // دیکودر Draco نباید پیش‌کش شود (حجم زیاد + فقط در بازی لازم است)
+          globIgnores: ['draco/**', 'game-models/**']
         }
       })
     ],

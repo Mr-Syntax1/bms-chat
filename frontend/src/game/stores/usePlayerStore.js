@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SPAWN, SEAT_SPOTS, TREES, CAMP_RADIUS } from '../sceneLayout';
+import { SPAWN, SEAT_SPOTS, TREES, CAMP_RADIUS, WALK_RADIUS } from '../sceneLayout';
 
 // ---------------------------------------------------------------------------
 // state های mutable: در هر فریم آپدیت می‌شوند و باعث re-render نمی‌شوند
@@ -10,12 +10,14 @@ const local = {
   rot: 0,
   seat: null, // ایندکس صندلی یا null
   moving: false,
+  emote: null, // 'wave' | 'dance' | 'laugh' | 'celebrate' | 'sleep'
+  action: null, // 'guitar' | 'marshmallow'
 };
 
-// نگاشت بازیکنان ریموت: id → { target, current, rot, seat, username, avatarIndex }
+// نگاشت بازیکنان ریموت: id → { target, current, rot, seat, emote, action, ... }
 export const remoteMap = new Map();
 
-// لیسنرهای Spatial Audio (فاز LiveKit): مختصات همه‌ی بازیکنان
+// لیسنرهای Spatial Audio (LiveKit): مختصات همه‌ی بازیکنان
 const spatialListeners = new Set();
 
 export function subscribeSpatial(callback) {
@@ -24,9 +26,25 @@ export function subscribeSpatial(callback) {
 }
 
 export function getSpatialSnapshot() {
-  const players = [{ id: 'local', x: local.x, z: local.z, seated: local.seat !== null }];
+  const players = [
+    {
+      id: 'local',
+      x: local.x,
+      z: local.z,
+      seated: local.seat !== null,
+      emote: local.emote,
+      action: local.action,
+    },
+  ];
   for (const [id, entry] of remoteMap) {
-    players.push({ id, x: entry.current.x, z: entry.current.z, seated: entry.seat !== null });
+    players.push({
+      id,
+      x: entry.current.x,
+      z: entry.current.z,
+      seated: entry.seat !== null,
+      emote: entry.emote,
+      action: entry.action,
+    });
   }
   return players;
 }
@@ -37,20 +55,28 @@ export function emitSpatialFrame() {
   for (const listener of spatialListeners) listener(snapshot);
 }
 
-// ---------------------------------------------------------------------------
-// Store واکنشی (فقط برای چیزهایی که UI/رندر به آن نیاز دارد)
-// ---------------------------------------------------------------------------
+// شناسه‌ی یکتای اکشن برای همگام‌سازی صدا/انیمیشن
+export const newActionId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
 export const usePlayerStore = create((set, get) => ({
   local,
   seated: false,
   seatIndex: null,
   nearFire: false,
-  hovered: null, // 'campfire' | 'van' | null
+  hovered: null,
   headlights: false,
   campRadius: CAMP_RADIUS,
+  walkRadius: WALK_RADIUS,
   remoteIds: [],
   peerCount: 0,
   syncStatus: 'idle',
+
+  // اکشن‌ها و ایموت‌های محلی (برای HUD و انیمیشن)
+  action: null, // 'guitar' | 'marshmallow' | null
+  actionStartedAt: 0,
+  marshmallow: null, // null | 'roasting' | 'ready' | 'burnt'
+  emote: null,
+  emoteUntil: 0,
 
   // ورودی مجازی موبایل (بدون re-render)
   virtualInput: { forward: false, backward: false, left: false, right: false, run: false },
@@ -83,7 +109,6 @@ export const usePlayerStore = create((set, get) => ({
       state.setSeat(null);
       return;
     }
-    // باید نزدیک آتش باشیم تا نشستن مجاز باشد
     if (!state.nearFire) return;
     const index = state.findFreeSeat(local.x, local.z);
     if (index !== null) state.setSeat(index);
@@ -103,33 +128,83 @@ export const usePlayerStore = create((set, get) => ({
 
   setPeerCount: (count) => set({ peerCount: count }),
 
-  // افزودن/آپدیت بازیکن ریموت؛ فقط برای id جدید set صدا زده می‌شود
+  // -------------------------------------------------------------------------
+  // اکشن‌های تعاملی
+  // -------------------------------------------------------------------------
+  startAction: (type) => {
+    local.action = type;
+    set({ action: type, actionStartedAt: Date.now() });
+  },
+
+  endAction: () => {
+    local.action = null;
+    set({ action: null, actionStartedAt: 0, marshmallow: null });
+  },
+
+  setMarshmallow: (stage) => set({ marshmallow: stage }),
+
+  startEmote: (emote, duration = 3200) => {
+    local.emote = emote;
+    set({ emote, emoteUntil: Date.now() + duration });
+  },
+
+  endEmote: () => {
+    local.emote = null;
+    set({ emote: null, emoteUntil: 0 });
+  },
+
+  // -------------------------------------------------------------------------
+  // بازیکنان ریموت
+  // -------------------------------------------------------------------------
   upsertRemote: (id, payload) => {
     const existing = remoteMap.get(id);
     if (existing) {
-      existing.target.x = payload.x;
-      existing.target.z = payload.z;
-      existing.targetRot = payload.rot;
-      existing.seat = payload.seat;
+      const usernameChanged = Boolean(payload.username) && payload.username !== existing.username;
+      // مقادیر تعریف‌نشده نباید مختصات را خراب کنند (NaN)
+      if (Number.isFinite(payload.x)) existing.target.x = payload.x;
+      if (Number.isFinite(payload.z)) existing.target.z = payload.z;
+      if (Number.isFinite(payload.rot)) existing.targetRot = payload.rot;
+      existing.seat = payload.seat ?? existing.seat;
       existing.username = payload.username || existing.username;
       existing.avatarIndex = payload.avatarIndex ?? existing.avatarIndex;
+      // پکت‌های موقعیت این فیلدها را ندارند؛ نباید اکشن/ایموت فعال را پاک کنند
+      if ('emote' in payload) existing.emote = payload.emote ?? null;
+      if ('action' in payload) existing.action = payload.action ?? null;
       existing.lastSeen = performance.now();
+      // فقط وقتی نام کاربر تغییر کرد، برچسب بالای سر را دوباره رندر کن
+      if (usernameChanged) set({ remoteIds: Array.from(remoteMap.keys()) });
       return;
     }
 
+    const startX = Number.isFinite(payload.x) ? payload.x : 0;
+    const startZ = Number.isFinite(payload.z) ? payload.z : 0;
+    const startRot = Number.isFinite(payload.rot) ? payload.rot : 0;
+
     remoteMap.set(id, {
       id,
-      target: { x: payload.x, z: payload.z },
-      current: { x: payload.x, z: payload.z },
-      targetRot: payload.rot,
-      rot: payload.rot,
+      target: { x: startX, z: startZ },
+      current: { x: startX, z: startZ },
+      targetRot: startRot,
+      rot: startRot,
       seat: payload.seat ?? null,
       username: payload.username || 'مهمان',
       avatarIndex: payload.avatarIndex ?? null,
+      emote: payload.emote ?? null,
+      emoteUntil: 0,
+      action: payload.action ?? null,
+      actionUntil: 0,
       lastSeen: performance.now(),
     });
 
     set({ remoteIds: Array.from(remoteMap.keys()) });
+  },
+
+  // فقط اکشن/ایموت را عوض کن (بدون دست‌زدن به موقعیت)
+  patchRemote: (id, patch) => {
+    const entry = remoteMap.get(id);
+    if (!entry) return;
+    Object.assign(entry, patch);
+    entry.lastSeen = performance.now();
   },
 
   removeRemote: (id) => {
@@ -163,12 +238,12 @@ export const usePlayerStore = create((set, get) => ({
     return best;
   },
 
-  // نزدیک‌ترین درخت برای کالیژن
+  // نزدیک‌ترین درخت برای کالیژن (فاصله‌ی خام تا مرکز تنه)
   nearestTree: (x, z, maxDist) => {
     let hit = null;
     let bestDist = maxDist;
     for (const tree of TREES) {
-      const dist = Math.hypot(tree.x - x, tree.z - z) - tree.scale * 0.45;
+      const dist = Math.hypot(tree.x - x, tree.z - z);
       if (dist < bestDist) {
         bestDist = dist;
         hit = tree;

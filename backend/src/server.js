@@ -13,6 +13,7 @@ import { messagesRouter } from './routes/messages.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { callsRouter } from './routes/calls.js';
 import { ablyRouter } from './routes/ably.js';
+import { livekitRouter } from './routes/livekit.js';
 
 
 dotenv.config();
@@ -43,6 +44,7 @@ app.use('/upload', uploadRouter);
 app.use('/api/calls', callsRouter);
 app.use('/api/rooms', roomsRouter);
 app.use('/api/ably', ablyRouter);
+app.use('/api/livekit', livekitRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/notifications', notificationsRouter);
 

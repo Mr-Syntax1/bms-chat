@@ -7,18 +7,20 @@ import Ground, { AmbientSetup } from './Ground';
 import Forest from './Forest';
 import Campfire from './Campfire';
 import Van from './Van';
+import Decorations from './Decorations';
+import AmbientAudio from './AmbientAudio';
 import { CAMP_RADIUS } from '../sceneLayout';
 
 // کرم شب‌تاب: نقاط نورانی آرام اطراف کمپ
 function Fireflies() {
   return (
     <Sparkles
-      count={70}
-      scale={[CAMP_RADIUS * 1.5, 5, CAMP_RADIUS * 1.5]}
+      count={90}
+      scale={[CAMP_RADIUS * 1.6, 5, CAMP_RADIUS * 1.6]}
       position={[0, 1.6, 0]}
       size={3.6}
       speed={0.22}
-      opacity={0.5}
+      opacity={0.55}
       color="#ffe07a"
       noise={1.4}
     />
@@ -126,9 +128,13 @@ export default function CozyScene() {
 
       <Ground />
       <Forest />
+      <Decorations />
       <Campfire />
       <Van />
       <Fireflies />
+
+      {/* صدای محیطی مکانی: آتش، جیرجیرک و باد */}
+      <AmbientAudio />
 
       {/* پس‌پردازش سبک: بلوم برای آتش، وینیت برای تمرکز بصری */}
       <EffectComposer multisampling={0}>

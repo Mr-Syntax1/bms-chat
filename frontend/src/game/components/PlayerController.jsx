@@ -2,22 +2,37 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { CAMP_RADIUS, FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, SEAT_HEIGHT, VAN } from '../sceneLayout';
+import { FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, VAN, WALK_RADIUS } from '../sceneLayout';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { getInteractables, resolveInteractableKey } from '../interactionRegistry';
+import { playPositionalOneShot } from '../audio';
+import { publishPlayerAction } from '../hooks/useGameSync';
+import Character from './Character';
+import { GUITAR_SOUND, YUM_SOUND } from '../sounds';
 
-const WALK_SPEED = 3.4;
-const RUN_SPEED = 6.2;
-const ACCEL = 13;
-const DAMPING = 11;
-const TURN_LERP = 0.18;
-const BODY_RADIUS = 0.38;
+const WALK_SPEED = 3.6;
+const RUN_SPEED = 6.8;
+const ACCEL = 14;
+const DAMPING = 12;
+const TURN_LERP = 0.2;
+const BODY_RADIUS = 0.42;
+const GUITAR_DURATION = 6000;
+const MARSHMALLOW_DURATION = 3000;
+const MARSHMALLOW_READY_HOLD = 4000;
+const EMOTE_DURATION = 3400;
 
-// کنترلر بازیکن محلی: WASD + دویدن، کالیژن دایره‌ای، دوربین سوم‌شخص
-export default function PlayerController() {
+const EMOTES = {
+  Digit1: 'wave',
+  Digit2: 'dance',
+  Digit3: 'laugh',
+  Digit4: 'celebrate',
+  Digit5: 'sleep',
+};
+
+// کنترلر بازیکن محلی: WASD + دویدن، کالیژن، دوربین سوم‌شخص، اکشن‌ها و ایموت‌ها
+export default function PlayerController({ roomId, user }) {
   const { camera, gl } = useThree();
   const groupRef = useRef(null);
-  const bodyRef = useRef(null);
   const [, getKeys] = useKeyboardControls();
 
   const velocity = useRef(new THREE.Vector3());
@@ -25,16 +40,27 @@ export default function PlayerController() {
   const rayOrigin = useMemo(() => new THREE.Vector3(), []);
   const rayDirection = useMemo(() => new THREE.Vector3(), []);
   const pointer = useRef({ x: 0 });
-  const smoothLook = useRef(new THREE.Vector3(0, 1.5, 8.5));
+  const smoothLook = useRef(new THREE.Vector3(0, 1.5, 10.5));
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
   const desiredCam = useRef(new THREE.Vector3());
+  const raycastTimer = useRef(0);
+  const movingRef = useRef(false);
+  const runningRef = useRef(false);
+
+  // تایمرهای اکشن
+  const guitarTimer = useRef(null);
+  const marshmallowTimer = useRef(null);
+  const emoteTimer = useRef(null);
 
   const setLocalTransform = usePlayerStore((s) => s.setLocalTransform);
   const setNearFire = usePlayerStore((s) => s.setNearFire);
   const setHovered = usePlayerStore((s) => s.setHovered);
+  const seated = usePlayerStore((s) => s.seated);
+  const emote = usePlayerStore((s) => s.emote);
+  const action = usePlayerStore((s) => s.action);
   const local = usePlayerStore((s) => s.local);
 
-  // موس برای چرخش دوربین (کلیک-درگ)
+  // چرخش دوربین با درگ موس
   useEffect(() => {
     const el = gl.domElement;
     const onPointerMove = (event) => {
@@ -45,22 +71,117 @@ export default function PlayerController() {
     return () => el.removeEventListener('pointermove', onPointerMove);
   }, [gl]);
 
-  // تعامل با آتش/ون: E نشستن/بلند شدن، F چراغ ون
+  // کلیدهای تعاملی: E نشستن، F چراغ ون، G گیتار، M مارشمالو، 1..5 ایموت
   useEffect(() => {
-    const onKeyDown = (event) => {
-      const state = usePlayerStore.getState();
-      if (event.code === 'KeyE') {
-        event.preventDefault();
-        state.sitAuto();
-      }
-      if (event.code === 'KeyF') state.setHeadlights(!state.headlights);
+    const clearTimers = () => {
+      if (guitarTimer.current) clearTimeout(guitarTimer.current);
+      if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
+      if (emoteTimer.current) clearTimeout(emoteTimer.current);
+      guitarTimer.current = null;
+      marshmallowTimer.current = null;
+      emoteTimer.current = null;
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
 
-  // Raycasting سبک برای تشخیص شیء مقابل و نمایش راهنمای تعامل
-  const raycastTimer = useRef(0);
+    const onKeyDown = (event) => {
+      if (event.repeat) return;
+      const state = usePlayerStore.getState();
+      // موقعیت لحظه‌ای برای صدای مکانی (از state زنده خوانده می‌شود)
+      const { x, z } = state.local;
+
+      switch (event.code) {
+        case 'KeyE':
+          event.preventDefault();
+          state.sitAuto();
+          break;
+        case 'KeyF':
+          state.setHeadlights(!state.headlights);
+          break;
+        case 'KeyG': {
+          if (!state.nearFire) return;
+          // اگر گیتار در حال پخش است، متوقف کن
+          if (state.action === 'guitar') {
+            state.endAction();
+            publishPlayerAction(roomId, user, 'action-end');
+            if (guitarTimer.current) clearTimeout(guitarTimer.current);
+            guitarTimer.current = null;
+            return;
+          }
+          state.startAction('guitar');
+          playPositionalOneShot(GUITAR_SOUND, [x, 1.2, z], { volume: 0.9 });
+          publishPlayerAction(roomId, user, 'action', { action: 'guitar', duration: GUITAR_DURATION });
+          if (guitarTimer.current) clearTimeout(guitarTimer.current);
+          guitarTimer.current = setTimeout(() => {
+            usePlayerStore.getState().endAction();
+            publishPlayerAction(roomId, user, 'action-end');
+          }, GUITAR_DURATION);
+          break;
+        }
+        case 'KeyM': {
+          if (!state.nearFire) return;
+          if (state.action === 'marshmallow') {
+            state.endAction();
+            publishPlayerAction(roomId, user, 'action-end');
+            if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
+            marshmallowTimer.current = null;
+            return;
+          }
+          state.startAction('marshmallow');
+          state.setMarshmallow('roasting');
+          publishPlayerAction(roomId, user, 'action', {
+            action: 'marshmallow',
+            duration: MARSHMALLOW_DURATION + MARSHMALLOW_READY_HOLD,
+          });
+          if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
+          // بعد از ۳ ثانیه قهوه‌ای می‌شود و صدای yum پخش می‌شود
+          marshmallowTimer.current = setTimeout(() => {
+            const s = usePlayerStore.getState();
+            s.setMarshmallow('ready');
+            playPositionalOneShot(YUM_SOUND, [x, 1.2, z], { volume: 0.85 });
+            publishPlayerAction(roomId, user, 'marshmallow-ready');
+            // چند لحظه بعد سیخ برداشته می‌شود تا حرکت قفل نماند
+            marshmallowTimer.current = setTimeout(() => {
+              const s2 = usePlayerStore.getState();
+              if (s2.action === 'marshmallow') {
+                s2.endAction();
+                publishPlayerAction(roomId, user, 'action-end');
+              }
+              marshmallowTimer.current = null;
+            }, MARSHMALLOW_READY_HOLD);
+          }, MARSHMALLOW_DURATION);
+          break;
+        }
+        default:
+          break;
+      }
+
+      // ایموت‌ها
+      const emoteName = EMOTES[event.code];
+      if (emoteName) {
+        const state2 = usePlayerStore.getState();
+        state2.startEmote(emoteName, EMOTE_DURATION);
+        publishPlayerAction(roomId, user, 'emote', { emote: emoteName, duration: EMOTE_DURATION });
+        if (emoteTimer.current) clearTimeout(emoteTimer.current);
+        emoteTimer.current = setTimeout(() => {
+          usePlayerStore.getState().endEmote();
+        }, EMOTE_DURATION);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      clearTimers();
+    };
+  }, [roomId, user]);
+
+  // هنگام خروج از بازی، اکشن/ایموت باز را ببند
+  useEffect(() => {
+    return () => {
+      const state = usePlayerStore.getState();
+      if (state.action) state.endAction();
+      if (state.emote) state.endEmote();
+    };
+  }, []);
 
   useFrame((_, rawDelta) => {
     const group = groupRef.current;
@@ -70,35 +191,32 @@ export default function PlayerController() {
     const keys = getKeys();
     const state = usePlayerStore.getState();
 
-    // ---- چرخش دوربین با درگ ----
-    const camDist = 8.5;
-    const camHeight = 4.6;
+    const camDist = 10.5;
+    const camHeight = 5.2;
 
+    // ---- حالت نشسته ----
     if (state.seated && state.seatIndex !== null) {
-      // در حالت نشسته، دوربین قفل روی صندلی است
       const spot = SEAT_SPOTS[state.seatIndex];
       group.position.set(spot.x, 0, spot.z);
       group.rotation.y = spot.rotation;
-      desiredCam.current.set(spot.x * 0.4, 2.9, spot.z * 0.4);
+      desiredCam.current.set(spot.x * 0.35, 3.4, spot.z * 0.35);
       camera.position.lerp(desiredCam.current, 0.06);
-      camera.lookAt(0, 1.0, 0);
+      camera.lookAt(0, 1.1, 0);
       setNearFire(true);
-      // بدن روی کنده می‌نشیند
-      if (bodyRef.current) bodyRef.current.position.y = SEAT_HEIGHT;
       setLocalTransform(spot.x, spot.z, spot.rotation, false);
       velocity.current.multiplyScalar(0.5);
+      movingRef.current = false;
+      runningRef.current = false;
       return;
     }
 
-    if (bodyRef.current) bodyRef.current.position.y = 0;
-
-    // ---- ورودی محور ----
+    // ---- ورودی ----
     const virtual = state.virtualInput;
     const forward = (keys.forward || virtual.forward ? 1 : 0) - (keys.backward || virtual.backward ? 1 : 0);
     const strafe = (keys.right || virtual.right ? 1 : 0) - (keys.left || virtual.left ? 1 : 0);
     const running = keys.run || virtual.run;
+    const emoting = Boolean(state.emote);
 
-    // جهت دوربین روی صفحه XZ
     const camAngle = pointer.current.x;
     const sin = Math.sin(camAngle);
     const cos = Math.cos(camAngle);
@@ -106,7 +224,8 @@ export default function PlayerController() {
     const inputX = strafe * cos + forward * sin;
     const inputZ = strafe * sin - forward * cos;
     const inputLength = Math.hypot(inputX, inputZ);
-    const moving = inputLength > 0.01;
+    // در حال ایموت یا اکشن، حرکت قفل می‌شود
+    const moving = inputLength > 0.01 && !emoting && state.action === null;
 
     const maxSpeed = running ? RUN_SPEED : WALK_SPEED;
     const targetVelocity = velocity.current;
@@ -125,9 +244,9 @@ export default function PlayerController() {
     let nextX = local.x + targetVelocity.x * delta;
     let nextZ = local.z + targetVelocity.z * delta;
 
-    // مرز دایره‌ای کمپ
+    // مرز بیرونی جنگل
     const distFromCenter = Math.hypot(nextX, nextZ);
-    const maxRadius = CAMP_RADIUS - BODY_RADIUS;
+    const maxRadius = WALK_RADIUS - BODY_RADIUS;
     if (distFromCenter > maxRadius) {
       const ratio = maxRadius / distFromCenter;
       nextX *= ratio;
@@ -144,27 +263,45 @@ export default function PlayerController() {
       targetVelocity.multiplyScalar(0.3);
     }
 
-    // کالیژن با درختان نزدیک
-    const tree = state.nearestTree(nextX, nextZ, 3);
+    // کالیژن با درختان (شعاع تنه ≈ ۰.۳۵ × مقیاس درخت)
+    const tree = state.nearestTree(nextX, nextZ, 3.2);
     if (tree) {
       const dx = nextX - tree.x;
       const dz = nextZ - tree.z;
       const d = Math.hypot(dx, dz) || 1;
-      const minDist = tree.scale * 0.5 + BODY_RADIUS;
+      const minDist = tree.scale * 0.36 + BODY_RADIUS;
       if (d < minDist) {
         nextX = tree.x + (dx / d) * minDist;
         nextZ = tree.z + (dz / d) * minDist;
       }
     }
 
-    // کالیژن با ون (جعبه‌ی ساده)
-    if (Math.abs(nextX - VAN.x) < 3.4 && Math.abs(nextZ - VAN.z) < 2.4) {
-      nextX = local.x;
-      nextZ = local.z;
+    // کالیژن با ون در فضای محلی ون (چون ون چرخیده است)
+    const cosV = Math.cos(-VAN.rotation);
+    const sinV = Math.sin(-VAN.rotation);
+    const relX = nextX - VAN.x;
+    const relZ = nextZ - VAN.z;
+    const localX = relX * cosV - relZ * sinV;
+    const localZ = relX * sinV + relZ * cosV;
+    const halfX = 2.7 + BODY_RADIUS;
+    const halfZ = 2.0 + BODY_RADIUS;
+    if (Math.abs(localX) < halfX && Math.abs(localZ) < halfZ) {
+      // بازیکن را به نزدیک‌ترین لبه‌ی جعبه‌ی ون هل بده
+      const pushX = halfX - Math.abs(localX);
+      const pushZ = halfZ - Math.abs(localZ);
+      let newLocalX = localX;
+      let newLocalZ = localZ;
+      if (pushX < pushZ) newLocalX = Math.sign(localX || 1) * halfX;
+      else newLocalZ = Math.sign(localZ || 1) * halfZ;
+
+      const cosB = Math.cos(VAN.rotation);
+      const sinB = Math.sin(VAN.rotation);
+      nextX = VAN.x + newLocalX * cosB - newLocalZ * sinB;
+      nextZ = VAN.z + newLocalX * sinB + newLocalZ * cosB;
       targetVelocity.multiplyScalar(0.3);
     }
 
-    // ---- اعمال چرخش نرم به سمت جهت حرکت ----
+    // ---- چرخش نرم ----
     const speed = Math.hypot(targetVelocity.x, targetVelocity.z);
     let targetRot = group.rotation.y;
     if (speed > 0.25) {
@@ -175,42 +312,35 @@ export default function PlayerController() {
     while (rotDelta < -Math.PI) rotDelta += Math.PI * 2;
     group.rotation.y += rotDelta * TURN_LERP;
 
-    // ---- انیمیشن راه رفتن سبک (bob) ----
-    if (bodyRef.current) {
-      const bob = speed > 0.2 ? Math.sin(performance.now() * 0.012) * 0.05 : 0;
-      bodyRef.current.position.y = bob;
-      bodyRef.current.rotation.z = speed > 0.2 ? Math.sin(performance.now() * 0.006) * 0.05 : 0;
-    }
-
     group.position.set(nextX, 0, nextZ);
 
-    // ---- به‌روزرسانی Store ----
+    // ---- Store ----
     setLocalTransform(nextX, nextZ, group.rotation.y, speed > 0.15);
+    movingRef.current = speed > 0.2;
+    runningRef.current = running && speed > 0.2;
 
-    // شعاع تعامل با آتش باید شامل کنده‌های نشستن (SEAT_RADIUS) هم بشود
-    const nearFire = Math.hypot(nextX, nextZ) < SEAT_RADIUS + 1.1;
+    const nearFire = Math.hypot(nextX, nextZ) < SEAT_RADIUS + 1.6;
     setNearFire(nearFire);
 
-    // ---- دوربین سوم‌شخص نرم ----
+    // ---- دوربین سوم‌شخص ----
     desiredCam.current.set(
       nextX + Math.sin(camAngle) * camDist,
       camHeight,
       nextZ + Math.cos(camAngle) * camDist
     );
     camera.position.lerp(desiredCam.current, 1 - Math.pow(0.0016, delta));
-    lookTarget.set(nextX, 1.35, nextZ);
+    lookTarget.set(nextX, 1.5, nextZ);
     smoothLook.current.lerp(lookTarget, 1 - Math.pow(0.0009, delta));
     camera.lookAt(smoothLook.current);
 
-    // ---- Raycast سبک از سمت بازیکن (هر ۱۰۰ میلی‌ثانیه) ----
+    // ---- Raycast تعامل ----
     raycastTimer.current += delta;
     if (raycastTimer.current > 0.1) {
       raycastTimer.current = 0;
-      const origin = rayOrigin.set(nextX, 1.1, nextZ);
-      // جهت نگاه بازیکن: محور +Z مدل بعد از چرخش
-      const dir = rayDirection.set(Math.sin(group.rotation.y), 0, Math.cos(group.rotation.y));
-      raycaster.current.set(origin, dir);
-      raycaster.current.far = 4.5;
+      rayOrigin.set(nextX, 1.1, nextZ);
+      rayDirection.set(Math.sin(group.rotation.y), 0, Math.cos(group.rotation.y));
+      raycaster.current.set(rayOrigin, rayDirection);
+      raycaster.current.far = 5;
       const hits = raycaster.current.intersectObjects(getInteractables(), true);
       setHovered(hits.length > 0 ? resolveInteractableKey(hits[0].object) : null);
     }
@@ -218,37 +348,19 @@ export default function PlayerController() {
 
   return (
     <group ref={groupRef} position={[local.x, 0, local.z]}>
-      <group ref={bodyRef}>
-        {/* کپسول بدنه */}
-        <mesh position={[0, 0.85, 0]} castShadow>
-          <capsuleGeometry args={[0.32, 0.86, 4, 10]} />
-          <meshStandardMaterial color="#f0b27a" roughness={0.75} />
-        </mesh>
-        {/* سر */}
-        <mesh position={[0, 1.72, 0]} castShadow>
-          <sphereGeometry args={[0.26, 14, 12]} />
-          <meshStandardMaterial color="#ffd9b3" roughness={0.8} />
-        </mesh>
-        {/* شال/روپوش */}
-        <mesh position={[0, 0.92, 0]} castShadow>
-          <cylinderGeometry args={[0.36, 0.42, 0.68, 10]} />
-          <meshStandardMaterial color="#7a5c9e" roughness={0.9} flatShading />
-        </mesh>
-        {/* چشم‌ها (جهت رو به +Z) */}
-        <mesh position={[0.1, 1.76, 0.22]}>
-          <sphereGeometry args={[0.035, 8, 8]} />
-          <meshStandardMaterial color="#20202a" />
-        </mesh>
-        <mesh position={[-0.1, 1.76, 0.22]}>
-          <sphereGeometry args={[0.035, 8, 8]} />
-          <meshStandardMaterial color="#20202a" />
-        </mesh>
-      </group>
+      <Character
+        moving={movingRef}
+        running={runningRef}
+        emote={emote}
+        action={action}
+        seated={seated}
+        castShadow
+      />
 
       {/* حلقه‌ی نشانگر بازیکن محلی */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.46, 0.56, 24]} />
-        <meshBasicMaterial color="#8ad6c1" transparent opacity={0.55} />
+      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.5, 0.62, 26]} />
+        <meshBasicMaterial color="#8ad6c1" transparent opacity={0.5} depthWrite={false} />
       </mesh>
     </group>
   );

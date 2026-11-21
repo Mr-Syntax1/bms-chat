@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import CozyScene from './components/CozyScene';
 import PlayerController from './components/PlayerController';
 import RemotePlayers from './components/RemotePlayers';
+import AudioRoot from './components/AudioRoot';
 import { useGameSync } from './hooks/useGameSync';
 import { KEY_MAP } from './controls';
 
@@ -28,9 +29,11 @@ export default function GameCanvas({ roomId, user }) {
           gl.setClearColor('#0b1020');
         }}
       >
+        {/* AudioListener باید قبل از افکت‌های صدای محیطی ساخته شود */}
+        <AudioRoot />
         <Suspense fallback={null}>
           <CozyScene />
-          <PlayerController />
+          <PlayerController roomId={roomId} user={user} />
           <RemotePlayers />
           <Preload all />
         </Suspense>
