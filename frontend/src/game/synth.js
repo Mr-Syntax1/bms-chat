@@ -1,5 +1,6 @@
-// صداسازی رویه‌ای (بدون فایل mp3): آتش، جیرجیرک و باد
+// صداسازی رویه‌ای (بدون فایل mp3): آتش، جیرجیرک، آب، گیتار، yum
 // خروجی هر تابع یک AudioBuffer قابل‌استفاده در THREE.PositionalAudio است.
+// توجه: هیچ سازنده‌ی صدای باد در این پروژه وجود ندارد (ممنوع).
 
 function noiseBuffer(context, seconds, fill) {
   const length = Math.floor(context.sampleRate * seconds);
@@ -42,25 +43,6 @@ export function makeCricketsBuffer(context) {
         const env = Math.sin((Math.PI * k) / dur) ** 2;
         data[start + k] += Math.sin((2 * Math.PI * freq * k) / sampleRate) * 0.12 * env;
       }
-    }
-  });
-}
-
-// باد: نویز صورتی با مدولاسیون دامنه‌ی آهسته
-export function makeWindBuffer(context) {
-  let b0 = 0;
-  let b1 = 0;
-  let b2 = 0;
-  return noiseBuffer(context, 8, (data, sampleRate) => {
-    for (let i = 0; i < data.length; i += 1) {
-      const white = Math.random() * 2 - 1;
-      // فیلتر پایین‌گذر ساده
-      b0 = 0.99 * b0 + 0.01 * white;
-      b1 = 0.96 * b1 + 0.04 * b0;
-      b2 = 0.9 * b2 + 0.1 * b1;
-      const t = i / sampleRate;
-      const mod = 0.55 + 0.45 * Math.sin(t * 0.35) * Math.sin(t * 0.11 + 1.3);
-      data[i] = b2 * 9 * mod;
     }
   });
 }
@@ -138,7 +120,6 @@ export const PROCEDURAL_FACTORIES = {
   fire: makeFireBuffer,
   campfire: makeFireBuffer,
   crickets: makeCricketsBuffer,
-  wind: makeWindBuffer,
   water: makeWaterBuffer,
   guitar: makeGuitarBuffer,
   guitar1: makeGuitarBuffer,

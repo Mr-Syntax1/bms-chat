@@ -85,6 +85,20 @@ function Parchment({ index, spot }) {
   const collected = usePlayerStore((s) => s.collected.parchments.includes(index));
   const near = useNearby(`parchment-${index}`);
   const ref = useRef(null);
+  // لحظه‌ی کشف: پس از برداشتن، ذرات ستاره‌ای کوتاه نمایش داده می‌شود
+  const [justCollected, setJustCollected] = useState(false);
+  const prevCollected = useRef(collected);
+
+  useEffect(() => {
+    if (collected && !prevCollected.current) {
+      setJustCollected(true);
+      const timer = setTimeout(() => setJustCollected(false), 2600);
+      prevCollected.current = collected;
+      return () => clearTimeout(timer);
+    }
+    prevCollected.current = collected;
+    return undefined;
+  }, [collected]);
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
@@ -92,7 +106,14 @@ function Parchment({ index, spot }) {
     ref.current.rotation.y = spot.rotation + clock.elapsedTime * 0.35;
   });
 
-  if (collected) return null;
+  if (collected) {
+    if (!justCollected) return null;
+    return (
+      <group position={[spot.x, 0, spot.z]}>
+        <StarBurst active />
+      </group>
+    );
+  }
 
   return (
     <group position={[spot.x, 0, spot.z]}>

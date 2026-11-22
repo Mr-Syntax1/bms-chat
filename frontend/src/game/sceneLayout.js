@@ -90,14 +90,24 @@ export const SEAT_SPOTS = Array.from({ length: SEAT_COUNT }, (_, i) => {
 });
 
 // ---------------------------------------------------------------------------
-// درختان جنگل: ۱۵۰ درخت در نیمه‌ی غربی (x < 26)
+// درختان جنگل: تراکم گرادیانی — جنگل انبوه در غرب، تنک شدن به سمت ساحل
+// (ظرفیت پایه ۸۰۰ درخت؛ با کیفیت گرافیکی تنظیم می‌شود)
 // ---------------------------------------------------------------------------
-export const TREES = (() => {
+const TREE_MAX = 800;
+
+// احتمال پذیرش بر اساس x: در عمق جنگل (x<-50) تقریباً همه، نزدیک ساحل (x>10) کم
+function densityWeight(x) {
+  if (x >= 26) return 0;
+  const t = (x + 95) / 121; // 0 → x=-95 (عمق جنگل)، 1 → x=26 (لبه)
+  return 0.18 + 0.82 * (1 - t) ** 1.35;
+}
+
+export function buildTrees(limit = TREE_MAX) {
   const rand = mulberry32(20261121);
   const list = [];
   let guard = 0;
 
-  while (list.length < 150 && guard < 4000) {
+  while (list.length < limit && guard < limit * 45) {
     guard += 1;
     const x = -95 + rand() * 121; // -95 .. 26
     const z = -95 + rand() * 190;
@@ -106,7 +116,12 @@ export const TREES = (() => {
     if (Math.hypot(x - VAN.x, z - VAN.z) < 6.5) continue;
     if (Math.hypot(x - SPAWN.x, z - SPAWN.z) < 4) continue;
     if (isNearQuestSpot(x, z)) continue;
+    // مسیر باز بین کمپ و اسکله باید قابل عبور بماند
+    if (Math.abs(z) < 4.5 && x > 6 && x < SAND_START_X) continue;
     if (list.some((t) => Math.hypot(t.x - x, t.z - z) < 3.4)) continue;
+
+    // تراکم گرادیانی: در لبه‌ها بعضی نقاط رد می‌شوند
+    if (rand() > densityWeight(x)) continue;
 
     // ۰ = opt/Pine ، ۱ = trees/Pine2 ، ۲ = trees/Pine
     const variantRoll = rand();
@@ -121,7 +136,10 @@ export const TREES = (() => {
     });
   }
   return list;
-})();
+}
+
+// فهرست پیش‌فرض (HIGH) — کامپوننت Forest می‌تواند نسخه‌ی سبک‌تر بسازد
+export const TREES = buildTrees(TREE_MAX);
 
 // ---------------------------------------------------------------------------
 // درختان نخل ساحل (۲۰ عدد) — مقیاس نهایی با targetHeight نرمال می‌شود

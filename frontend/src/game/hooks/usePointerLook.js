@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSettingsStore } from '../stores/useSettingsStore';
 
-const SENSITIVITY = 0.0022;
+const BASE_SENSITIVITY = 0.0022;
 const PITCH_LIMIT = (60 * Math.PI) / 180; // -۶۰ تا +۶۰ درجه
 
 /**
@@ -28,8 +29,12 @@ export function usePointerLook({ onExit } = {}) {
 
     const onMouseMove = (event) => {
       if (document.pointerLockElement !== document.body) return;
-      yaw.current -= event.movementX * SENSITIVITY;
-      pitch.current -= event.movementY * SENSITIVITY;
+      // حساسیت/معکوس‌سازی را زنده از استور می‌خوانیم تا اسلایدر بلافاصله اثر کند
+      const { lookSensitivity, invertY } = useSettingsStore.getState().controls;
+      const sensitivity = BASE_SENSITIVITY * (Number(lookSensitivity) || 1);
+      const vertical = invertY ? -event.movementY : event.movementY;
+      yaw.current -= event.movementX * sensitivity;
+      pitch.current -= vertical * sensitivity;
       pitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch.current));
     };
 

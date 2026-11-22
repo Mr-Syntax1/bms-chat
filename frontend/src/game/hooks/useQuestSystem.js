@@ -3,6 +3,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { registerQuestItem } from '../questRegistry';
 import { playPositionalOneShot } from '../audio';
 import { QUEST_SPOTS } from '../sceneLayout';
+import { getActiveQuestStep, describeQuestStep } from '../questSteps';
 import { WATER_SOUND } from '../sounds';
 
 // صدای جادویی مأموریت (زنگ دو-نتی رویه‌ای از audio.js)
@@ -154,17 +155,8 @@ export function useQuestSystem() {
     return () => unsubs.forEach((fn) => fn());
   }, [actions]);
 
-  // متن مأموریت فعلی برای Quest Tracker
-  const currentQuest = usePlayerStore((s) => {
-    const q = s.quests;
-    if (q.chestOpened) return 'گنج پیدا شد! داستان کامل شد 🎉';
-    if (!q.hasKey) {
-      if (q.parchments < 3) return `تکه‌های نقشه: ${q.parchments}/3 🗺️`;
-      if (q.lanterns < 5) return `فانوس‌ها را روشن کن: ${q.lanterns}/5 🏮`;
-      return 'کنار اسکله ماهیگیری کن 🎣';
-    }
-    return 'صندوقچه را کنار فانوس دریایی باز کن 🗝️';
-  });
+  // متن مأموریت فعلی برای Quest Tracker — از منبع مشترک با دفترچه
+  const currentQuest = usePlayerStore((s) => describeQuestStep(getActiveQuestStep(s.quests)));
 
   return { currentQuest };
 }

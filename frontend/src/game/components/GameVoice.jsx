@@ -4,6 +4,7 @@ import { useLivekitToken } from '../hooks/useLivekitToken';
 import { useSpatialVoice } from '../hooks/useSpatialVoice';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { setVoiceController, clearVoiceController } from '../voiceControl';
+import { attachVoiceActivity, detachVoiceActivity } from '../voiceActivity';
 
 // فعال‌سازی خودکار میکروفن به‌محض اتصال (بعد از کلیک Start)
 function MicAutoEnable({ micEnabled }) {
@@ -27,7 +28,10 @@ function VoiceBridge({ registerRoom, micEnabled, setMicEnabled }) {
   useEffect(() => {
     registerRoom(room);
     setVoiceReady(Boolean(room));
+    // نشانگر صحبت فقط از رویداد واقعی LiveKit تغذیه می‌شود
+    if (room) attachVoiceActivity(room);
     return () => {
+      detachVoiceActivity();
       registerRoom(null);
       setVoiceReady(false);
     };
@@ -53,12 +57,15 @@ function VoiceBridge({ registerRoom, micEnabled, setMicEnabled }) {
 /**
  * صدای ویس LiveKit به‌صورت کامپوننت مستقل (sibling کانواس، نه والد آن)
  * تا با آماده شدن توکن، Canvas بازی remount نشود.
- * اگر LiveKit پیکربندی نشده باشد هیچ چیزی رندر نمی‌کند.
+ * توکن از همان ابتدا گرفته می‌شود (برای نمایش پیشرفت واقعی در صفحه‌ی لودینگ)،
+ * اما اتصال به اتاق فقط پس از `connect` (یعنی بعد از کلیک ورود) انجام می‌شود
+ * تا درخواست دسترسی میکروفن پیش از اقدام کاربر مطرح نشود.
  */
-export default function GameVoice({ roomId, enabled = true }) {
+export default function GameVoice({ roomId, enabled = true, connect = true }) {
   const { token, serverUrl, status, error } = useLivekitToken({ roomId, enabled });
-  const { micEnabled, setMicEnabled, registerRoom } = useSpatialVoice({ enabled });
+  const { micEnabled, setMicEnabled, registerRoom } = useSpatialVoice({ enabled: enabled && connect });
   const setVoiceError = usePlayerStore((s) => s.setVoiceError);
+  const setVoiceTokenReady = usePlayerStore((s) => s.setVoiceTokenReady);
 
   // وضعیت خطای LiveKit را در استور نگه می‌داریم تا HUD پیام درست نشان دهد
   useEffect(() => {
@@ -66,9 +73,14 @@ export default function GameVoice({ roomId, enabled = true }) {
     else if (status === 'ready') setVoiceError(null);
   }, [status, error, setVoiceError]);
 
-  const ready = status === 'ready' && Boolean(token) && Boolean(serverUrl);
+  // توکن آماده است؟ (مستقل از اتصال واقعی به اتاق)
+  const tokenReady = status === 'ready' && Boolean(token) && Boolean(serverUrl);
+  useEffect(() => {
+    setVoiceTokenReady(tokenReady);
+    return () => setVoiceTokenReady(false);
+  }, [tokenReady, setVoiceTokenReady]);
 
-  if (!ready) return null;
+  if (!tokenReady || !connect) return null;
 
   return (
     <LiveKitRoom

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { KeyboardControls, AdaptiveDpr, Preload } from '@react-three/drei';
+import { KeyboardControls, AdaptiveDpr, Preload, PerformanceMonitor } from '@react-three/drei';
 import * as THREE from 'three';
 import CozyScene from './components/CozyScene';
 import PlayerController from './components/PlayerController';
@@ -8,20 +8,45 @@ import RemotePlayers from './components/RemotePlayers';
 import AudioRoot from './components/AudioRoot';
 import { useGameSync } from './hooks/useGameSync';
 import { KEY_MAP } from './controls';
+import { useSettingsStore, useQualityPreset } from './stores/useSettingsStore';
+
+// پایین‌آوردن خودکار کیفیت تنها پس از افت پایدار (نه یک فریم کند)
+let downgradeCooldown = 0;
 
 export default function GameCanvas({ roomId, user, look, active = true }) {
   // سینک Ably در بالاترین سطح کامپوننت بازی
   useGameSync({ roomId, user, enabled: Boolean(roomId && user?.id) });
 
+  const preset = useQualityPreset();
+  const setQuality = useSettingsStore((s) => s.setQuality);
+
+  const handleDecline = (api) => {
+    // هیسترزیس: فقط اگر FPS مدتی پایین بماند و کیفیت بالاتر از کم باشد
+    const fps = api?.fps ?? 0;
+    const now = Date.now();
+    if (fps > 42 || now < downgradeCooldown) return;
+    const { quality, controls } = useSettingsStore.getState();
+    if (!controls.autoQuality) return;
+    if (quality === 'high') {
+      setQuality('medium');
+      downgradeCooldown = now + 12000;
+    } else if (quality === 'medium') {
+      setQuality('low');
+      downgradeCooldown = now + 12000;
+    }
+  };
+
   return (
     <KeyboardControls map={KEY_MAP}>
       <Canvas
-        shadows
-        dpr={[1, 1.75]}
-        camera={{ position: [0, 2.2, 4], fov: 62, near: 0.1, far: 500 }}
+        shadows={preset.shadows}
+        dpr={[1, preset.dpr]}
+        camera={{ position: [0, 2.2, 4], fov: 62, near: 0.1, far: 400 }}
         gl={{
-          antialias: true,
+          antialias: preset.dpr >= 1.25,
           powerPreference: 'high-performance',
+          alpha: false,
+          stencil: false,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.05,
         }}
@@ -38,6 +63,8 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
           <Preload all />
         </Suspense>
         <AdaptiveDpr pixelated />
+        {/* نظارت بر فریم‌تایم برای پیشنهاد کاهش کیفیت (هیسترزیس داخلی) */}
+        <PerformanceMonitor iterations={8} ms={500} onDecline={handleDecline} />
       </Canvas>
     </KeyboardControls>
   );

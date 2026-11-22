@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { FIRE_KEEPOUT, FIRE_STONES, SEAT_SPOTS } from '../sceneLayout';
 import { registerInteractable } from '../interactionRegistry';
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { useQualityPreset } from '../stores/useSettingsStore';
 import { Model as BonfireModel } from '../models/Bonfire';
 import { Model as ChoppedLogModel } from '../models/ChoppedLog';
 
@@ -14,14 +15,12 @@ const SEAT_LOG_OFFSET_X = -0.69;
 const SEAT_LOG_OFFSET_Y = 0.51;
 
 export default function Campfire() {
+  const preset = useQualityPreset();
   const lightRef = useRef(null);
   const emberRef = useRef(null);
   const glowRef = useRef(null);
   const fireGroupRef = useRef(null);
   const stoneRef = useRef(null);
-  const marshmallowRef = useRef(null);
-  const marshmallow = usePlayerStore((s) => s.marshmallow);
-  const action = usePlayerStore((s) => s.action);
   const nearFire = usePlayerStore((s) => s.nearFire);
   const seated = usePlayerStore((s) => s.seated);
 
@@ -61,14 +60,7 @@ export default function Campfire() {
       glowRef.current.scale.setScalar(s);
       glowRef.current.material.opacity = 0.13 * flicker;
     }
-
-    if (marshmallowRef.current && marshmallow === 'roasting') {
-      marshmallowRef.current.rotation.z = Math.sin(t * 2.2) * 0.12;
-    }
   });
-
-  const marshmallowColor =
-    marshmallow === 'ready' ? '#b5763c' : marshmallow === 'burnt' ? '#2b1d15' : '#fff6e0';
 
   return (
     <group>
@@ -92,9 +84,9 @@ export default function Campfire() {
         intensity={38}
         distance={30}
         decay={1.6}
-        castShadow
+        castShadow={preset.shadows}
         shadow-bias={-0.0015}
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
       />
       <pointLight ref={emberRef} position={[0, 0.5, 0]} color="#ff6b2c" intensity={9} distance={11} decay={2} />
 
@@ -119,24 +111,6 @@ export default function Campfire() {
           <ChoppedLogModel position={[SEAT_LOG_OFFSET_X, SEAT_LOG_OFFSET_Y, 0]} />
         </group>
       ))}
-
-      {action === 'marshmallow' && (
-        <group position={[0.75, 0.2, 0.55]} rotation={[0, -0.5, 0]}>
-          <mesh position={[0, 0.9, 0]} rotation={[0, 0, 0.35]}>
-            <cylinderGeometry args={[0.022, 0.022, 1.9, 5]} />
-            <meshStandardMaterial color="#8a6b4a" roughness={0.9} />
-          </mesh>
-          <mesh ref={marshmallowRef} position={[0.32, 1.62, 0]}>
-            <cylinderGeometry args={[0.09, 0.09, 0.14, 10]} />
-            <meshStandardMaterial
-              color={marshmallowColor}
-              emissive={marshmallow === 'ready' ? '#c97b34' : '#000000'}
-              emissiveIntensity={marshmallow === 'ready' ? 0.35 : 0}
-              roughness={0.85}
-            />
-          </mesh>
-        </group>
-      )}
     </group>
   );
 }

@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, VAN, BOUNDS, DOCK, TREES } from '../sceneLayout';
+import { FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, VAN, BOUNDS, DOCK } from '../sceneLayout';
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { useSettingsStore } from '../stores/useSettingsStore';
+import { getNearbyTrees } from '../activeTrees';
 import { getInteractables, resolveInteractableKey } from '../interactionRegistry';
 import { findNearbyQuestItem } from '../questRegistry';
+import { getQuestTarget } from '../questSteps';
 import { playPositionalOneShot } from '../audio';
 import { publishPlayerAction } from '../hooks/useGameSync';
 import Character from './Character';
@@ -57,15 +60,48 @@ export default function PlayerController({ roomId, user, look, active = true }) 
   const raycastTimer = useRef(0);
   const movingRef = useRef(false);
   const runningRef = useRef(false);
+  const debugTimer = useRef(0);
+  // بافر ثابت برای کوئری گرید درختان (بدون تخصیص در هر فریم)
+  const treeBuf = useMemo(() => [], []);
 
   const guitarTimer = useRef(null);
   const marshmallowTimer = useRef(null);
   const emoteTimer = useRef(null);
 
+  // ---- حالت دیباگ جهت کاراکتر (Ctrl+Shift+F) ----
+  const debugRef = useRef({ enabled: false, lastPrint: 0 });
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      // Ctrl+Shift+F: روشن/خاموش کردن نمایش دیباگ
+      if (event.ctrlKey && event.shiftKey && event.code === 'KeyF') {
+        event.preventDefault();
+        debugRef.current.enabled = !debugRef.current.enabled;
+        usePlayerStore.getState().setFacingDebug(
+          debugRef.current.enabled
+            ? { yaw: 0, offset: 0, final: 0, model: '', dir: 0 }
+            : null
+        );
+        return;
+      }
+      if (!debugRef.current.enabled) return;
+      // [ و ] برای تنظیم زنده‌ی آفست مدل فعلی (گام ۱۵ درجه)
+      const step = event.shiftKey ? Math.PI / 12 : Math.PI / 36;
+      if (event.code !== 'BracketLeft' && event.code !== 'BracketRight') return;
+      const { character } = usePlayerStore.getState();
+      const settings = useSettingsStore.getState();
+      const current = settings.facingOverrides[character] ?? 0;
+      const next = current + (event.code === 'BracketRight' ? step : -step);
+      settings.setFacingOverride(character, next);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const setLocalTransform = usePlayerStore((s) => s.setLocalTransform);
   const setNearFire = usePlayerStore((s) => s.setNearFire);
   const setHovered = usePlayerStore((s) => s.setHovered);
   const setNearInteractable = usePlayerStore((s) => s.setNearInteractable);
+  const setQuestDistance = usePlayerStore((s) => s.setQuestDistance);
   const seated = usePlayerStore((s) => s.seated);
   const emote = usePlayerStore((s) => s.emote);
   const action = usePlayerStore((s) => s.action);
@@ -81,6 +117,20 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       guitarTimer.current = null;
       marshmallowTimer.current = null;
       emoteTimer.current = null;
+    };
+
+    // تایمرهای اکشن قبلی را می‌بندد تا با شروع اکشن جدید،
+    // رویداد کهنه (مثل yum بعد از گیتار) برای بازیکنان دیگر ارسال نشود
+    const cancelPendingAction = (state) => {
+      const hadAction = Boolean(state.action);
+      if (guitarTimer.current) clearTimeout(guitarTimer.current);
+      if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
+      guitarTimer.current = null;
+      marshmallowTimer.current = null;
+      if (hadAction) {
+        state.endAction();
+        publishPlayerAction(roomId, user, 'action-end');
+      }
     };
 
     const onKeyDown = (event) => {
@@ -119,10 +169,11 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             return;
           }
           const sound = GUITAR_SOUNDS[Math.floor(Math.random() * GUITAR_SOUNDS.length)];
+          // اگر اکشن دیگری (مثلاً مارشمالو) در جریان است، تایمر آن لغو می‌شود
+          cancelPendingAction(state);
           state.startAction('guitar');
           playPositionalOneShot(sound, [x, 1.2, z], { volume: 0.9 });
           publishPlayerAction(roomId, user, 'guitar', { sound, duration: GUITAR_DURATION });
-          if (guitarTimer.current) clearTimeout(guitarTimer.current);
           guitarTimer.current = setTimeout(() => {
             usePlayerStore.getState().endAction();
             publishPlayerAction(roomId, user, 'action-end');
@@ -138,6 +189,8 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             marshmallowTimer.current = null;
             return;
           }
+          // اگر گیتار در جریان است، تایمرش لغو و مارشمالو شروع می‌شود
+          cancelPendingAction(state);
           state.startAction('marshmallow');
           state.setMarshmallow('roasting');
           publishPlayerAction(roomId, user, 'action', {
@@ -168,6 +221,8 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       const emoteName = EMOTES[event.code];
       if (emoteName) {
         const state2 = usePlayerStore.getState();
+        // اکشن در جریان (گیتار/مارشمالو) با شروع ایموت لغو می‌شود
+        cancelPendingAction(state2);
         state2.startEmote(emoteName, EMOTE_DURATION);
         publishPlayerAction(roomId, user, 'emote', { emote: emoteName, duration: EMOTE_DURATION });
         if (emoteTimer.current) clearTimeout(emoteTimer.current);
@@ -225,6 +280,10 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       movingRef.current = false;
       runningRef.current = false;
       setNearInteractable(null);
+      const seatedTarget = getQuestTarget(state.quests, state.collected);
+      setQuestDistance(
+        seatedTarget ? Math.round(Math.hypot(seatedTarget.x - spot.x, seatedTarget.z - spot.z)) : null
+      );
       return;
     }
 
@@ -283,11 +342,12 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       targetVelocity.multiplyScalar(0.3);
     }
 
-    // کالیژن با درختان (بررسی فقط درختان نزدیک برای کارایی)
-    for (const tree of TREES) {
+    // کالیژن با درختان — گرید فضایی، فقط سلول‌های اطراف
+    const trees = getNearbyTrees(nextX, nextZ, treeBuf);
+    for (let i = 0; i < trees.length; i += 1) {
+      const tree = trees[i];
       const dx = nextX - tree.x;
       const dz = nextZ - tree.z;
-      if (Math.abs(dx) > 3 || Math.abs(dz) > 3) continue;
       const d = Math.hypot(dx, dz) || 0.0001;
       const minDist = tree.scale * 0.5 + BODY_RADIUS;
       if (d < minDist) {
@@ -337,6 +397,26 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     movingRef.current = speed > 0.2;
     runningRef.current = running && speed > 0.2;
 
+    // ---- گزارش دیباگ جهت (فقط وقتی روشن است، ۴ بار در ثانیه) ----
+    debugTimer.current += delta;
+    if (debugRef.current.enabled && debugTimer.current >= 0.25) {
+      debugTimer.current = 0;
+      const { character } = usePlayerStore.getState();
+      const settings = useSettingsStore.getState();
+      const offset = settings.facingOverrides[character] ?? 0;
+      let finalRot = group.rotation.y;
+      while (finalRot > Math.PI) finalRot -= Math.PI * 2;
+      while (finalRot < -Math.PI) finalRot += Math.PI * 2;
+      usePlayerStore.getState().setFacingDebug({
+        model: character,
+        yaw: group.rotation.y,
+        offset,
+        final: finalRot,
+        dir: Math.atan2(targetVelocity.x, targetVelocity.z),
+        speed,
+      });
+    }
+
     const nearFire = Math.hypot(nextX, nextZ) < SEAT_RADIUS + 1.6;
     setNearFire(nearFire);
 
@@ -383,6 +463,10 @@ export default function PlayerController({ roomId, user, look, active = true }) 
           }
           : null
       );
+
+      // راهنمای مسیر: فاصله تا هدف مرحله‌ی فعال (گردشده تا re-render کمینه شود)
+      const target = getQuestTarget(state.quests, state.collected);
+      setQuestDistance(target ? Math.round(Math.hypot(target.x - nextX, target.z - nextZ)) : null);
     }
   });
 
@@ -394,6 +478,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
         running={runningRef}
         emote={emote}
         action={action}
+        marshmallowStage={() => usePlayerStore.getState().marshmallow}
         seated={seated}
         castShadow
       />

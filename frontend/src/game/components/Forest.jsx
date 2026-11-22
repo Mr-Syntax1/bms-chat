@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { TREES } from '../sceneLayout';
+import { buildTrees } from '../sceneLayout';
 import { usePineModel } from '../models/pineParts';
+import { useQualityPreset } from '../stores/useSettingsStore';
+import { setActiveTrees } from '../activeTrees';
 
 const TARGET_HEIGHT = 7.6;
 
@@ -14,13 +16,22 @@ const URLS = [
 
 // درختان با InstancedMesh (یک InstancedMesh به‌ازای هر sub-mesh)
 export default function Forest() {
+  const preset = useQualityPreset();
   const pineOpt = usePineModel(URLS[0]);
   const pine2 = usePineModel(URLS[1]);
   const pine = usePineModel(URLS[2]);
 
-  const v0 = useMemo(() => TREES.filter((t) => t.variant === 0), []);
-  const v1 = useMemo(() => TREES.filter((t) => t.variant === 1), []);
-  const v2 = useMemo(() => TREES.filter((t) => t.variant === 2), []);
+  // چگالی درختان بر اساس کیفیت — seed ثابت، پس چیدمان پایدار است
+  const trees = useMemo(() => buildTrees(preset.treeDensity), [preset.treeDensity]);
+
+  // برخورد بازیکن باید فقط با درختان واقعاً رندرشده باشد
+  useEffect(() => {
+    setActiveTrees(trees);
+  }, [trees]);
+
+  const v0 = useMemo(() => trees.filter((t) => t.variant === 0), [trees]);
+  const v1 = useMemo(() => trees.filter((t) => t.variant === 1), [trees]);
+  const v2 = useMemo(() => trees.filter((t) => t.variant === 2), [trees]);
 
   return (
     <group>
@@ -89,7 +100,6 @@ function TreeSet({ model, trees }) {
           args={[part.geometry, part.material, matrices.length]}
           castShadow
           receiveShadow
-          frustumCulled={false}
         />
       ))}
     </group>

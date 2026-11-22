@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { subscribeSpatial, getSpatialSnapshot, usePlayerStore } from '../stores/usePlayerStore';
+import { volumeGains } from '../audio';
 
 const SPATIAL_TICK = 100;
 const ATTRIBUTE_MIN_INTERVAL = 250; // LiveKit نرخ آپدیت metadata را محدود می‌کند
@@ -64,12 +65,15 @@ export function useSpatialVoice({ enabled = true } = {}) {
       const snapshot = getSpatialSnapshot();
       const byId = new Map(snapshot.filter((p) => p.id !== 'local').map((p) => [p.id, p]));
 
+      // گین اسلایدرهای «صدای دوستان» و «کل» زنده خوانده می‌شود
+      const voiceGain = (volumeGains.voice ?? 1) * (volumeGains.master ?? 1);
+
       for (const participant of room.remoteParticipants.values()) {
         const pos = byId.get(participant.identity);
         const audioPubs = Array.from(participant.audioTrackPublications.values());
 
         if (!pos) {
-          for (const pub of audioPubs) if (pub.track) pub.track.setVolume?.(0.55);
+          for (const pub of audioPubs) if (pub.track) pub.track.setVolume?.(0.55 * voiceGain);
           continue;
         }
 
@@ -85,7 +89,7 @@ export function useSpatialVoice({ enabled = true } = {}) {
 
         for (const pub of audioPubs) {
           if (!pub.track) continue;
-          pub.track.setVolume?.(volume);
+          pub.track.setVolume?.(volume * voiceGain);
         }
       }
     };

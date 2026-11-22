@@ -49,6 +49,15 @@
   --color-error-500: #ef4444;
   --color-error-600: #dc2626;
 
+  /* پالت کمپ دنج جنگل */
+  --color-cozy-midnight: #171426;
+  --color-cozy-navy: #101827;
+  --color-cozy-orange: #ff9a4d;
+  --color-cozy-gold: #ffc66d;
+  --color-cozy-cream: #f5ebdd;
+  --color-cozy-forest: #5d9b78;
+  --color-cozy-voice: #65f5a0;
+
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08);
@@ -161,6 +170,181 @@
 
   100% {
     transform: translate(0, 0) scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   انیمیشن‌های کمپ دنج جنگل
+   --------------------------------------------------------------------------- */
+
+/* میله‌های اکولایزر نشانگر صحبت (CSS خالص) */
+@keyframes eq-bounce {
+
+  0%,
+  100% {
+    height: 22%;
+    opacity: 0.75;
+  }
+
+  50% {
+    height: 100%;
+    opacity: 1;
+  }
+}
+
+.eq-bar {
+  height: 40%;
+  transform-origin: bottom center;
+  animation: eq-bounce 900ms ease-in-out infinite;
+}
+
+.eq-bar-1 {
+  animation-delay: 0ms;
+}
+
+.eq-bar-2 {
+  animation-delay: 160ms;
+}
+
+.eq-bar-3 {
+  animation-delay: 320ms;
+}
+
+/* ستاره‌های صفحه‌ی لودینگ */
+@keyframes star-twinkle {
+
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: scale(1.15);
+  }
+}
+
+.loading-star {
+  position: absolute;
+  border-radius: 9999px;
+  background: #f5ebdd;
+  animation: star-twinkle 3.2s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+/* شناوری ملایم لوگو */
+@keyframes gentle-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.gentle-float {
+  animation: gentle-float 4s ease-in-out infinite;
+}
+
+/* ورود/خروج پنل و مودال */
+@keyframes cozy-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes cozy-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cozy-pop-in {
+  animation: cozy-pop-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cozy-fade-in {
+  animation: cozy-fade-in 280ms ease-out;
+}
+
+.toast-rise {
+  animation: toast-rise 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* حلقه‌ی تعامل */
+@keyframes ring-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: scale(1.12);
+    opacity: 0.9;
+  }
+}
+
+.interact-ring {
+  animation: ring-pulse 1.8s ease-in-out infinite;
+}
+
+/* درخشش آتش روی کارت‌های HUD */
+@keyframes ember-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(255 154 77 / 0.0), 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  }
+
+  50% {
+    box-shadow: 0 0 22px -4px rgb(255 154 77 / 0.35), 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  }
+}
+
+.ember-glow {
+  animation: ember-glow 4.5s ease-in-out infinite;
+}
+
+/* احترام به تنظیم کاهش حرکت */
+@media (prefers-reduced-motion: reduce) {
+
+  .eq-bar,
+  .loading-star,
+  .gentle-float,
+  .interact-ring,
+  .ember-glow,
+  .cozy-pop-in,
+  .cozy-fade-in,
+  .toast-rise {
+    animation: none !important;
   }
 }
 

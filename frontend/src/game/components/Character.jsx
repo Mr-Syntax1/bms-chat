@@ -9,7 +9,11 @@ import {
   CLIP_SUFFIX,
   TARGET_HEIGHT,
   characterUrl,
+  getFacingOffset,
+  getPropAnchor,
 } from '../models/characterConfig';
+import { useSettingsStore } from '../stores/useSettingsStore';
+import HeldProps from './HeldProps';
 
 // هر prop می‌تواند مقدار ثابت، ref یا تابع getter باشد (آپدیت بدون re-render)
 function resolve(value) {
@@ -29,6 +33,7 @@ export default function Character({
   running = false,
   emote = null,
   action = null,
+  marshmallowStage = null,
   seated = false,
   castShadow = false,
   ...props
@@ -39,6 +44,10 @@ export default function Character({
   const groupRef = useRef(null);
   const innerRef = useRef(null);
   const { scene, animations } = useGLTF(url);
+
+  // آفست جهت صورت؛ از استور خوانده می‌شود تا با Ctrl+Shift+F زنده قابل تنظیم باشد
+  const facingOverrides = useSettingsStore((s) => s.facingOverrides);
+  const facingOffset = getFacingOffset(model, facingOverrides);
 
   // کلون اسکلتی برای هر نمونه (مهم برای چند بازیکن)
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
@@ -168,12 +177,19 @@ export default function Character({
   // مقیاس و آفست عمودی بر اساس ارتفاع واقعی مدل
   const scale = TARGET_HEIGHT / config.height;
   const lift = -(config.minY || 0) * scale;
+  // لنگر پروپ مخصوص همین مدل (نسبت سر/بدن هر کاراکتر فرق دارد)
+  const propAnchor = getPropAnchor(model);
 
   return (
     <group ref={groupRef} {...props}>
       <group ref={innerRef} position={[0, lift, 0]}>
-        <group scale={scale}>
-          <primitive object={clone} />
+        {/* آفست جهت صورت جدا از yaw حرکت اعمال می‌شود تا هر دو مستقل بمانند */}
+        <group rotation={[0, facingOffset, 0]}>
+          <group scale={scale}>
+            <primitive object={clone} />
+          </group>
+          {/* پروپ‌های در دست: گیتار / سیخ مارشمالو */}
+          <HeldProps action={action} marshmallowStage={marshmallowStage} anchor={propAnchor} />
         </group>
       </group>
     </group>

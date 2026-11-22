@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { createPositionalLoop, createGlobalLoop } from '../audio';
-import { FIRE_SOUND, CRICKETS_SOUND, WIND_SOUND } from '../sounds';
+import { createPositionalLoop, setVolumeGains } from '../audio';
+import { FIRE_SOUND, CRICKETS_SOUND } from '../sounds';
+import { useSettingsStore } from '../stores/useSettingsStore';
 
 // چند نقطه در لبه‌ی جنگل برای جیرجیرک‌ها (صدای مکانی)
 const CRICKET_SPOTS = [
@@ -10,8 +11,16 @@ const CRICKET_SPOTS = [
   [-30, 1.8, 12],
 ];
 
-// صدای محیطی: آتش (مکانی، distance=20)، جیرجیرک (مکانی، distance=40)، باد سراسری
+// صدای محیطی: آتش (مکانی، distance=20) + جیرجیرک (مکانی، distance=40)
+// توجه: هیچ صدای بادی در بازی وجود ندارد و نباید اضافه شود.
 export default function AmbientAudio() {
+  const audio = useSettingsStore((s) => s.audio);
+
+  // تغییر اسلایدرهای صدا بلافاصله روی صداهای در حال پخش اثر می‌گذارد
+  useEffect(() => {
+    setVolumeGains(audio);
+  }, [audio]);
+
   useEffect(() => {
     // آتش: منبع صدا دقیقاً روی گودال آتش
     const fire = createPositionalLoop(FIRE_SOUND, [0, 0.85, 0], {
@@ -19,6 +28,7 @@ export default function AmbientAudio() {
       refDistance: 2.4,
       maxDistance: 20,
       rolloff: 1.9,
+      channel: 'fire',
     });
 
     // جیرجیرک: چند منبع مکانی در جنگل
@@ -28,23 +38,13 @@ export default function AmbientAudio() {
         refDistance: 8,
         maxDistance: 40,
         rolloff: 1.1,
+        channel: 'ambient',
       })
     );
-
-    // باد: بستر سراسری + یک لایه‌ی مکانی در جنگل
-    const wind = createPositionalLoop(WIND_SOUND, [-40, 13, 0], {
-      volume: 0.3,
-      refDistance: 20,
-      maxDistance: 120,
-      rolloff: 0.7,
-    });
-    const windBed = createGlobalLoop(WIND_SOUND, { volume: 0.16 });
 
     return () => {
       fire.dispose();
       crickets.forEach((c) => c.dispose());
-      wind.dispose();
-      windBed.dispose();
     };
   }, []);
 

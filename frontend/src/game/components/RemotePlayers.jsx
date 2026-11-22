@@ -5,7 +5,7 @@ import { remoteMap, usePlayerStore } from '../stores/usePlayerStore';
 import { SEAT_SPOTS } from '../sceneLayout';
 import Character from './Character';
 import { DEFAULT_CHARACTER } from '../models/characterConfig';
-
+import VoiceBubble from './VoiceActivityIndicator';
 const PALETTE = ['#8ab4f8', '#f28b82', '#fdd663', '#81c995', '#c58af9', '#78d9ec', '#f6aea9', '#b6e3a8'];
 
 function colorForId(id) {
@@ -24,10 +24,15 @@ function RemoteAvatar({ id }) {
   const runningRef = useRef(false);
   const seatedRef = useRef(false);
 
-  useFrame(() => {
+  useFrame((_, rawDelta) => {
     const entry = remoteMap.get(id);
     const group = groupRef.current;
     if (!entry || !group) return;
+
+    const delta = Math.min(rawDelta, 0.05);
+    // میرایی مستقل از نرخ فریم (۶۰fps ≈ همان مقادیر قبلی)
+    const posLerp = 1 - Math.pow(1 - LERP_FACTOR, delta * 60);
+    const rotLerp = 1 - Math.pow(1 - ROT_LERP, delta * 60);
 
     const now = Date.now();
     if (entry.emoteUntil && now > entry.emoteUntil) {
@@ -37,32 +42,43 @@ function RemoteAvatar({ id }) {
     if (entry.actionUntil && now > entry.actionUntil) {
       entry.action = null;
       entry.actionUntil = 0;
+      entry.marshmallowStage = null;
     }
 
     const seatSpot =
       entry.seat !== null && entry.seat !== undefined ? SEAT_SPOTS[entry.seat] : null;
 
     if (seatSpot) {
-      entry.current.x += (seatSpot.x - entry.current.x) * LERP_FACTOR;
-      entry.current.z += (seatSpot.z - entry.current.z) * LERP_FACTOR;
+      entry.current.x += (seatSpot.x - entry.current.x) * posLerp;
+      entry.current.z += (seatSpot.z - entry.current.z) * posLerp;
       let rotDelta = seatSpot.rotation - entry.rot;
       while (rotDelta > Math.PI) rotDelta -= Math.PI * 2;
       while (rotDelta < -Math.PI) rotDelta += Math.PI * 2;
-      entry.rot += rotDelta * ROT_LERP;
+      entry.rot += rotDelta * rotLerp;
       movingRef.current = false;
       runningRef.current = false;
     } else {
-      entry.current.x += (entry.target.x - entry.current.x) * LERP_FACTOR;
-      entry.current.z += (entry.target.z - entry.current.z) * LERP_FACTOR;
+      const prevX = entry.current.x;
+      const prevZ = entry.current.z;
+      entry.current.x += (entry.target.x - entry.current.x) * posLerp;
+      entry.current.z += (entry.target.z - entry.current.z) * posLerp;
+
+      // چرخش را از جهت واقعی حرکت استخراج کن تا هرگز پشت‌به‌جلو راه نرود
+      const movedX = entry.current.x - prevX;
+      const movedZ = entry.current.z - prevZ;
+      const stepLen = Math.hypot(movedX, movedZ);
+      if (stepLen > 0.0025) {
+        entry.targetRot = Math.atan2(movedX, movedZ);
+      }
 
       let rotDelta = entry.targetRot - entry.rot;
       while (rotDelta > Math.PI) rotDelta -= Math.PI * 2;
       while (rotDelta < -Math.PI) rotDelta += Math.PI * 2;
-      entry.rot += rotDelta * ROT_LERP;
+      entry.rot += rotDelta * rotLerp;
 
-      const speed = Math.hypot(entry.target.x - entry.current.x, entry.target.z - entry.current.z);
-      movingRef.current = speed > 0.03;
-      runningRef.current = speed > 0.14;
+      const remaining = Math.hypot(entry.target.x - entry.current.x, entry.target.z - entry.current.z);
+      movingRef.current = remaining > 0.03 || stepLen > 0.004;
+      runningRef.current = remaining > 0.14 || stepLen > 0.02;
     }
 
     seatedRef.current = Boolean(seatSpot);
@@ -82,6 +98,7 @@ function RemoteAvatar({ id }) {
         running={runningRef}
         emote={() => remoteMap.get(id)?.emote ?? null}
         action={() => remoteMap.get(id)?.action ?? null}
+        marshmallowStage={() => remoteMap.get(id)?.marshmallowStage ?? null}
         seated={seatedRef}
         castShadow
       />
@@ -92,8 +109,9 @@ function RemoteAvatar({ id }) {
       </mesh>
 
       <Html center position={[0, 2.15, 0]} distanceFactor={14} occlude={false} zIndexRange={[20, 0]}>
-        <div className="px-2 py-0.5 rounded-full bg-surface-950/75 border border-white/15 text-[11px] text-surface-50 whitespace-nowrap backdrop-blur-sm">
-          {username}
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-950/75 border border-white/15 text-[11px] text-surface-50 whitespace-nowrap backdrop-blur-sm">
+          <VoiceBubble id={id} />
+          <span>{username}</span>
         </div>
       </Html>
     </group>

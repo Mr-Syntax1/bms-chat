@@ -106,13 +106,22 @@ export const usePlayerStore = create((set, get) => ({
   micEnabled: true,
   // وضعیت واقعی LiveKit (جدا از وضعیت سینک Ably)
   voiceReady: false,
+  // توکن LiveKit گرفته شده؟ (مستقل از اتصال به اتاق — برای پیشرفت لودینگ)
+  voiceTokenReady: false,
   voiceError: null,
+  // شناسه کاربر جاری + فهرست کسانی که واقعاً در حال صحبت‌اند (LiveKit)
+  selfId: null,
+  speakingIds: [],
 
   // مأموریت‌ها و اینونتوری
   quests: { ...initialQuests },
   collected: { parchments: [], lanterns: [], shells: [] },
   toasts: [],
   nearInteractable: null, // { key, label }
+  // فاصله‌ی بازیکن تا هدف مرحله‌ی فعال (متر، گردشده) — برای راهنمای مسیر
+  questDistance: null,
+  // دیباگ جهت کاراکتر (Ctrl+Shift+F) — null یعنی خاموش
+  facingDebug: null,
   // ورودی مجازی موبایل
   virtualInput: { forward: false, backward: false, left: false, right: false, run: false },
 
@@ -126,7 +135,16 @@ export const usePlayerStore = create((set, get) => ({
 
   setMicEnabled: (on) => set({ micEnabled: on }),
   setVoiceReady: (ready) => set({ voiceReady: Boolean(ready) }),
-  setVoiceError: (error) => set({ voiceError: error, voiceReady: false }),
+  setVoiceTokenReady: (ready) => set({ voiceTokenReady: Boolean(ready) }),
+  setVoiceError: (error) => set({ voiceError: error, voiceReady: false, voiceTokenReady: false }),
+  setSelfId: (id) => set({ selfId: id != null ? String(id) : null }),
+  setSpeaking: (ids) => {
+    const next = Array.isArray(ids) ? ids.map(String) : [];
+    const current = get().speakingIds;
+    // مقایسه‌ی مجموعه‌ای تا set بی‌مورد (و re-render) رخ ندهد
+    if (current.length === next.length && current.every((id, i) => id === next[i])) return;
+    set({ speakingIds: next });
+  },
 
   setLocalTransform: (x, z, rot, moving) => {
     local.x = x;
@@ -171,9 +189,16 @@ export const usePlayerStore = create((set, get) => ({
     set({ nearInteractable: value });
   },
 
+  // فقط وقتی مقدار گردشده عوض شود set می‌شود تا re-render بی‌مورد نباشد
+  setQuestDistance: (distance) => {
+    if (get().questDistance === distance) return;
+    set({ questDistance: distance });
+  },
+
   setHeadlights: (on) => set({ headlights: on }),
   setSyncStatus: (status) => set({ syncStatus: status }),
   setPeerCount: (count) => set({ peerCount: count }),
+  setFacingDebug: (value) => set({ facingDebug: value }),
 
   // -------------------------------------------------------------------------
   // Toast
@@ -318,6 +343,7 @@ export const usePlayerStore = create((set, get) => ({
       if (payload.character) existing.character = payload.character;
       if ('emote' in payload) existing.emote = payload.emote ?? null;
       if ('action' in payload) existing.action = payload.action ?? null;
+      if ('marshmallowStage' in payload) existing.marshmallowStage = payload.marshmallowStage ?? null;
       existing.lastSeen = performance.now();
       if (usernameChanged || characterChanged) set({ remoteIds: Array.from(remoteMap.keys()) });
       return;
@@ -340,6 +366,7 @@ export const usePlayerStore = create((set, get) => ({
       emoteUntil: 0,
       action: payload.action ?? null,
       actionUntil: 0,
+      marshmallowStage: payload.marshmallowStage ?? null,
       lastSeen: performance.now(),
     });
 

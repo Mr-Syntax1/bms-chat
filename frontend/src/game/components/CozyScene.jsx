@@ -12,12 +12,15 @@ import Beach from './Beach';
 import CampDecor from './CampDecor';
 import QuestItems from './QuestItems';
 import AmbientAudio from './AmbientAudio';
+import GrassField from './GrassField';
+import Butterflies from './Butterflies';
+import { useQualityPreset } from '../stores/useSettingsStore';
 
 // کرم شب‌تاب
-function Fireflies() {
+function Fireflies({ count }) {
   return (
     <Sparkles
-      count={90}
+      count={count}
       scale={[30, 5, 30]}
       position={[0, 1.6, 0]}
       size={3.6}
@@ -37,7 +40,7 @@ function NightSky() {
         side: THREE.BackSide,
         depthWrite: false,
         uniforms: {
-          topColor: { value: new THREE.Color('#070d1c') },
+          topColor: { value: new THREE.Color('#171426') },
           bottomColor: { value: new THREE.Color('#22334d') },
           offset: { value: 12 },
           exponent: { value: 0.7 },
@@ -72,12 +75,11 @@ function NightSky() {
   );
 }
 
-// ستاره‌های اضافی: ۲۰۰۰ ذره روی کره‌ی بزرگ که آرام می‌چرخد
-function Starfield() {
+// ستاره‌های اضافی روی کره‌ی بزرگ که آرام می‌چرخد
+function Starfield({ count = 2000, animate = true }) {
   const ref = useRef(null);
 
   const positions = useMemo(() => {
-    const count = 2000;
     const arr = new Float32Array(count * 3);
     // مولد شبه‌تصادفی با seed ثابت (بدون Math.random در رندر)
     let seed = 1337;
@@ -96,10 +98,10 @@ function Starfield() {
       arr[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
     }
     return arr;
-  }, []);
+  }, [count]);
 
   useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y += delta * 0.008;
+    if (animate && ref.current) ref.current.rotation.y += delta * 0.008;
   });
 
   return (
@@ -130,7 +132,7 @@ function Moon() {
 }
 
 // ابرهای ساده
-function LowPolyClouds() {
+function LowPolyClouds({ animate = true }) {
   const groupRef = useRef(null);
 
   const clouds = useMemo(
@@ -144,7 +146,7 @@ function LowPolyClouds() {
 
   useFrame(({ clock }) => {
     const group = groupRef.current;
-    if (!group) return;
+    if (!group || !animate) return;
     group.children.forEach((cloud, i) => {
       cloud.position.x = clouds[i].position[0] + Math.sin(clock.elapsedTime * 0.05 * clouds[i].drift) * 6;
     });
@@ -173,6 +175,8 @@ function LowPolyClouds() {
 }
 
 export default function CozyScene() {
+  const preset = useQualityPreset();
+
   return (
     <>
       <color attach="background" args={['#070d1c']} />
@@ -180,10 +184,10 @@ export default function CozyScene() {
       <fog attach="fog" args={['#101c30', 30, 150]} />
 
       <NightSky />
-      <Stars radius={120} depth={60} count={2200} factor={3.6} saturation={0} fade speed={0.4} />
-      <Starfield />
+      <Stars radius={120} depth={60} count={preset.particles > 0.5 ? 2200 : 1100} factor={3.6} saturation={0} fade speed={preset.envAnimation ? 0.4 : 0} />
+      <Starfield count={preset.particles > 0.5 ? 2000 : 900} animate={preset.envAnimation} />
       <Moon />
-      <LowPolyClouds />
+      <LowPolyClouds animate={preset.envAnimation} />
 
       <AmbientSetup />
 
@@ -191,18 +195,25 @@ export default function CozyScene() {
       <Forest />
       <Decorations />
       <CampDecor />
+      <GrassField />
       <Beach />
       <Campfire />
       <Van />
       <QuestItems />
-      <Fireflies />
+      <Fireflies count={preset.fireflies} />
+      <Butterflies count={preset.butterflies} />
 
       <AmbientAudio />
 
-      <EffectComposer multisampling={0}>
-        <Bloom intensity={0.55} luminanceThreshold={0.62} luminanceSmoothing={0.28} mipmapBlur />
-        <Vignette eskil={false} offset={0.32} darkness={0.72} />
-      </EffectComposer>
+      {/* پست‌پروسسینگ فقط وقتی کیفیت اجازه بدهد */}
+      {preset.bloom || preset.vignette ? (
+        <EffectComposer multisampling={0}>
+          {preset.bloom && (
+            <Bloom intensity={0.55} luminanceThreshold={0.62} luminanceSmoothing={0.28} mipmapBlur />
+          )}
+          {preset.vignette && <Vignette eskil={false} offset={0.32} darkness={0.72} />}
+        </EffectComposer>
+      ) : null}
     </>
   );
 }

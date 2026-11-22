@@ -8,6 +8,52 @@ import { PROCEDURAL_FACTORIES } from './synth';
 const bufferCache = new Map();
 const loader = new THREE.AudioLoader();
 
+// ---------------------------------------------------------------------------
+// کنترل حجم صدا از پنل تنظیمات (بدون re-render)
+// ---------------------------------------------------------------------------
+export const volumeGains = { master: 0.9, ambient: 0.75, fire: 0.85, effects: 0.9, voice: 1 };
+
+// گروه هر صدای در حال پخش تا تغییر تنظیمات فوری اثر کند
+const channelRegistry = new Map(); // channel → Set<sound>
+
+function registerSound(channel, sound) {
+  if (!channel) return;
+  let set = channelRegistry.get(channel);
+  if (!set) {
+    set = new Set();
+    channelRegistry.set(channel, set);
+  }
+  set.add(sound);
+}
+
+function unregisterSound(channel, sound) {
+  const set = channelRegistry.get(channel);
+  if (set) set.delete(sound);
+}
+
+export function setVolumeGains(next) {
+  Object.assign(volumeGains, next || {});
+  // اعمال فوری روی صداهای در حال پخش (همان فرمول applyGain تا پرش صدا رخ ندهد)
+  for (const [channel, sounds] of channelRegistry) {
+    const gain = (volumeGains[channel] ?? 1) * (volumeGains.master ?? 1);
+    for (const sound of sounds) {
+      if (!sound?.userData) continue;
+      try {
+        sound.setVolume((sound.userData.baseVolume ?? 1) * gain);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
+function applyGain(sound, channel, baseVolume) {
+  const gain = (volumeGains[channel] ?? 1) * (volumeGains.master ?? 1);
+  sound.userData.baseVolume = baseVolume;
+  sound.setVolume(baseVolume * gain);
+  registerSound(channel, sound);
+}
+
 // کلید صدا از مسیر فایل: /sounds/fire.mp3 → fire
 function proceduralKey(url) {
   const match = /\/sounds\/([a-zA-Z0-9_-]+)\.(mp3|m4a|ogg|wav)$/i.exec(url || '');
@@ -178,6 +224,9 @@ function buildPositional(buffer, position, options) {
 
 /**
  * صدای Positional یک‌باره (مثل گیتار یا yum) در مختصات مشخص
+ * @param {string} url مسیر فایل صدا
+ * @param {number[]} position [x,y,z]
+ * @param {{volume?:number,channel?:string,refDistance?:number,maxDistance?:number,rolloff?:number}} options
  * @returns {Promise<THREE.PositionalAudio|null>}
  */
 export async function playPositionalOneShot(url, position, options = {}) {
@@ -192,6 +241,8 @@ export async function playPositionalOneShot(url, position, options = {}) {
   const opts = { ...DEFAULTS, ...options };
   const sound = buildPositional(buffer, position, opts);
   sound.setLoop(false);
+  sound.userData = { channel: opts.channel || 'effects', baseVolume: opts.volume };
+  applyGain(sound, sound.userData.channel, opts.volume);
   container.add(sound);
 
   try {
@@ -203,6 +254,7 @@ export async function playPositionalOneShot(url, position, options = {}) {
 
   sound.onEnded = () => {
     try {
+      unregisterSound(sound.userData.channel, sound);
       container.remove(sound);
       sound.disconnect();
     } catch {
@@ -233,6 +285,8 @@ export function createPositionalLoop(url, position, options = {}) {
 
       sound = buildPositional(buffer, position, opts);
       sound.setLoop(true);
+      sound.userData = { channel: opts.channel || 'ambient', baseVolume: opts.volume };
+      applyGain(sound, sound.userData.channel, opts.volume);
       container.add(sound);
       try {
         sound.play();
@@ -243,12 +297,15 @@ export function createPositionalLoop(url, position, options = {}) {
 
   return {
     setVolume: (v) => {
-      if (sound) sound.setVolume(v);
+      if (!sound) return;
+      sound.userData.baseVolume = v;
+      applyGain(sound, sound.userData.channel, v);
     },
     dispose: () => {
       disposed = true;
       if (sound) {
         try {
+          unregisterSound(sound.userData?.channel, sound);
           if (sound.isPlaying) sound.stop();
           sound.disconnect();
           container?.remove(sound);
@@ -262,7 +319,7 @@ export function createPositionalLoop(url, position, options = {}) {
   };
 }
 
-// صدای غیرمکانی (باد محیطی) که مستقیماً روی Listener پخش می‌شود
+// صدای غیرمکانی (بدون موقعیت) که مستقیماً روی Listener پخش می‌شود
 export function createGlobalLoop(url, options = {}) {
   const opts = { ...DEFAULTS, ...options };
   let sound = null;

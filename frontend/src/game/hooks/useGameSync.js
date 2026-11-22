@@ -44,7 +44,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
     let onConnectionReady = null;
 
     const selfPayload = () => {
-      const { local, character } = usePlayerStore.getState();
+      const { local, character, marshmallow } = usePlayerStore.getState();
       return {
         x: round2(local.x),
         z: round2(local.z),
@@ -52,6 +52,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
         seat: local.seat,
         emote: local.emote,
         action: local.action,
+        marshmallowStage: marshmallow,
         userId: user.id,
         username: user.username,
         character,
@@ -68,7 +69,8 @@ export function useGameSync({ roomId, user, enabled = true }) {
         last.rot === payload.rot &&
         last.seat === payload.seat &&
         last.emote === payload.emote &&
-        last.action === payload.action
+        last.action === payload.action &&
+        last.marshmallowStage === payload.marshmallowStage
       ) {
         return;
       }
@@ -106,6 +108,9 @@ export function useGameSync({ roomId, user, enabled = true }) {
         case 'action':
           entry.action = data.action ?? null;
           entry.actionUntil = duration ? now + duration : 0;
+          if (data.action === 'marshmallow') {
+            entry.marshmallowStage = 'roasting';
+          }
           if (data.action === 'guitar') {
             playPositionalOneShot(data.sound || GUITAR_SOUNDS[0], [entry.current.x, 1.2, entry.current.z], {
               volume: 0.75,
@@ -115,6 +120,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
         case 'action-end':
           entry.action = null;
           entry.actionUntil = 0;
+          entry.marshmallowStage = null;
           break;
         case 'guitar': {
           // پخش صدای گیتار از موقعیت بازیکن (رویداد مستقل)
@@ -125,6 +131,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
           break;
         }
         case 'marshmallow-ready':
+          entry.marshmallowStage = 'ready';
           playPositionalOneShot(YUM_SOUND, [entry.current.x, 1.2, entry.current.z], {
             volume: 0.7,
           });
@@ -151,6 +158,9 @@ export function useGameSync({ roomId, user, enabled = true }) {
       };
       if (member.data && 'emote' in member.data) payload.emote = member.data.emote;
       if (member.data && 'action' in member.data) payload.action = member.data.action;
+      if (member.data && 'marshmallowStage' in member.data) {
+        payload.marshmallowStage = member.data.marshmallowStage;
+      }
       usePlayerStore.getState().upsertRemote(String(member.clientId), payload);
     };
 
