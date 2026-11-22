@@ -53,9 +53,14 @@ export default defineConfig(({ mode }) => {
         },
         
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-          // دیکودر Draco نباید پیش‌کش شود (حجم زیاد + فقط در بازی لازم است)
-          globIgnores: ['draco/**', 'game-models/**']
+          // اضافه کردن فرمت‌های صوتی و wasm به الگوهای کش (برای اطمینان از لود سریع‌تر)
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,mp3,m4a,wasm}'],
+          
+          // دیکودر Draco و مدل‌های سنگین بازی نباید توسط Service Worker کش شوند (حجم زیاد + مدیریت توسط Three.js)
+          globIgnores: ['draco/**', 'game-models/**'],
+          
+          //  رفع خطای بیلد: افزایش محدودیت حجم فایل مجاز برای کش به ۱۰ مگابایت
+          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, 
         }
       })
     ],
@@ -63,6 +68,7 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.NODE_ENV': JSON.stringify(mode),
     },
+    
     optimizeDeps: {
       include: ['@ably/pubsub-device'],
     },
@@ -76,6 +82,26 @@ export default defineConfig(({ mode }) => {
         '/api': { target: API_URL, changeOrigin: true },
       },
     },
-    preview: { port: 5000 },
+    
+    preview: { 
+      port: 5000 
+    },
+
+    // بهینه‌سازی حیاتی (Code Splitting): جدا کردن کتابخانه‌های سنگین به فایل‌های مجزا
+    // این کار باعث می‌شود فایل index.js از ۲.۵ مگابایت به چند فایل کوچک‌تر تقسیم شود 
+    // و مرورگر بتواند آن‌ها را به صورت موازی و سریع‌تر دانلود کند.
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            three: ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing'],
+            livekit: ['@livekit/components-react', 'livekit-client'],
+            ably: ['ably', '@ably/pubsub-device'],
+            zustand: ['zustand']
+          }
+        }
+      }
+    }
   };
 })
