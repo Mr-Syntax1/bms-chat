@@ -1,51 +1,44 @@
 import { useEffect } from 'react';
 import { createPositionalLoop, createGlobalLoop } from '../audio';
-import { CAMP_RADIUS, TREES } from '../sceneLayout';
 import { FIRE_SOUND, CRICKETS_SOUND, WIND_SOUND } from '../sounds';
 
 // چند نقطه در لبه‌ی جنگل برای جیرجیرک‌ها (صدای مکانی)
 const CRICKET_SPOTS = [
-  [CAMP_RADIUS + 5, 1.8, 0],
-  [0, 1.8, CAMP_RADIUS + 5],
-  [-(CAMP_RADIUS + 5), 1.8, 0],
-  [0, 1.8, -(CAMP_RADIUS + 5)],
-  [CAMP_RADIUS * 0.7, 1.6, CAMP_RADIUS * 0.7],
-  [-CAMP_RADIUS * 0.7, 1.6, -CAMP_RADIUS * 0.7],
+  [-18, 1.8, 6],
+  [-24, 1.8, -14],
+  [-10, 1.8, -20],
+  [-30, 1.8, 12],
 ];
 
-// صدای محیطی: آتش در مرکز (مکانی)، جیرجیرک از میان درختان (مکانی)، باد سراسری
+// صدای محیطی: آتش (مکانی، distance=20)، جیرجیرک (مکانی، distance=40)، باد سراسری
 export default function AmbientAudio() {
   useEffect(() => {
     // آتش: منبع صدا دقیقاً روی گودال آتش
     const fire = createPositionalLoop(FIRE_SOUND, [0, 0.85, 0], {
-      volume: 0.8,
+      volume: 0.85,
       refDistance: 2.4,
-      maxDistance: 30,
+      maxDistance: 20,
       rolloff: 1.9,
     });
 
-    // جیرجیرک: چند منبع مکانی با حجم‌های متفاوت
+    // جیرجیرک: چند منبع مکانی در جنگل
     const crickets = CRICKET_SPOTS.map((pos, i) =>
       createPositionalLoop(CRICKETS_SOUND, pos, {
-        volume: 0.3 - i * 0.03,
-        refDistance: 7,
-        maxDistance: 55,
-        rolloff: 1.2,
+        volume: 0.42 - i * 0.04,
+        refDistance: 8,
+        maxDistance: 40,
+        rolloff: 1.1,
       })
     );
 
-    // باد: یک لایه‌ی مکانی دور از میان بلندترین درختان + یک بستر سراسری
-    const tallest = TREES.reduce(
-      (best, tree) => (tree.scale > best.scale ? tree : best),
-      TREES[0] || { x: 0, z: 30, scale: 1 }
-    );
-    const wind = createPositionalLoop(WIND_SOUND, [tallest.x, 13, tallest.z], {
-      volume: 0.28,
+    // باد: بستر سراسری + یک لایه‌ی مکانی در جنگل
+    const wind = createPositionalLoop(WIND_SOUND, [-40, 13, 0], {
+      volume: 0.3,
       refDistance: 20,
       maxDistance: 120,
       rolloff: 0.7,
     });
-    const windBed = createGlobalLoop(WIND_SOUND, { volume: 0.14 });
+    const windBed = createGlobalLoop(WIND_SOUND, { volume: 0.16 });
 
     return () => {
       fire.dispose();

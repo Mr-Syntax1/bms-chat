@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { VAN } from '../sceneLayout';
 import { registerInteractable } from '../interactionRegistry';
@@ -19,6 +20,7 @@ export default function Van() {
   const headlightLeft = useRef(null);
   const headlightRight = useRef(null);
   const headlights = usePlayerStore((s) => s.headlights);
+  const hovered = usePlayerStore((s) => s.hovered);
 
   useEffect(() => {
     const unsubscribe = registerInteractable('van', groupRef.current);
@@ -100,6 +102,15 @@ export default function Van() {
         <circleGeometry args={[3.6, 18]} />
         <meshStandardMaterial color="#3a3226" roughness={1} />
       </mesh>
+
+      {/* نشانگر تعامل چراغ ون */}
+      {hovered === 'van' && (
+        <Html center position={[0, 3.5, 0]} distanceFactor={11} zIndexRange={[30, 0]}>
+          <div className="px-2 py-0.5 rounded-full bg-surface-950/85 border border-white/20 text-[10px] text-surface-50 whitespace-nowrap pointer-events-none select-none">
+            چراغ‌ها — F
+          </div>
+        </Html>
+      )}
     </group>
   );
 }

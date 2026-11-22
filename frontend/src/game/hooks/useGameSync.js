@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ably, getChannel, encodeChannelPart } from '../../lib/ably';
 import { usePlayerStore, emitSpatialFrame, remoteMap } from '../stores/usePlayerStore';
 import { playPositionalOneShot } from '../audio';
-import { GUITAR_SOUND, YUM_SOUND } from '../sounds';
+import { GUITAR_SOUNDS, YUM_SOUND } from '../sounds';
 
 // نرخ ارسال موقعیت: ۱۵ بار در ثانیه (۶۶ میلی‌ثانیه)
 const SYNC_INTERVAL = 66;
@@ -20,13 +20,6 @@ const round2 = (n) => Math.round(n * 100) / 100;
 const sessions = new Map();
 let sessionSeq = 0;
 
-/**
- * سینک چندنفره روی کانال game-state-{roomId}
- * - player-move: موقعیت/چرخش/صندلی (۱۵Hz)
- * - player-action: گیتار، مارشمالو و ایموت‌ها (رویداد لحظه‌ای)
- * - player-left: خروج صریح
- * - presence: join/leave + snapshot اولیه
- */
 export function useGameSync({ roomId, user, enabled = true }) {
   const lastSentRef = useRef({ x: null, z: null, rot: null, seat: null, at: 0 });
   const disposedRef = useRef(false);
@@ -51,7 +44,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
     let onConnectionReady = null;
 
     const selfPayload = () => {
-      const { local } = usePlayerStore.getState();
+      const { local, character } = usePlayerStore.getState();
       return {
         x: round2(local.x),
         z: round2(local.z),
@@ -61,7 +54,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
         action: local.action,
         userId: user.id,
         username: user.username,
-        avatarIndex: user.avatarIndex ?? null,
+        character,
       };
     };
 
@@ -96,7 +89,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
       usePlayerStore.getState().removeRemote(String(data.userId));
     };
 
-    // رویدادهای لحظه‌ای اکشن/ایموت بازیکنان دیگر
+    // رویدادهای لحظه‌ای اکشن/ایموت/گیتار بازیکنان دیگر
     const onPlayerAction = (message) => {
       const data = message?.data;
       if (!data || !data.userId) return;
@@ -113,9 +106,8 @@ export function useGameSync({ roomId, user, enabled = true }) {
         case 'action':
           entry.action = data.action ?? null;
           entry.actionUntil = duration ? now + duration : 0;
-          // صدای اکشن از موقعیت بازیکن ریموت پخش می‌شود
           if (data.action === 'guitar') {
-            playPositionalOneShot(GUITAR_SOUND, [entry.current.x, 1.2, entry.current.z], {
+            playPositionalOneShot(data.sound || GUITAR_SOUNDS[0], [entry.current.x, 1.2, entry.current.z], {
               volume: 0.75,
             });
           }
@@ -124,6 +116,14 @@ export function useGameSync({ roomId, user, enabled = true }) {
           entry.action = null;
           entry.actionUntil = 0;
           break;
+        case 'guitar': {
+          // پخش صدای گیتار از موقعیت بازیکن (رویداد مستقل)
+          const soundUrl = data.sound || GUITAR_SOUNDS[0];
+          playPositionalOneShot(soundUrl, [entry.current.x, 1.2, entry.current.z], { volume: 0.8 });
+          entry.action = 'guitar';
+          entry.actionUntil = now + (duration || 5000);
+          break;
+        }
         case 'marshmallow-ready':
           playPositionalOneShot(YUM_SOUND, [entry.current.x, 1.2, entry.current.z], {
             volume: 0.7,
@@ -147,9 +147,8 @@ export function useGameSync({ roomId, user, enabled = true }) {
         rot: member.data?.rot ?? 0,
         seat: member.data?.seat ?? null,
         username: member.data?.username,
-        avatarIndex: member.data?.avatarIndex ?? null,
+        character: member.data?.character,
       };
-      // فقط اگر واقعاً در داده‌ی حضور بود، اکشن/ایموت را منتقل کن
       if (member.data && 'emote' in member.data) payload.emote = member.data.emote;
       if (member.data && 'action' in member.data) payload.action = member.data.action;
       usePlayerStore.getState().upsertRemote(String(member.clientId), payload);
@@ -157,7 +156,6 @@ export function useGameSync({ roomId, user, enabled = true }) {
 
     const onPresenceEnter = (member) => {
       upsertFromMember(member);
-      // شمارش اعضا را تازه نگه دار (رویداد enter فقط عضو جدید را می‌دهد)
       channel.presence
         .get()
         .then((members) => {
@@ -188,9 +186,6 @@ export function useGameSync({ roomId, user, enabled = true }) {
       }
     };
 
-    // رویدادهای لحظه‌ای اکشن/ایموت
-
-    // اشتراک‌ها
     channel.subscribe('player-move', onPlayerMove).catch(() => {});
     channel.subscribe('player-left', onPlayerLeft).catch(() => {});
     channel.subscribe('player-action', onPlayerAction).catch(() => {});
@@ -201,14 +196,16 @@ export function useGameSync({ roomId, user, enabled = true }) {
       if (disposedRef.current || ready || isStale()) return;
       ready = true;
 
+      const { local, character } = usePlayerStore.getState();
+
       channel.presence
         .enter({
           username: user.username,
-          avatarIndex: user.avatarIndex ?? null,
-          x: round2(usePlayerStore.getState().local.x),
-          z: round2(usePlayerStore.getState().local.z),
-          rot: round2(usePlayerStore.getState().local.rot),
-          seat: usePlayerStore.getState().local.seat,
+          character,
+          x: round2(local.x),
+          z: round2(local.z),
+          rot: round2(local.rot),
+          seat: local.seat,
         })
         .catch(() => {});
 
@@ -243,7 +240,6 @@ export function useGameSync({ roomId, user, enabled = true }) {
       ably.connection.once('connected', onConnectionReady);
     }
 
-    // تمیزکاری بازیکنان بی‌خبر
     const pruneId = setInterval(() => {
       const now = performance.now();
       for (const [id, entry] of Array.from(remoteMap.entries())) {
@@ -307,15 +303,12 @@ export function useGameSync({ roomId, user, enabled = true }) {
       state.setSyncStatus('idle');
       state.setPeerCount(0);
     };
-  }, [roomId, user?.id, user?.username, user?.avatarIndex, enabled]);
+  }, [roomId, user?.id, user?.username, enabled]);
 
   return { channelName: roomId ? getGameChannelName(roomId) : null };
 }
 
-/**
- * انتشار رویداد اکشن/ایموت روی کانال بازی.
- * از داخل GameCanvas صدا زده می‌شود تا کانال از قبل attach شده باشد.
- */
+// انتشار رویداد اکشن/ایموت/گیتار روی کانال بازی
 export function publishPlayerAction(roomId, user, type, extra = {}) {
   if (!roomId || !user?.id) return;
   const channel = getChannel(getGameChannelName(roomId));

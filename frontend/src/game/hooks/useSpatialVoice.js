@@ -1,66 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiRequest } from '../../hooks/useChat';
-import { subscribeSpatial, getSpatialSnapshot } from '../stores/usePlayerStore';
+import { subscribeSpatial, getSpatialSnapshot, usePlayerStore } from '../stores/usePlayerStore';
 
-const LIVEKIT_WS = import.meta.env.VITE_LIVEKIT_URL || '';
 const SPATIAL_TICK = 100;
+const ATTRIBUTE_MIN_INTERVAL = 250; // LiveKit نرخ آپدیت metadata را محدود می‌کند
+const ATTRIBUTE_MIN_DELTA = 0.25;
+const ATTRIBUTE_KEEPALIVE = 2500;
 const HEARING_RADIUS = 26;
 const MIN_VOLUME = 0.12;
 const MAX_VOLUME = 1;
 const ROLLOFF_POWER = 1.6;
 
-const EMPTY = { roomId: null, token: null, url: null, error: null };
-
 /**
  * چت صوتی Spatial روی LiveKit.
- * - توکن از بک‌اند (`/api/livekit/token`) با همان JWT چت گرفته می‌شود
- * - موقعیت محلی از usePlayerStore خوانده و روی هر تیک آپدیت می‌شود
+ * - موقعیت محلی هر ۱۰۰ms روی attribute های participant نوشته می‌شود (x/y/z)
  * - حجم صدای هر بازیکن ریموت بر اساس فاصله‌ی واقعی 3D محاسبه می‌شود
  */
-export function useSpatialVoice({ roomId, enabled = true }) {
-  const [data, setData] = useState(EMPTY);
-  const [micEnabled, setMicEnabled] = useState(true);
-
+export function useSpatialVoice({ enabled = true } = {}) {
   const roomRef = useRef(null);
-  const localPositionRef = useRef({ x: 0, z: 0 });
+  // وضعیت اولیه از Store خوانده می‌شود تا انتخاب کاربر قبل از اتصال حفظ شود
+  const [micEnabled, setMicEnabledState] = useState(() => usePlayerStore.getState().micEnabled);
+  const localPositionRef = useRef({ x: 0, y: 0, z: 0 });
+  const lastSentRef = useRef({ x: NaN, y: NaN, z: NaN, at: 0 });
 
-  // اگر داده مربوط به اتاق دیگری باشد، به‌عنوان «در حال بارگذاری» در نظر گرفته می‌شود
-  const current = data.roomId === roomId ? data : EMPTY;
-  const status = !enabled || !roomId
-    ? 'idle'
-    : current.error
-      ? 'error'
-      : current.token
-        ? 'ready'
-        : 'loading';
-  const serverUrl = current.url || LIVEKIT_WS;
-
-  // دریافت توکن از بک‌اند (state فقط داخل callback ها آپدیت می‌شود)
-  useEffect(() => {
-    if (!enabled || !roomId) return undefined;
-
-    let cancelled = false;
-
-    apiRequest('/api/livekit/token', {
-      method: 'POST',
-      body: JSON.stringify({ roomName: roomId }),
-    })
-      .then((res) => {
-        if (cancelled) return;
-        if (!res?.token) throw new Error(res?.error || 'توکن LiveKit دریافت نشد');
-        setData({ roomId, token: res.token, url: res.url || null, error: null });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setData({ roomId, token: null, url: null, error: err.message || 'خطا در اتصال به LiveKit' });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, roomId]);
-
-  // ثبت اتاق LiveKit برای اعمال حجم صدا
+  // ثبت اتاق LiveKit (از داخل LiveKitRoom)
   const registerRoom = useCallback((room) => {
     roomRef.current = room;
   }, []);
@@ -70,33 +32,54 @@ export function useSpatialVoice({ roomId, enabled = true }) {
     if (!enabled) return undefined;
     return subscribeSpatial((players) => {
       const me = players.find((p) => p.id === 'local');
-      if (me) localPositionRef.current = { x: me.x, z: me.z };
+      if (me) localPositionRef.current = { x: me.x, y: me.y ?? 0, z: me.z };
     });
   }, [enabled]);
 
-  // هر ۱۰۰ms حجم صدای هر ریموت را بر اساس فاصله تنظیم می‌کند
+  // آپدیت attribute های موقعیت + تنظیم حجم صدا
   useEffect(() => {
     if (!enabled) return undefined;
 
-    const applyDistanceVolumes = () => {
+    const tick = () => {
       const room = roomRef.current;
       if (!room) return;
 
+      const me = localPositionRef.current;
+
+      // Spatial Audio: موقعیت محلی روی attribute ها (X,Y,Z) با throttle
+      const now = performance.now();
+      const last = lastSentRef.current;
+      const moved =
+        !Number.isFinite(last.x) ||
+        Math.abs(me.x - last.x) > ATTRIBUTE_MIN_DELTA ||
+        Math.abs(me.y - last.y) > ATTRIBUTE_MIN_DELTA ||
+        Math.abs(me.z - last.z) > ATTRIBUTE_MIN_DELTA;
+      if (now - last.at > ATTRIBUTE_KEEPALIVE || (moved && now - last.at > ATTRIBUTE_MIN_INTERVAL)) {
+        lastSentRef.current = { x: me.x, y: me.y, z: me.z, at: now };
+        room.localParticipant
+          ?.setAttributes?.({ x: String(me.x), y: String(me.y), z: String(me.z) })
+          .catch(() => {});
+      }
+
       const snapshot = getSpatialSnapshot();
       const byId = new Map(snapshot.filter((p) => p.id !== 'local').map((p) => [p.id, p]));
-      const me = localPositionRef.current;
 
       for (const participant of room.remoteParticipants.values()) {
         const pos = byId.get(participant.identity);
         const audioPubs = Array.from(participant.audioTrackPublications.values());
 
         if (!pos) {
-          // بدون موقعیت: صدای محیطی کامل تا از دست نرود
           for (const pub of audioPubs) if (pub.track) pub.track.setVolume?.(0.55);
           continue;
         }
 
-        const dist = Math.hypot(pos.x - me.x, pos.z - me.z);
+        // فاصله‌ی سه‌بعدی (X,Y,Z) از attribute های participant
+        const attrs = participant.attributes || {};
+        const px = Number.isFinite(Number(attrs.x)) ? Number(attrs.x) : pos.x;
+        const py = Number.isFinite(Number(attrs.y)) ? Number(attrs.y) : (pos.y ?? 0);
+        const pz = Number.isFinite(Number(attrs.z)) ? Number(attrs.z) : pos.z;
+
+        const dist = Math.hypot(px - me.x, py - me.y, pz - me.z);
         const t = Math.min(1, dist / HEARING_RADIUS);
         const volume = Math.max(MIN_VOLUME, MAX_VOLUME * Math.pow(1 - t, ROLLOFF_POWER));
 
@@ -107,30 +90,30 @@ export function useSpatialVoice({ roomId, enabled = true }) {
       }
     };
 
-    const timer = setInterval(applyDistanceVolumes, SPATIAL_TICK);
+    const timer = setInterval(tick, SPATIAL_TICK);
     return () => clearInterval(timer);
   }, [enabled]);
 
   // روشن/خاموش کردن میکروفن
-  const toggleMic = useCallback(async () => {
+  const setMicEnabled = useCallback(async (next) => {
     const room = roomRef.current;
-    if (!room) return;
-    const next = !micEnabled;
+    if (!room) {
+      setMicEnabledState(next);
+      usePlayerStore.getState().setMicEnabled(next);
+      return;
+    }
     try {
       await room.localParticipant.setMicrophoneEnabled(next);
-      setMicEnabled(next);
+      setMicEnabledState(next);
+      usePlayerStore.getState().setMicEnabled(next);
     } catch {
       /* ignore */
     }
-  }, [micEnabled]);
+  }, []);
 
-  return {
-    token: current.token,
-    serverUrl,
-    status,
-    error: current.error,
-    micEnabled,
-    toggleMic,
-    registerRoom,
-  };
+  const toggleMic = useCallback(() => {
+    setMicEnabled(!micEnabled);
+  }, [micEnabled, setMicEnabled]);
+
+  return { micEnabled, setMicEnabled, toggleMic, registerRoom };
 }

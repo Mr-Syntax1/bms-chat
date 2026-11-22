@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Sparkles } from '@react-three/drei';
+import { Html, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { FIRE_KEEPOUT, FIRE_STONES, SEAT_SPOTS } from '../sceneLayout';
 import { registerInteractable } from '../interactionRegistry';
@@ -8,10 +8,10 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { Model as BonfireModel } from '../models/Bonfire';
 import { Model as ChoppedLogModel } from '../models/ChoppedLog';
 
-// کنده‌ی نشستن: جعبه‌ی مدل x -0.65..2.03 (مرکز ۰.۶۹) و پایین‌ترین y = -۰.۵۱
+// کنده‌ی نشستن
 const SEAT_LOG_SCALE = 0.55;
-const SEAT_LOG_OFFSET_X = -0.69; // مرکز طول کنده روی مبدأ
-const SEAT_LOG_OFFSET_Y = 0.51; // پایین‌ترین نقطه‌ی مدل روی زمین
+const SEAT_LOG_OFFSET_X = -0.69;
+const SEAT_LOG_OFFSET_Y = 0.51;
 
 export default function Campfire() {
   const lightRef = useRef(null);
@@ -22,13 +22,14 @@ export default function Campfire() {
   const marshmallowRef = useRef(null);
   const marshmallow = usePlayerStore((s) => s.marshmallow);
   const action = usePlayerStore((s) => s.action);
+  const nearFire = usePlayerStore((s) => s.nearFire);
+  const seated = usePlayerStore((s) => s.seated);
 
   useEffect(() => {
     const unsubscribe = registerInteractable('campfire', fireGroupRef.current);
     return unsubscribe;
   }, []);
 
-  // ماتریس سنگ‌های دور گودال (یک‌بار)
   useEffect(() => {
     const stones = stoneRef.current;
     if (!stones) return;
@@ -44,7 +45,6 @@ export default function Campfire() {
     stones.computeBoundingSphere();
   }, []);
 
-  // تپش نور و درخشش آتش + چرخش آرام هسته‌ی نارنجی
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
     const flicker = 0.84 + Math.sin(t * 7.9) * 0.08 + Math.sin(t * 12.3 + 1.7) * 0.05;
@@ -62,7 +62,6 @@ export default function Campfire() {
       glowRef.current.material.opacity = 0.13 * flicker;
     }
 
-    // مارشمالوی روی سیخ: کمی تکان می‌خورد
     if (marshmallowRef.current && marshmallow === 'roasting') {
       marshmallowRef.current.rotation.z = Math.sin(t * 2.2) * 0.12;
     }
@@ -73,24 +72,20 @@ export default function Campfire() {
 
   return (
     <group>
-      {/* گودال آتش */}
       <mesh position={[0, 0.02, 0]} receiveShadow>
         <cylinderGeometry args={[FIRE_KEEPOUT, FIRE_KEEPOUT * 1.08, 0.1, 24]} />
         <meshStandardMaterial color="#2a221c" roughness={1} />
       </mesh>
 
-      {/* سنگ‌های دور گودال */}
       <instancedMesh ref={stoneRef} args={[undefined, undefined, FIRE_STONES.length]} castShadow receiveShadow>
         <dodecahedronGeometry args={[0.2, 0]} />
         <meshStandardMaterial color="#4a4a52" roughness={0.92} flatShading />
       </instancedMesh>
 
-      {/* مدل واقعی Bonfire */}
       <group ref={fireGroupRef} position={[0, 0, 0]}>
         <BonfireModel scale={0.55} />
       </group>
 
-      {/* نور اصلی و شعاع گرم */}
       <pointLight
         ref={lightRef}
         color="#ff8a3d"
@@ -101,26 +96,30 @@ export default function Campfire() {
         shadow-bias={-0.0015}
         shadow-mapSize={[1024, 1024]}
       />
-      {/* نور کمکی نزدیک زمین برای روشن کردن کنده‌ها */}
       <pointLight ref={emberRef} position={[0, 0.5, 0]} color="#ff6b2c" intensity={9} distance={11} decay={2} />
 
-      {/* هاله‌ی نوری روی زمین */}
       <mesh ref={glowRef} position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[FIRE_KEEPOUT + 2.4, 32]} />
         <meshBasicMaterial color="#ff8c42" transparent opacity={0.13} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
-      {/* جرقه‌ها */}
       <Sparkles count={38} scale={[2, 2.8, 2]} position={[0, 1.5, 0]} size={2.8} speed={0.35} opacity={0.85} color="#ffb066" />
 
-      {/* کنده‌های نشستن دور آتش؛ محور طولی کنده مماس بر دایره است */}
+      {/* نشانگر تعامل بالای آتش */}
+      {nearFire && !seated && (
+        <Html center position={[0, 2.9, 0]} distanceFactor={11} zIndexRange={[30, 0]}>
+          <div className="px-2 py-0.5 rounded-full bg-surface-950/85 border border-white/20 text-[10px] text-surface-50 whitespace-nowrap pointer-events-none select-none">
+            نشستن دور آتش — E
+          </div>
+        </Html>
+      )}
+
       {SEAT_SPOTS.map((spot, i) => (
         <group key={i} position={[spot.x, 0, spot.z]} rotation={[0, spot.rotation, 0]} scale={SEAT_LOG_SCALE}>
           <ChoppedLogModel position={[SEAT_LOG_OFFSET_X, SEAT_LOG_OFFSET_Y, 0]} />
         </group>
       ))}
 
-      {/* سیخ مارشمالو وقتی اکشن فعال است */}
       {action === 'marshmallow' && (
         <group position={[0.75, 0.2, 0.55]} rotation={[0, -0.5, 0]}>
           <mesh position={[0, 0.9, 0]} rotation={[0, 0, 0.35]}>

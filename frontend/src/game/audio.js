@@ -10,7 +10,7 @@ const loader = new THREE.AudioLoader();
 
 // کلید صدا از مسیر فایل: /sounds/fire.mp3 → fire
 function proceduralKey(url) {
-  const match = /\/sounds\/([a-zA-Z0-9_-]+)\.(mp3|ogg|wav)$/i.exec(url || '');
+  const match = /\/sounds\/([a-zA-Z0-9_-]+)\.(mp3|m4a|ogg|wav)$/i.exec(url || '');
   return match ? match[1] : null;
 }
 

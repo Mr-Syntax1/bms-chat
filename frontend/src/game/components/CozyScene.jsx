@@ -8,15 +8,17 @@ import Forest from './Forest';
 import Campfire from './Campfire';
 import Van from './Van';
 import Decorations from './Decorations';
+import Beach from './Beach';
+import CampDecor from './CampDecor';
+import QuestItems from './QuestItems';
 import AmbientAudio from './AmbientAudio';
-import { CAMP_RADIUS } from '../sceneLayout';
 
-// کرم شب‌تاب: نقاط نورانی آرام اطراف کمپ
+// کرم شب‌تاب
 function Fireflies() {
   return (
     <Sparkles
       count={90}
-      scale={[CAMP_RADIUS * 1.6, 5, CAMP_RADIUS * 1.6]}
+      scale={[30, 5, 30]}
       position={[0, 1.6, 0]}
       size={3.6}
       speed={0.22}
@@ -27,7 +29,7 @@ function Fireflies() {
   );
 }
 
-// آسمان شب: گرادیان عمودی ساده بدون asset خارجی
+// آسمان شب: گرادیان عمودی
 function NightSky() {
   const material = useMemo(
     () =>
@@ -35,8 +37,8 @@ function NightSky() {
         side: THREE.BackSide,
         depthWrite: false,
         uniforms: {
-          topColor: { value: new THREE.Color('#0b1224') },
-          bottomColor: { value: new THREE.Color('#2c3b52') },
+          topColor: { value: new THREE.Color('#070d1c') },
+          bottomColor: { value: new THREE.Color('#22334d') },
           offset: { value: 12 },
           exponent: { value: 0.7 },
         },
@@ -64,21 +66,78 @@ function NightSky() {
   );
 
   return (
-    <mesh material={material} scale={[1, 1, 1]}>
-      <sphereGeometry args={[160, 32, 16]} />
+    <mesh material={material}>
+      <sphereGeometry args={[300, 32, 16]} />
     </mesh>
   );
 }
 
-// ابرهای ساده‌ی Low-poly بدون تکسچر خارجی (چند کره‌ی به‌هم‌چسبیده)
+// ستاره‌های اضافی: ۲۰۰۰ ذره روی کره‌ی بزرگ که آرام می‌چرخد
+function Starfield() {
+  const ref = useRef(null);
+
+  const positions = useMemo(() => {
+    const count = 2000;
+    const arr = new Float32Array(count * 3);
+    // مولد شبه‌تصادفی با seed ثابت (بدون Math.random در رندر)
+    let seed = 1337;
+    const rand = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+    for (let i = 0; i < count; i += 1) {
+      const u = rand();
+      const v = rand();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      const r = 220 + rand() * 60;
+      arr[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      arr[i * 3 + 1] = Math.abs(r * Math.cos(phi)) * 0.9 + 10;
+      arr[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    }
+    return arr;
+  }, []);
+
+  useFrame((_, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.008;
+  });
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#dfe9ff" size={1.1} sizeAttenuation transparent opacity={0.85} depthWrite={false} fog={false} />
+    </points>
+  );
+}
+
+// ماه با درخشش
+function Moon() {
+  return (
+    <group position={[-90, 110, -120]}>
+      <mesh>
+        <sphereGeometry args={[9, 24, 24]} />
+        <meshStandardMaterial color="#eef4ff" emissive="#c8d8ff" emissiveIntensity={0.9} fog={false} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[13, 20, 20]} />
+        <meshBasicMaterial color="#aebfe6" transparent opacity={0.13} fog={false} />
+      </mesh>
+      <pointLight color="#c8d8ff" intensity={60} distance={260} decay={1.4} />
+    </group>
+  );
+}
+
+// ابرهای ساده
 function LowPolyClouds() {
   const groupRef = useRef(null);
 
   const clouds = useMemo(
     () => [
-      { position: [16, 22, -26], scale: 1.5, drift: 0.35 },
-      { position: [-24, 26, -14], scale: 1.9, drift: 0.22 },
-      { position: [4, 30, -38], scale: 1.2, drift: 0.45 },
+      { position: [16, 26, -26], scale: 1.5, drift: 0.35 },
+      { position: [-24, 30, -14], scale: 1.9, drift: 0.22 },
+      { position: [4, 34, -38], scale: 1.2, drift: 0.45 },
     ],
     []
   );
@@ -116,12 +175,14 @@ function LowPolyClouds() {
 export default function CozyScene() {
   return (
     <>
-      <color attach="background" args={['#0b1020']} />
-      <fog attach="fog" args={['#101a28', 24, 78]} />
+      <color attach="background" args={['#070d1c']} />
+      {/* مه نازک آبی تیره برای حس cozy */}
+      <fog attach="fog" args={['#101c30', 30, 150]} />
 
       <NightSky />
-      <Stars radius={90} depth={48} count={2200} factor={3.6} saturation={0} fade speed={0.4} />
-
+      <Stars radius={120} depth={60} count={2200} factor={3.6} saturation={0} fade speed={0.4} />
+      <Starfield />
+      <Moon />
       <LowPolyClouds />
 
       <AmbientSetup />
@@ -129,14 +190,15 @@ export default function CozyScene() {
       <Ground />
       <Forest />
       <Decorations />
+      <CampDecor />
+      <Beach />
       <Campfire />
       <Van />
+      <QuestItems />
       <Fireflies />
 
-      {/* صدای محیطی مکانی: آتش، جیرجیرک و باد */}
       <AmbientAudio />
 
-      {/* پس‌پردازش سبک: بلوم برای آتش، وینیت برای تمرکز بصری */}
       <EffectComposer multisampling={0}>
         <Bloom intensity={0.55} luminanceThreshold={0.62} luminanceSmoothing={0.28} mipmapBlur />
         <Vignette eskil={false} offset={0.32} darkness={0.72} />

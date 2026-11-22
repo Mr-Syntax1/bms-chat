@@ -2,32 +2,16 @@ import '../models/setupDraco';
 import { useEffect, useMemo, useRef } from 'react';
 import { useAnimations, useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
 import { SkeletonUtils } from 'three-stdlib';
+import {
+  CHARACTERS,
+  DEFAULT_CHARACTER,
+  CLIP_SUFFIX,
+  TARGET_HEIGHT,
+  characterUrl,
+} from '../models/characterConfig';
 
-const CACTORO_URL = '/game-models/opt/Cactoro.glb';
-const MODEL_HEIGHT = 3.95; // ارتفاع مدل در واحدهای خودش
-const TARGET_HEIGHT = 1.75; // قد نهایی بازیکن
-
-// نگاشت اکشن‌های منطقی به کلیپ‌های مدل
-const CLIP = {
-  idle: 'CharacterArmature|Idle',
-  walk: 'CharacterArmature|Walk',
-  run: 'CharacterArmature|Run',
-  wave: 'CharacterArmature|Wave',
-  dance: 'CharacterArmature|Duck',
-  laugh: 'CharacterArmature|Yes',
-  celebrate: 'CharacterArmature|Jump',
-  sleep: 'CharacterArmature|Death',
-  guitar: 'CharacterArmature|Weapon',
-  marshmallow: 'CharacterArmature|Punch',
-  sit: 'CharacterArmature|Duck',
-};
-
-// ارتفاع نشستن: بدن خم‌شده روی کنده (ارتفاع کنده ≈ ۰.۵۳) می‌نشیند
-const SEAT_OFFSET_Y = 0.38;
-
-// هر prop می‌تواند مقدار ثابت، ref یا تابع getter باشد (برای آپدیت بدون re-render)
+// هر prop می‌تواند مقدار ثابت، ref یا تابع getter باشد (آپدیت بدون re-render)
 function resolve(value) {
   if (typeof value === 'function') return value();
   if (value && typeof value === 'object' && 'current' in value) return value.current;
@@ -35,24 +19,26 @@ function resolve(value) {
 }
 
 /**
- * کاراکتر بازیکن با مدل Cactoro + کنترل انیمیشن.
- * props:
- *  - moving / running: از سرعت واقعی
- *  - emote: 'wave' | 'dance' | 'laugh' | 'celebrate' | 'sleep'
- *  - action: 'guitar' | 'marshmallow'
- *  - seated: نشستن روی کنده
+ * کاراکتر بازیکن با هر یک از ۹ مدل اختصاص‌یافته.
+ * مدل‌های دارای ریگ از کلیپ‌های خودشان استفاده می‌کنند؛
+ * بقیه انیمیشن رویه‌ای (bob، tilt، پرش ایموت) می‌گیرند.
  */
 export default function Character({
+  model = DEFAULT_CHARACTER,
   moving = false,
   running = false,
   emote = null,
   action = null,
   seated = false,
-  tint = null,
+  castShadow = false,
   ...props
 }) {
+  const config = CHARACTERS[model] || CHARACTERS[DEFAULT_CHARACTER];
+  const url = characterUrl(model);
+
   const groupRef = useRef(null);
-  const { scene, animations } = useGLTF(CACTORO_URL);
+  const innerRef = useRef(null);
+  const { scene, animations } = useGLTF(url);
 
   // کلون اسکلتی برای هر نمونه (مهم برای چند بازیکن)
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
@@ -60,21 +46,32 @@ export default function Character({
 
   const currentRef = useRef(null);
 
-  // انتخاب و سوییچ کلیپ در هر فریم (بدون re-render)
+  // کلیپ هدف بر اساس وضعیت
+  const pickClip = (isMoving, isRunning, currentEmote, currentAction, isSeated) => {
+    let key = 'idle';
+    if (currentAction && CLIP_SUFFIX[currentAction]) key = currentAction;
+    else if (currentEmote && CLIP_SUFFIX[currentEmote]) key = currentEmote;
+    else if (isSeated) key = 'sit';
+    else if (isMoving) key = isRunning ? 'run' : 'walk';
+    return key;
+  };
+
+  // سوییچ کلیپ برای مدل‌های ریگ‌دار
   useFrame(() => {
+    if (!config.clips || !actions) return;
     const isMoving = Boolean(resolve(moving));
     const isRunning = Boolean(resolve(running));
     const currentEmote = resolve(emote);
     const currentAction = resolve(action);
     const isSeated = Boolean(resolve(seated));
 
-    let key = CLIP.idle;
-    if (currentAction && CLIP[currentAction]) key = CLIP[currentAction];
-    else if (currentEmote && CLIP[currentEmote]) key = CLIP[currentEmote];
-    else if (isSeated) key = CLIP.sit;
-    else if (isMoving) key = isRunning ? CLIP.run : CLIP.walk;
-
-    const next = actions[key];
+    const key = pickClip(isMoving, isRunning, currentEmote, currentAction, isSeated);
+    const suffix = config.clipOverrides?.[key] || CLIP_SUFFIX[key];
+    const clipName = `${config.prefix || ''}${suffix}`;
+    // اگر کلیپ موردنظر نبود، به idle برگرد
+    const next =
+      actions[clipName] ||
+      actions[`${config.prefix || ''}${config.clipOverrides?.idle || CLIP_SUFFIX.idle}`];
     if (!next || currentRef.current === next) return;
 
     const prev = currentRef.current;
@@ -83,6 +80,67 @@ export default function Character({
     next.fadeIn(0.22).play();
     if (prev && prev !== next) prev.fadeOut(0.22);
     currentRef.current = next;
+  });
+
+  // انیمیشن رویه‌ای برای مدل‌های بدون ریگ
+  const baseY = useRef(0);
+  const phase = useRef(0);
+  useEffect(() => {
+    phase.current = Math.random() * Math.PI * 2;
+  }, []);
+  useFrame(({ clock }) => {
+    const inner = innerRef.current;
+    if (!inner) return;
+
+    const isSeated = Boolean(resolve(seated));
+    const isMoving = Boolean(resolve(moving));
+    const isRunning = Boolean(resolve(running));
+    const currentEmote = resolve(emote);
+    const currentAction = resolve(action);
+
+    // نشستن: پایین آمدن نرم
+    const targetY = isSeated ? -0.35 : 0;
+    baseY.current += (targetY - baseY.current) * 0.18;
+    inner.position.y = baseY.current;
+
+    if (config.clips) {
+      inner.rotation.x = 0;
+      inner.rotation.z = 0;
+      return;
+    }
+
+    const t = clock.elapsedTime + phase.current;
+    let bob = 0;
+    let tiltX = 0;
+    let rollZ = 0;
+
+    if (currentEmote === 'dance') {
+      rollZ = Math.sin(t * 6) * 0.22;
+      bob = Math.abs(Math.sin(t * 6)) * 0.16;
+    } else if (currentEmote === 'wave') {
+      rollZ = Math.sin(t * 5) * 0.12;
+    } else if (currentEmote === 'laugh') {
+      tiltX = Math.sin(t * 9) * 0.06;
+      bob = Math.abs(Math.sin(t * 9)) * 0.05;
+    } else if (currentEmote === 'celebrate') {
+      bob = Math.abs(Math.sin(t * 7)) * 0.32;
+    } else if (currentEmote === 'sleep') {
+      tiltX = 0.28;
+      bob = Math.sin(t * 1.2) * 0.02;
+    } else if (isMoving) {
+      const speed = isRunning ? 11 : 7;
+      bob = Math.abs(Math.sin(t * speed)) * (isRunning ? 0.13 : 0.08);
+      tiltX = isRunning ? 0.18 : 0.05;
+    } else if (currentAction === 'guitar') {
+      rollZ = Math.sin(t * 3.4) * 0.09;
+    } else {
+      // نفس کشیدن ملایم در idle
+      bob = Math.sin(t * 1.6) * 0.022;
+    }
+
+    inner.position.y = baseY.current + bob;
+    inner.rotation.x = tiltX;
+    inner.rotation.z = rollZ;
   });
 
   // توقف انیمیشن‌ها هنگام unmount
@@ -97,33 +155,30 @@ export default function Character({
     };
   }, [mixer]);
 
-  // اعمال tint رنگی برای تمایز بازیکنان (روی متریال کپی‌شده)
+  // سایه
   useEffect(() => {
-    if (!tint) return;
-    const color = new THREE.Color(tint);
+    if (!castShadow) return;
     clone.traverse((child) => {
       if (!child.isMesh) return;
-      child.material = child.material.clone();
-      child.material.color.lerp(color, 0.45);
+      child.castShadow = true;
+      child.receiveShadow = true;
     });
-  }, [clone, tint]);
+  }, [clone, castShadow]);
 
-  // نشستن: پایین آمدن مدل تا روی کنده بنشیند
-  useFrame(() => {
-    if (!groupRef.current) return;
-    const targetY = resolve(seated) ? SEAT_OFFSET_Y : 0;
-    groupRef.current.position.y += (targetY - groupRef.current.position.y) * 0.18;
-  });
-
-  const scale = TARGET_HEIGHT / MODEL_HEIGHT;
+  // مقیاس و آفست عمودی بر اساس ارتفاع واقعی مدل
+  const scale = TARGET_HEIGHT / config.height;
+  const lift = -(config.minY || 0) * scale;
 
   return (
     <group ref={groupRef} {...props}>
-      <group scale={scale} rotation={[0, 0, 0]}>
-        <primitive object={clone} />
+      <group ref={innerRef} position={[0, lift, 0]}>
+        <group scale={scale}>
+          <primitive object={clone} />
+        </group>
       </group>
     </group>
   );
 }
 
-useGLTF.preload(CACTORO_URL);
+// پیش‌بارگذاری همه‌ی کاراکترها
+Object.keys(CHARACTERS).forEach((file) => useGLTF.preload(characterUrl(file)));

@@ -118,10 +118,31 @@ export function makeYumBuffer(context) {
   });
 }
 
+// آب: نویز سفید باند-محدود با محو سریع (پاشیدن آب هنگام ماهیگیری)
+export function makeWaterBuffer(context) {
+  return noiseBuffer(context, 1.6, (data, sampleRate) => {
+    let lp = 0;
+    const decay = Math.floor(sampleRate * 1.3);
+    for (let i = 0; i < data.length; i += 1) {
+      const white = Math.random() * 2 - 1;
+      lp = 0.72 * lp + 0.28 * white; // پایین‌گذر
+      const hp = white - lp; // بالاگذر ساده
+      const splash = i < decay ? Math.exp(-i / (sampleRate * 0.28)) : 0;
+      const ripple = 0.35 + 0.65 * Math.abs(Math.sin((i / sampleRate) * 11));
+      data[i] = (lp * 0.45 + hp * 0.55) * splash * ripple * 0.75;
+    }
+  });
+}
+
 export const PROCEDURAL_FACTORIES = {
   fire: makeFireBuffer,
+  campfire: makeFireBuffer,
   crickets: makeCricketsBuffer,
   wind: makeWindBuffer,
+  water: makeWaterBuffer,
   guitar: makeGuitarBuffer,
+  guitar1: makeGuitarBuffer,
+  guitar2: makeGuitarBuffer,
+  guitar3: makeGuitarBuffer,
   yum: makeYumBuffer,
 };

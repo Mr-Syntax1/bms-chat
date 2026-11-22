@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, VAN, WALK_RADIUS } from '../sceneLayout';
+import { FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, VAN, BOUNDS, DOCK, TREES } from '../sceneLayout';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { getInteractables, resolveInteractableKey } from '../interactionRegistry';
+import { findNearbyQuestItem } from '../questRegistry';
 import { playPositionalOneShot } from '../audio';
 import { publishPlayerAction } from '../hooks/useGameSync';
 import Character from './Character';
-import { GUITAR_SOUND, YUM_SOUND } from '../sounds';
+import { GUITAR_SOUNDS, YUM_SOUND } from '../sounds';
 
 const WALK_SPEED = 3.6;
 const RUN_SPEED = 6.8;
@@ -21,6 +22,11 @@ const MARSHMALLOW_DURATION = 3000;
 const MARSHMALLOW_READY_HOLD = 4000;
 const EMOTE_DURATION = 3400;
 
+// دوربین سوم‌شخص نزدیک
+const CAM_DIST = 2.5;
+const CAM_HEIGHT = 1.5;
+const CAM_LERP = 0.1;
+
 const EMOTES = {
   Digit1: 'wave',
   Digit2: 'dance',
@@ -29,17 +35,22 @@ const EMOTES = {
   Digit5: 'sleep',
 };
 
-// کنترلر بازیکن محلی: WASD + دویدن، کالیژن، دوربین سوم‌شخص، اکشن‌ها و ایموت‌ها
-export default function PlayerController({ roomId, user }) {
-  const { camera, gl } = useThree();
+// کنترلر بازیکن محلی: WASD نسبت به جهت نگاه، کالیژن، دوربین سوم‌شخص، اکشن‌ها
+export default function PlayerController({ roomId, user, look, active = true }) {
+  const { camera } = useThree();
   const groupRef = useRef(null);
   const [, getKeys] = useKeyboardControls();
+
+  // فعال بودن بازی (بعد از Start و تا وقتی موس قفل است) بدون re-render در حلقه
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
 
   const velocity = useRef(new THREE.Vector3());
   const raycaster = useRef(new THREE.Raycaster());
   const rayOrigin = useMemo(() => new THREE.Vector3(), []);
   const rayDirection = useMemo(() => new THREE.Vector3(), []);
-  const pointer = useRef({ x: 0 });
   const smoothLook = useRef(new THREE.Vector3(0, 1.5, 10.5));
   const lookTarget = useMemo(() => new THREE.Vector3(), []);
   const desiredCam = useRef(new THREE.Vector3());
@@ -47,7 +58,6 @@ export default function PlayerController({ roomId, user }) {
   const movingRef = useRef(false);
   const runningRef = useRef(false);
 
-  // تایمرهای اکشن
   const guitarTimer = useRef(null);
   const marshmallowTimer = useRef(null);
   const emoteTimer = useRef(null);
@@ -55,23 +65,14 @@ export default function PlayerController({ roomId, user }) {
   const setLocalTransform = usePlayerStore((s) => s.setLocalTransform);
   const setNearFire = usePlayerStore((s) => s.setNearFire);
   const setHovered = usePlayerStore((s) => s.setHovered);
+  const setNearInteractable = usePlayerStore((s) => s.setNearInteractable);
   const seated = usePlayerStore((s) => s.seated);
   const emote = usePlayerStore((s) => s.emote);
   const action = usePlayerStore((s) => s.action);
+  const character = usePlayerStore((s) => s.character);
   const local = usePlayerStore((s) => s.local);
 
-  // چرخش دوربین با درگ موس
-  useEffect(() => {
-    const el = gl.domElement;
-    const onPointerMove = (event) => {
-      if (event.buttons !== 1) return;
-      pointer.current.x -= event.movementX * 0.0022;
-    };
-    el.addEventListener('pointermove', onPointerMove);
-    return () => el.removeEventListener('pointermove', onPointerMove);
-  }, [gl]);
-
-  // کلیدهای تعاملی: E نشستن، F چراغ ون، G گیتار، M مارشمالو، 1..5 ایموت
+  // کلیدهای تعاملی: E تعامل، F چراغ ون، G گیتار، M مارشمالو، 1..5 ایموت
   useEffect(() => {
     const clearTimers = () => {
       if (guitarTimer.current) clearTimeout(guitarTimer.current);
@@ -84,21 +85,32 @@ export default function PlayerController({ roomId, user }) {
 
     const onKeyDown = (event) => {
       if (event.repeat) return;
+      // کلیدهای بازی فقط وقتی فعال است (Start خورده و در حالت بازی)
+      if (!activeRef.current) return;
       const state = usePlayerStore.getState();
-      // موقعیت لحظه‌ای برای صدای مکانی (از state زنده خوانده می‌شود)
       const { x, z } = state.local;
 
       switch (event.code) {
-        case 'KeyE':
+        case 'KeyE': {
           event.preventDefault();
-          state.sitAuto();
+          // آیتم قفل‌شده (ترتیب مأموریت) اجرا نمی‌شود
+          if (state.nearInteractable?.locked) {
+            state.pushToast('این مرحله هنوز قفل است!', 'warn');
+            break;
+          }
+          // اگر آیتم تعاملی نزدیک است، تعامل کن؛ وگرنه نشستن روی کنده
+          if (state.nearInteractable?.action) {
+            state.nearInteractable.action();
+          } else {
+            state.sitAuto();
+          }
           break;
+        }
         case 'KeyF':
           state.setHeadlights(!state.headlights);
           break;
         case 'KeyG': {
-          if (!state.nearFire) return;
-          // اگر گیتار در حال پخش است، متوقف کن
+          // گیتار از هر جای نقشه (نه فقط کنار آتش)
           if (state.action === 'guitar') {
             state.endAction();
             publishPlayerAction(roomId, user, 'action-end');
@@ -106,9 +118,10 @@ export default function PlayerController({ roomId, user }) {
             guitarTimer.current = null;
             return;
           }
+          const sound = GUITAR_SOUNDS[Math.floor(Math.random() * GUITAR_SOUNDS.length)];
           state.startAction('guitar');
-          playPositionalOneShot(GUITAR_SOUND, [x, 1.2, z], { volume: 0.9 });
-          publishPlayerAction(roomId, user, 'action', { action: 'guitar', duration: GUITAR_DURATION });
+          playPositionalOneShot(sound, [x, 1.2, z], { volume: 0.9 });
+          publishPlayerAction(roomId, user, 'guitar', { sound, duration: GUITAR_DURATION });
           if (guitarTimer.current) clearTimeout(guitarTimer.current);
           guitarTimer.current = setTimeout(() => {
             usePlayerStore.getState().endAction();
@@ -132,13 +145,11 @@ export default function PlayerController({ roomId, user }) {
             duration: MARSHMALLOW_DURATION + MARSHMALLOW_READY_HOLD,
           });
           if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
-          // بعد از ۳ ثانیه قهوه‌ای می‌شود و صدای yum پخش می‌شود
           marshmallowTimer.current = setTimeout(() => {
             const s = usePlayerStore.getState();
             s.setMarshmallow('ready');
             playPositionalOneShot(YUM_SOUND, [x, 1.2, z], { volume: 0.85 });
             publishPlayerAction(roomId, user, 'marshmallow-ready');
-            // چند لحظه بعد سیخ برداشته می‌شود تا حرکت قفل نماند
             marshmallowTimer.current = setTimeout(() => {
               const s2 = usePlayerStore.getState();
               if (s2.action === 'marshmallow') {
@@ -154,7 +165,6 @@ export default function PlayerController({ roomId, user }) {
           break;
       }
 
-      // ایموت‌ها
       const emoteName = EMOTES[event.code];
       if (emoteName) {
         const state2 = usePlayerStore.getState();
@@ -174,7 +184,6 @@ export default function PlayerController({ roomId, user }) {
     };
   }, [roomId, user]);
 
-  // هنگام خروج از بازی، اکشن/ایموت باز را ببند
   useEffect(() => {
     return () => {
       const state = usePlayerStore.getState();
@@ -191,40 +200,53 @@ export default function PlayerController({ roomId, user }) {
     const keys = getKeys();
     const state = usePlayerStore.getState();
 
-    const camDist = 10.5;
-    const camHeight = 5.2;
+    const camYaw = look?.yaw?.current ?? 0;
+    const camPitch = look?.pitch?.current ?? 0;
 
     // ---- حالت نشسته ----
     if (state.seated && state.seatIndex !== null) {
       const spot = SEAT_SPOTS[state.seatIndex];
       group.position.set(spot.x, 0, spot.z);
       group.rotation.y = spot.rotation;
-      desiredCam.current.set(spot.x * 0.35, 3.4, spot.z * 0.35);
-      camera.position.lerp(desiredCam.current, 0.06);
-      camera.lookAt(0, 1.1, 0);
+
+      desiredCam.current.set(
+        spot.x + Math.sin(camYaw) * CAM_DIST,
+        CAM_HEIGHT + 0.8,
+        spot.z + Math.cos(camYaw) * CAM_DIST
+      );
+      camera.position.lerp(desiredCam.current, CAM_LERP);
+      lookTarget.set(spot.x, 1.0, spot.z);
+      smoothLook.current.lerp(lookTarget, 0.15);
+      camera.lookAt(smoothLook.current);
+
       setNearFire(true);
       setLocalTransform(spot.x, spot.z, spot.rotation, false);
       velocity.current.multiplyScalar(0.5);
       movingRef.current = false;
       runningRef.current = false;
+      setNearInteractable(null);
       return;
     }
 
-    // ---- ورودی ----
-    const virtual = state.virtualInput;
-    const forward = (keys.forward || virtual.forward ? 1 : 0) - (keys.backward || virtual.backward ? 1 : 0);
-    const strafe = (keys.right || virtual.right ? 1 : 0) - (keys.left || virtual.left ? 1 : 0);
-    const running = keys.run || virtual.run;
+    // ---- ورودی (نسبت به جهت نگاه) ----
+    // وقتی بازی غیرفعال است (منوی توقف) ورودی نادیده گرفته می‌شود
+    const virtual = activeRef.current
+      ? state.virtualInput
+      : { forward: false, backward: false, left: false, right: false, run: false };
+    const activeKeys = activeRef.current ? keys : {};
+    const forward = (activeKeys.forward || virtual.forward ? 1 : 0) - (activeKeys.backward || virtual.backward ? 1 : 0);
+    const strafe = (activeKeys.right || virtual.right ? 1 : 0) - (activeKeys.left || virtual.left ? 1 : 0);
+    const running = activeKeys.run || virtual.run;
     const emoting = Boolean(state.emote);
 
-    const camAngle = pointer.current.x;
-    const sin = Math.sin(camAngle);
-    const cos = Math.cos(camAngle);
+    const sin = Math.sin(camYaw);
+    const cos = Math.cos(camYaw);
 
-    const inputX = strafe * cos + forward * sin;
-    const inputZ = strafe * sin - forward * cos;
+    // دوربین پشت بازیکن است؛ جلو = دورشدن از دوربین
+    // forward = (-sin, -cos) و right = (cos, -sin)
+    const inputX = forward * -sin + strafe * cos;
+    const inputZ = forward * -cos + strafe * -sin;
     const inputLength = Math.hypot(inputX, inputZ);
-    // در حال ایموت یا اکشن، حرکت قفل می‌شود
     const moving = inputLength > 0.01 && !emoting && state.action === null;
 
     const maxSpeed = running ? RUN_SPEED : WALK_SPEED;
@@ -244,15 +266,13 @@ export default function PlayerController({ roomId, user }) {
     let nextX = local.x + targetVelocity.x * delta;
     let nextZ = local.z + targetVelocity.z * delta;
 
-    // مرز بیرونی جنگل
-    const distFromCenter = Math.hypot(nextX, nextZ);
-    const maxRadius = WALK_RADIUS - BODY_RADIUS;
-    if (distFromCenter > maxRadius) {
-      const ratio = maxRadius / distFromCenter;
-      nextX *= ratio;
-      nextZ *= ratio;
-      targetVelocity.multiplyScalar(0.2);
-    }
+    // مرزهای نقشه (نمی‌تواند وارد آب شود) — فقط روی تخته‌های اسکله استثناست
+    const onDock = nextX > BOUNDS.maxX && Math.abs(nextZ - DOCK.z) < DOCK.width * 0.55;
+    const maxX = onDock ? DOCK.x + DOCK.length - 4 : BOUNDS.maxX;
+    if (nextX < BOUNDS.minX) nextX = BOUNDS.minX;
+    if (nextX > maxX) nextX = maxX;
+    if (nextZ < BOUNDS.minZ) nextZ = BOUNDS.minZ;
+    if (nextZ > BOUNDS.maxZ) nextZ = BOUNDS.maxZ;
 
     // عدم ورود به گودال آتش
     const distFire = Math.hypot(nextX, nextZ);
@@ -263,20 +283,20 @@ export default function PlayerController({ roomId, user }) {
       targetVelocity.multiplyScalar(0.3);
     }
 
-    // کالیژن با درختان (شعاع تنه ≈ ۰.۳۵ × مقیاس درخت)
-    const tree = state.nearestTree(nextX, nextZ, 3.2);
-    if (tree) {
+    // کالیژن با درختان (بررسی فقط درختان نزدیک برای کارایی)
+    for (const tree of TREES) {
       const dx = nextX - tree.x;
       const dz = nextZ - tree.z;
-      const d = Math.hypot(dx, dz) || 1;
-      const minDist = tree.scale * 0.36 + BODY_RADIUS;
+      if (Math.abs(dx) > 3 || Math.abs(dz) > 3) continue;
+      const d = Math.hypot(dx, dz) || 0.0001;
+      const minDist = tree.scale * 0.5 + BODY_RADIUS;
       if (d < minDist) {
         nextX = tree.x + (dx / d) * minDist;
         nextZ = tree.z + (dz / d) * minDist;
       }
     }
 
-    // کالیژن با ون در فضای محلی ون (چون ون چرخیده است)
+    // کالیژن با ون
     const cosV = Math.cos(-VAN.rotation);
     const sinV = Math.sin(-VAN.rotation);
     const relX = nextX - VAN.x;
@@ -286,7 +306,6 @@ export default function PlayerController({ roomId, user }) {
     const halfX = 2.7 + BODY_RADIUS;
     const halfZ = 2.0 + BODY_RADIUS;
     if (Math.abs(localX) < halfX && Math.abs(localZ) < halfZ) {
-      // بازیکن را به نزدیک‌ترین لبه‌ی جعبه‌ی ون هل بده
       const pushX = halfX - Math.abs(localX);
       const pushZ = halfZ - Math.abs(localZ);
       let newLocalX = localX;
@@ -314,7 +333,6 @@ export default function PlayerController({ roomId, user }) {
 
     group.position.set(nextX, 0, nextZ);
 
-    // ---- Store ----
     setLocalTransform(nextX, nextZ, group.rotation.y, speed > 0.15);
     movingRef.current = speed > 0.2;
     runningRef.current = running && speed > 0.2;
@@ -322,15 +340,24 @@ export default function PlayerController({ roomId, user }) {
     const nearFire = Math.hypot(nextX, nextZ) < SEAT_RADIUS + 1.6;
     setNearFire(nearFire);
 
-    // ---- دوربین سوم‌شخص ----
+    // ---- دوربین سوم‌شخص نزدیک ----
+    // ۲.۵ واحد پشت سر و ۱.۵ واحد بالاتر؛ pitch جهت نگاه را بالا/پایین می‌برد
     desiredCam.current.set(
-      nextX + Math.sin(camAngle) * camDist,
-      camHeight,
-      nextZ + Math.cos(camAngle) * camDist
+      nextX + Math.sin(camYaw) * CAM_DIST,
+      CAM_HEIGHT,
+      nextZ + Math.cos(camYaw) * CAM_DIST
     );
-    camera.position.lerp(desiredCam.current, 1 - Math.pow(0.0016, delta));
-    lookTarget.set(nextX, 1.5, nextZ);
-    smoothLook.current.lerp(lookTarget, 1 - Math.pow(0.0009, delta));
+    camera.position.lerp(desiredCam.current, CAM_LERP);
+
+    // هدف نگاه: جلوی بازیکن، چرخیده با pitch (بدون اثر روی موقعیت دوربین)
+    const cosP = Math.cos(camPitch);
+    const sinP = Math.sin(camPitch);
+    lookTarget.set(
+      nextX - Math.sin(camYaw) * cosP * 8,
+      1.35 + sinP * 8,
+      nextZ - Math.cos(camYaw) * cosP * 8
+    );
+    smoothLook.current.lerp(lookTarget, 0.35);
     camera.lookAt(smoothLook.current);
 
     // ---- Raycast تعامل ----
@@ -343,12 +370,26 @@ export default function PlayerController({ roomId, user }) {
       raycaster.current.far = 5;
       const hits = raycaster.current.intersectObjects(getInteractables(), true);
       setHovered(hits.length > 0 ? resolveInteractableKey(hits[0].object) : null);
+
+      // نزدیک‌ترین آیتم تعاملی مأموریت (فاصله‌ی اقلیدسی)
+      const near = findNearbyQuestItem(nextX, nextZ);
+      setNearInteractable(
+        near
+          ? {
+            key: near.key,
+            label: near.label,
+            locked: Boolean(near.isLocked?.()),
+            action: near.action,
+          }
+          : null
+      );
     }
   });
 
   return (
     <group ref={groupRef} position={[local.x, 0, local.z]}>
       <Character
+        model={character}
         moving={movingRef}
         running={runningRef}
         emote={emote}
@@ -357,7 +398,6 @@ export default function PlayerController({ roomId, user }) {
         castShadow
       />
 
-      {/* حلقه‌ی نشانگر بازیکن محلی */}
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.5, 0.62, 26]} />
         <meshBasicMaterial color="#8ad6c1" transparent opacity={0.5} depthWrite={false} />

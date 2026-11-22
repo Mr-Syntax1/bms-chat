@@ -4,8 +4,8 @@ import { Html } from '@react-three/drei';
 import { remoteMap, usePlayerStore } from '../stores/usePlayerStore';
 import { SEAT_SPOTS } from '../sceneLayout';
 import Character from './Character';
+import { DEFAULT_CHARACTER } from '../models/characterConfig';
 
-// رنگ حلقه‌ی نشانگر بر اساس شناسه‌ی کاربر (پایدار و یکتا)
 const PALETTE = ['#8ab4f8', '#f28b82', '#fdd663', '#81c995', '#c58af9', '#78d9ec', '#f6aea9', '#b6e3a8'];
 
 function colorForId(id) {
@@ -14,7 +14,6 @@ function colorForId(id) {
   return PALETTE[hash % PALETTE.length];
 }
 
-// interpolation: حرکت نرم بین پکت‌های دریافتی
 const LERP_FACTOR = 0.16;
 const ROT_LERP = 0.2;
 
@@ -31,7 +30,6 @@ function RemoteAvatar({ id }) {
     if (!entry || !group) return;
 
     const now = Date.now();
-    // پاک‌سازی ایموت/اکشن منقضی‌شده
     if (entry.emoteUntil && now > entry.emoteUntil) {
       entry.emote = null;
       entry.emoteUntil = 0;
@@ -41,7 +39,6 @@ function RemoteAvatar({ id }) {
       entry.actionUntil = 0;
     }
 
-    // اگر روی صندلی نشسته، موقعیت ثابت صندلی
     const seatSpot =
       entry.seat !== null && entry.seat !== undefined ? SEAT_SPOTS[entry.seat] : null;
 
@@ -75,10 +72,12 @@ function RemoteAvatar({ id }) {
 
   const entry = remoteMap.get(id);
   const username = entry?.username || 'مهمان';
+  const character = entry?.character || DEFAULT_CHARACTER;
 
   return (
     <group ref={groupRef}>
       <Character
+        model={character}
         moving={movingRef}
         running={runningRef}
         emote={() => remoteMap.get(id)?.emote ?? null}
@@ -87,13 +86,11 @@ function RemoteAvatar({ id }) {
         castShadow
       />
 
-      {/* حلقه‌ی نشانگر بازیکن ریموت */}
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.46, 0.56, 24]} />
         <meshBasicMaterial color={color} transparent opacity={0.5} depthWrite={false} />
       </mesh>
 
-      {/* نام بازیکن */}
       <Html center position={[0, 2.15, 0]} distanceFactor={14} occlude={false} zIndexRange={[20, 0]}>
         <div className="px-2 py-0.5 rounded-full bg-surface-950/75 border border-white/15 text-[11px] text-surface-50 whitespace-nowrap backdrop-blur-sm">
           {username}

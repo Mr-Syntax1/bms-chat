@@ -9,7 +9,7 @@ import AudioRoot from './components/AudioRoot';
 import { useGameSync } from './hooks/useGameSync';
 import { KEY_MAP } from './controls';
 
-export default function GameCanvas({ roomId, user }) {
+export default function GameCanvas({ roomId, user, look, active = true }) {
   // سینک Ably در بالاترین سطح کامپوننت بازی
   useGameSync({ roomId, user, enabled: Boolean(roomId && user?.id) });
 
@@ -18,7 +18,7 @@ export default function GameCanvas({ roomId, user }) {
       <Canvas
         shadows
         dpr={[1, 1.75]}
-        camera={{ position: [0, 4.6, 8.5], fov: 52, near: 0.1, far: 220 }}
+        camera={{ position: [0, 2.2, 4], fov: 62, near: 0.1, far: 500 }}
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
@@ -26,14 +26,14 @@ export default function GameCanvas({ roomId, user }) {
           toneMappingExposure: 1.05,
         }}
         onCreated={({ gl }) => {
-          gl.setClearColor('#0b1020');
+          gl.setClearColor('#070d1c');
         }}
       >
         {/* AudioListener باید قبل از افکت‌های صدای محیطی ساخته شود */}
         <AudioRoot />
         <Suspense fallback={null}>
           <CozyScene />
-          <PlayerController roomId={roomId} user={user} />
+          <PlayerController roomId={roomId} user={user} look={look} active={active} />
           <RemotePlayers />
           <Preload all />
         </Suspense>

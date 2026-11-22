@@ -1,56 +1,47 @@
+import { useMemo } from 'react';
 import { DECORATIONS } from '../sceneLayout';
-import { Model as TentModel } from '../models/Tent';
-import { Model as RocksModel } from '../models/Rocks';
-import { Model as LogFungusModel } from '../models/LogFungus';
-import { Model as LogAxeModel } from '../models/LogAxe';
+import InstancedGLB from '../models/InstancedGLB';
 
-// تزئینات جنگل: چادر، سنگ، کنده‌ی قارچ‌دار و کنده‌ی تبر
-const COMPONENTS = {
-  tent: TentModel,
-  rocks: RocksModel,
-  logFungus: LogFungusModel,
-  logAxe: LogAxeModel,
-};
-
-// مقیاس پایه‌ی هر مدل تا اندازه‌ی واقعی و متناسب با قد بازیکن (۱.۷۵) داشته باشد
-const TYPE_SCALE = {
-  tent: 1.9, // عرض مدل ۱.۲۹ → ~۲.۵
-  rocks: 1.05, // عرض ۱.۵۵ → ~۱.۶
-  logFungus: 1.35, // طول ۱.۱۲ → ~۱.۵
-  logAxe: 4.2, // عرض ۰.۲۷ → ~۱.۱
-};
-
-// پایین‌ترین نقطه‌ی هر مدل در واحدهای خودش؛ برای نشاندن دقیق روی زمین
-const GROUND_LIFT = {
-  tent: 0.26,
-  rocks: 0.25,
-  logFungus: 0.14,
-  logAxe: 0.07,
+// تزئینات جنگل با InstancedMesh (چادر، سنگ، کنده‌ی قارچ‌دار و کنده‌ی تبر)
+const SOURCES = {
+  tent: { url: '/game-models/opt/Tent.glb', height: 1.9 },
+  rocks: { url: '/game-models/opt/Rocks.glb', height: 0.75 },
+  logFungus: { url: '/game-models/opt/LogFungus.glb', height: 0.3 },
 };
 
 export default function Decorations() {
+  // گروه‌بندی بر اساس نوع تا هر نوع یک InstancedMesh داشته باشد
+  const groups = useMemo(() => {
+    const byType = { tent: [], rocks: [], logFungus: [], logAxe: [] };
+    DECORATIONS.forEach((item) => {
+      if (byType[item.type]) byType[item.type].push(item);
+    });
+    return byType;
+  }, []);
+
   return (
     <group>
-      {DECORATIONS.map((item, i) => {
-        const Component = COMPONENTS[item.type];
-        if (!Component) return null;
-        const scale = item.scale * (TYPE_SCALE[item.type] ?? 1);
-        const lift = GROUND_LIFT[item.type] ?? 0;
+      {Object.entries(SOURCES).map(([type, source]) => (
+        <InstancedGLB
+          key={type}
+          url={source.url}
+          items={groups[type]}
+          targetHeight={source.height}
+        />
+      ))}
 
-        return (
-          <group
-            key={`${item.type}-${i}`}
-            position={[item.x, 0, item.z]}
-            rotation={[0, item.rotation, 0]}
-            scale={scale}
-          >
-            {/* بالابر در فضای مدل اعمال می‌شود تا با مقیاس هم‌خوان بماند */}
-            <group position={[0, lift, 0]}>
-              <Component />
-            </group>
-          </group>
-        );
-      })}
+      {/* کنده‌ی زیر تبر + تبر روی آن */}
+      <InstancedGLB
+        url="/game-models/opt/ChoppedLog.glb"
+        items={groups.logAxe}
+        targetHeight={0.5}
+      />
+      <InstancedGLB
+        url="/game-models/opt/LogAxe.glb"
+        items={groups.logAxe}
+        targetHeight={0.4}
+        y={0.48}
+      />
     </group>
   );
 }

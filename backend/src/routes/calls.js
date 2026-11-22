@@ -5,7 +5,6 @@ import { User } from '../models/User.js';
 import mongoose from 'mongoose';
 import { Room } from '../models/Room.js';
 import { GroupCall } from '../models/GroupCall.js';
-import { AccessToken } from 'livekit-server-sdk';
 
 export const callsRouter = express.Router();
 
@@ -568,25 +567,70 @@ callsRouter.post('/group/leave', requireAuth, groupRateLimit, async (req, res) =
 // ===================================
 // game backend
 // ===================================
-callsRouter.post('/livekit/token', requireAuth, async (req, res) => {
-  try {
-    const { roomId } = req.body;
 
-    if (!roomId) {
-      return res.status(400).json({ error: 'roomId الزامی است' });
-    }
+// ---------------------------------------------------------------------------
+// اختصاص کاراکتر یکتا برای بازی کمپ (حداکثر ۹ نفر)
+// ---------------------------------------------------------------------------
+const GAME_CHARACTERS = [
+  'Cactoro.glb',
+  'Citizen.glb',
+  'CoolBannanaGuy.glb',
+  'CubeGuyCharacter.glb',
+  'CuteCharacter.glb',
+  'CuteRedDino.glb',
+  'DORAEMON.glb',
+  'miku.glb',
+  'MushroomCharacter.glb',
+];
+const GAME_CAPACITY = GAME_CHARACTERS.length;
+const CLAIM_TTL = 2 * 60 * 60 * 1000;
 
-    const at = new AccessToken(
-      process.env.LIVEKIT_API_KEY,
-      process.env.LIVEKIT_API_SECRET,
-      { identity: String(req.user.id) }
-    );
+// userId → { file, at }
+const gameAssignments = new Map();
 
-    at.addGrant({ room: String(roomId), roomJoin: true });
+const characterUrl = (file) => `/game-models/characters/${file}`;
 
-    res.json({ token: await at.toJwt() });
-  } catch (error) {
-    console.error('[Calls] LiveKit token error:', error.message);
-    res.status(500).json({ error: 'خطا در تولید توکن LiveKit' });
+function pruneAssignments() {
+  const now = Date.now();
+  for (const [userId, rec] of gameAssignments) {
+    if (now - rec.at > CLAIM_TTL) gameAssignments.delete(userId);
   }
+}
+setInterval(pruneAssignments, 60 * 1000).unref();
+
+// گرفتن یک کاراکتر آزاد به‌صورت تصادفی
+callsRouter.post('/game/claim-character', requireAuth, (req, res) => {
+  pruneAssignments();
+  const userId = req.user.id;
+
+  const existing = gameAssignments.get(userId);
+  if (existing) {
+    existing.at = Date.now();
+    return res.json({
+      character: existing.file,
+      url: characterUrl(existing.file),
+      players: gameAssignments.size,
+      capacity: GAME_CAPACITY,
+    });
+  }
+
+  const taken = new Set([...gameAssignments.values()].map((rec) => rec.file));
+  const free = GAME_CHARACTERS.filter((file) => !taken.has(file));
+  if (!free.length) return deny(res, 409, 'ظرفیت بازی پر است');
+
+  const file = free[Math.floor(Math.random() * free.length)];
+  gameAssignments.set(userId, { file, at: Date.now() });
+
+  return res.json({
+    character: file,
+    url: characterUrl(file),
+    players: gameAssignments.size,
+    capacity: GAME_CAPACITY,
+  });
+});
+
+// آزاد کردن کاراکتر هنگام خروج
+callsRouter.post('/game/release-character', requireAuth, (req, res) => {
+  gameAssignments.delete(req.user.id);
+  return res.json({ success: true });
 });

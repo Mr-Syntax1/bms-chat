@@ -3,43 +3,59 @@ import * as THREE from 'three';
 import { TREES } from '../sceneLayout';
 import { usePineModel } from '../models/pineParts';
 
-const TARGET_HEIGHT = 7.6; // ارتفاع نهایی درخت مرجع در صحنه
+const TARGET_HEIGHT = 7.6;
 
-/**
- * درختان Pine با InstancedMesh.
- * مدل از چند sub-mesh تشکیل شده؛ برای هر کدام یک InstancedMesh می‌سازیم
- * و ماتریس درخت‌ها را بین آن‌ها به اشتراک می‌گذاریم.
- * نتیجه: فقط چند draw call برای کل جنگل.
- */
+// سه گونه درخت: opt/Pine + trees/Pine + trees/Pine2
+const URLS = [
+  '/game-models/opt/Pine.glb',
+  '/game-models/trees/Pine2.glb',
+  '/game-models/trees/Pine.glb',
+];
+
+// درختان با InstancedMesh (یک InstancedMesh به‌ازای هر sub-mesh)
 export default function Forest() {
-  const { parts, height, baseY } = usePineModel();
-  const refs = useRef([]);
+  const pineOpt = usePineModel(URLS[0]);
+  const pine2 = usePineModel(URLS[1]);
+  const pine = usePineModel(URLS[2]);
 
+  const v0 = useMemo(() => TREES.filter((t) => t.variant === 0), []);
+  const v1 = useMemo(() => TREES.filter((t) => t.variant === 1), []);
+  const v2 = useMemo(() => TREES.filter((t) => t.variant === 2), []);
+
+  return (
+    <group>
+      <TreeSet model={pineOpt} trees={v0} />
+      <TreeSet model={pine2} trees={v1} />
+      <TreeSet model={pine} trees={v2} />
+    </group>
+  );
+}
+
+function TreeSet({ model, trees }) {
+  const refs = useRef([]);
+  const { parts, height, baseY, centerX, centerZ } = model;
   const baseScale = TARGET_HEIGHT / height;
 
-  // ماتریس نهایی هر درخت (یک‌بار محاسبه می‌شود)
   const matrices = useMemo(() => {
     const dummy = new THREE.Object3D();
-    return TREES.map((tree) => {
+    return trees.map((tree) => {
       const s = tree.scale * baseScale;
-      // مدل کمی زیر مبدأ است؛ با این آفست تنه دقیقاً روی زمین می‌نشیند
-      dummy.position.set(tree.x, baseY * s, tree.z);
+      // نرمال‌سازی XZ تا تنه‌ی درخت دقیقاً روی نقطه‌ی تولیدشده بایستد
+      dummy.position.set(tree.x - centerX * s, baseY * s, tree.z - centerZ * s);
       dummy.rotation.set(0, tree.rotation, 0);
       dummy.scale.setScalar(s);
       dummy.updateMatrix();
       return dummy.matrix.clone();
     });
-  }, [baseScale, baseY]);
+  }, [trees, baseScale, baseY, centerX, centerZ]);
 
-  // تنوع رنگی ملایم برگ‌ها (فقط قطعه‌ی برگ = آخرین مش)
-  // رنگ‌ها نزدیک سفید هستند چون instanceColor در رنگ پایه ضرب می‌شود
   const leafColors = useMemo(() => {
     const tint = new THREE.Color();
-    return TREES.map((tree) => {
+    return trees.map((tree) => {
       tint.setHSL(0.27 + tree.tint * 0.08, 0.1 + tree.tint * 0.18, 0.82 + tree.tint * 0.18);
       return tint.clone();
     });
-  }, []);
+  }, [trees]);
 
   useEffect(() => {
     const combined = new THREE.Matrix4();
@@ -47,7 +63,6 @@ export default function Forest() {
       if (!mesh) return;
       const offset = parts[index].matrix;
       matrices.forEach((matrix, i) => {
-        // ماتریس نهایی = ماتریس درخت × ماتریس محلی قطعه
         combined.multiplyMatrices(matrix, offset);
         mesh.setMatrixAt(i, combined);
       });
@@ -61,7 +76,7 @@ export default function Forest() {
     });
   }, [matrices, leafColors, parts]);
 
-  if (!parts.length) return null;
+  if (!parts.length || !matrices.length) return null;
 
   return (
     <group>

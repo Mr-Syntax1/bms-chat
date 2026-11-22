@@ -1,20 +1,22 @@
 import { create } from 'zustand';
-import { SPAWN, SEAT_SPOTS, TREES, CAMP_RADIUS, WALK_RADIUS } from '../sceneLayout';
+import { SPAWN, SEAT_SPOTS, CAMP_RADIUS, BOUNDS } from '../sceneLayout';
+import { DEFAULT_CHARACTER } from '../models/characterConfig';
 
 // ---------------------------------------------------------------------------
 // state های mutable: در هر فریم آپدیت می‌شوند و باعث re-render نمی‌شوند
 // ---------------------------------------------------------------------------
 const local = {
   x: SPAWN.x,
+  y: 0,
   z: SPAWN.z,
   rot: 0,
-  seat: null, // ایندکس صندلی یا null
+  seat: null,
   moving: false,
-  emote: null, // 'wave' | 'dance' | 'laugh' | 'celebrate' | 'sleep'
-  action: null, // 'guitar' | 'marshmallow'
+  emote: null,
+  action: null,
 };
 
-// نگاشت بازیکنان ریموت: id → { target, current, rot, seat, emote, action, ... }
+// نگاشت بازیکنان ریموت: id → { target, current, rot, seat, emote, action, character, ... }
 export const remoteMap = new Map();
 
 // لیسنرهای Spatial Audio (LiveKit): مختصات همه‌ی بازیکنان
@@ -30,6 +32,7 @@ export function getSpatialSnapshot() {
     {
       id: 'local',
       x: local.x,
+      y: local.y,
       z: local.z,
       seated: local.seat !== null,
       emote: local.emote,
@@ -40,6 +43,7 @@ export function getSpatialSnapshot() {
     players.push({
       id,
       x: entry.current.x,
+      y: 0,
       z: entry.current.z,
       seated: entry.seat !== null,
       emote: entry.emote,
@@ -55,8 +59,22 @@ export function emitSpatialFrame() {
   for (const listener of spatialListeners) listener(snapshot);
 }
 
-// شناسه‌ی یکتای اکشن برای همگام‌سازی صدا/انیمیشن
-export const newActionId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+export const newActionId = () =>
+  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
+// ---------------------------------------------------------------------------
+// وضعیت اولیه‌ی مأموریت‌ها
+// ---------------------------------------------------------------------------
+const initialQuests = {
+  parchments: 0, // ۰..۳
+  lanterns: 0, // ۰..۵
+  hasKey: false,
+  chestOpened: false,
+  shells: 0, // ۰..۱۰
+  signsRead: 0,
+};
+
+let toastSeq = 0;
 
 export const usePlayerStore = create((set, get) => ({
   local,
@@ -66,24 +84,49 @@ export const usePlayerStore = create((set, get) => ({
   hovered: null,
   headlights: false,
   campRadius: CAMP_RADIUS,
-  walkRadius: WALK_RADIUS,
+  bounds: BOUNDS,
   remoteIds: [],
   peerCount: 0,
   syncStatus: 'idle',
 
-  // اکشن‌ها و ایموت‌های محلی (برای HUD و انیمیشن)
-  action: null, // 'guitar' | 'marshmallow' | null
+  // کاراکتر اختصاص‌یافته از بک‌اند
+  character: DEFAULT_CHARACTER,
+  characterUrl: null,
+  characterLoading: false,
+  characterError: null,
+
+  // اکشن‌ها و ایموت‌های محلی
+  action: null,
   actionStartedAt: 0,
-  marshmallow: null, // null | 'roasting' | 'ready' | 'burnt'
+  marshmallow: null,
   emote: null,
   emoteUntil: 0,
 
-  // ورودی مجازی موبایل (بدون re-render)
+  // میکروفن
+  micEnabled: true,
+  // وضعیت واقعی LiveKit (جدا از وضعیت سینک Ably)
+  voiceReady: false,
+  voiceError: null,
+
+  // مأموریت‌ها و اینونتوری
+  quests: { ...initialQuests },
+  collected: { parchments: [], lanterns: [], shells: [] },
+  toasts: [],
+  nearInteractable: null, // { key, label }
+  // ورودی مجازی موبایل
   virtualInput: { forward: false, backward: false, left: false, right: false, run: false },
 
   setVirtualInput: (patch) => {
     Object.assign(get().virtualInput, patch);
   },
+
+  setCharacter: (character, url) => set({ character, characterUrl: url, characterLoading: false }),
+  setCharacterLoading: (loading) => set({ characterLoading: loading }),
+  setCharacterError: (error) => set({ characterError: error, characterLoading: false }),
+
+  setMicEnabled: (on) => set({ micEnabled: on }),
+  setVoiceReady: (ready) => set({ voiceReady: Boolean(ready) }),
+  setVoiceError: (error) => set({ voiceError: error, voiceReady: false }),
 
   setLocalTransform: (x, z, rot, moving) => {
     local.x = x;
@@ -102,7 +145,6 @@ export const usePlayerStore = create((set, get) => ({
     set({ seated: index !== null, seatIndex: index });
   },
 
-  // نشستن خودکار روی نزدیک‌ترین صندلی خالی (فقط نزدیک آتش)
   sitAuto: () => {
     const state = get();
     if (state.seated) {
@@ -122,11 +164,30 @@ export const usePlayerStore = create((set, get) => ({
     if (get().hovered !== key) set({ hovered: key });
   },
 
+  setNearInteractable: (value) => {
+    const current = get().nearInteractable;
+    // مقایسه‌ی key و locked تا تغییر وضعیت قفل هم در HUD منعکس شود
+    if (current?.key === value?.key && Boolean(current?.locked) === Boolean(value?.locked)) return;
+    set({ nearInteractable: value });
+  },
+
   setHeadlights: (on) => set({ headlights: on }),
-
   setSyncStatus: (status) => set({ syncStatus: status }),
-
   setPeerCount: (count) => set({ peerCount: count }),
+
+  // -------------------------------------------------------------------------
+  // Toast
+  // -------------------------------------------------------------------------
+  pushToast: (text, kind = 'info') => {
+    toastSeq += 1;
+    const id = toastSeq;
+    set((s) => ({ toasts: [...s.toasts, { id, text, kind }] }));
+    setTimeout(() => {
+      set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+    }, 4200);
+  },
+
+  dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
   // -------------------------------------------------------------------------
   // اکشن‌های تعاملی
@@ -154,25 +215,111 @@ export const usePlayerStore = create((set, get) => ({
   },
 
   // -------------------------------------------------------------------------
+  // مأموریت‌ها
+  // -------------------------------------------------------------------------
+  addParchment: (index) => {
+    const { quests, collected } = get();
+    if (collected.parchments.includes(index)) return false;
+    const parchments = [...collected.parchments, index];
+    const count = parchments.length;
+    set({
+      collected: { ...collected, parchments },
+      quests: { ...quests, parchments: count },
+    });
+    if (count >= 3) {
+      get().pushToast('نقشه کامل شد! حالا فانوس‌ها را پیدا کن!', 'success');
+    } else {
+      get().pushToast(`تکه نقشه ${count}/3 پیدا شد`, 'success');
+    }
+    return true;
+  },
+
+  lightLantern: (index) => {
+    const { quests, collected } = get();
+    if (collected.lanterns.includes(index)) return false;
+    // ترتیب اجباری: اول باید هر ۳ تکه نقشه پیدا شود
+    if (quests.parchments < 3) {
+      get().pushToast('اول باید ۳ تکه نقشه را پیدا کنی!', 'warn');
+      return false;
+    }
+    const lanterns = [...collected.lanterns, index];
+    const count = lanterns.length;
+    set({
+      collected: { ...collected, lanterns },
+      quests: { ...quests, lanterns: count },
+    });
+    if (count >= 5) {
+      get().pushToast('مسیر به سمت ساحل باز شد!', 'success');
+    } else {
+      get().pushToast(`فانوس روشن شد: ${count}/5`, 'success');
+    }
+    return true;
+  },
+
+  giveKey: () => {
+    const { quests } = get();
+    if (quests.hasKey) return false;
+    // ترتیب اجباری: بعد از روشن شدن ۵ فانوس
+    if (quests.lanterns < 5) {
+      get().pushToast('اول باید ۵ فانوس را روشن کنی!', 'warn');
+      return false;
+    }
+    set({ quests: { ...quests, hasKey: true } });
+    get().pushToast('کلید زنگ‌زده از آب بیرون آمد!', 'success');
+    return true;
+  },
+
+  openChest: () => {
+    const { quests } = get();
+    if (quests.chestOpened) return false;
+    if (!quests.hasKey) {
+      get().pushToast('صندوقچه قفل است. کلید را پیدا کن!', 'warn');
+      return false;
+    }
+    set({ quests: { ...quests, chestOpened: true } });
+    get().pushToast('گنج دزدان دریایی پیدا شد! کاپیتان پامپکین خوشحال است 🎃', 'success');
+    return true;
+  },
+  collectShell: (index) => {
+    const { quests, collected } = get();
+    if (collected.shells.includes(index)) return false;
+    const shells = [...collected.shells, index];
+    const count = shells.length;
+    set({ collected: { ...collected, shells }, quests: { ...quests, shells: count } });
+    get().pushToast(`صدف/ستاره: ${count}/10`, 'info');
+    return true;
+  },
+
+  readSign: (index) => {
+    const { quests } = get();
+    if (get().collected.signs?.includes(index)) return false;
+    const signs = [...(get().collected.signs || []), index];
+    set({
+      collected: { ...get().collected, signs },
+      quests: { ...quests, signsRead: signs.length },
+    });
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
   // بازیکنان ریموت
   // -------------------------------------------------------------------------
   upsertRemote: (id, payload) => {
     const existing = remoteMap.get(id);
     if (existing) {
       const usernameChanged = Boolean(payload.username) && payload.username !== existing.username;
-      // مقادیر تعریف‌نشده نباید مختصات را خراب کنند (NaN)
+      const characterChanged = Boolean(payload.character) && payload.character !== existing.character;
       if (Number.isFinite(payload.x)) existing.target.x = payload.x;
       if (Number.isFinite(payload.z)) existing.target.z = payload.z;
       if (Number.isFinite(payload.rot)) existing.targetRot = payload.rot;
-      existing.seat = payload.seat ?? existing.seat;
+      // اگر seat در payload باشد حتماً اعمال می‌شود (null = بلند شدن از صندلی)
+      if ('seat' in payload) existing.seat = payload.seat ?? null;
       existing.username = payload.username || existing.username;
-      existing.avatarIndex = payload.avatarIndex ?? existing.avatarIndex;
-      // پکت‌های موقعیت این فیلدها را ندارند؛ نباید اکشن/ایموت فعال را پاک کنند
+      if (payload.character) existing.character = payload.character;
       if ('emote' in payload) existing.emote = payload.emote ?? null;
       if ('action' in payload) existing.action = payload.action ?? null;
       existing.lastSeen = performance.now();
-      // فقط وقتی نام کاربر تغییر کرد، برچسب بالای سر را دوباره رندر کن
-      if (usernameChanged) set({ remoteIds: Array.from(remoteMap.keys()) });
+      if (usernameChanged || characterChanged) set({ remoteIds: Array.from(remoteMap.keys()) });
       return;
     }
 
@@ -188,7 +335,7 @@ export const usePlayerStore = create((set, get) => ({
       rot: startRot,
       seat: payload.seat ?? null,
       username: payload.username || 'مهمان',
-      avatarIndex: payload.avatarIndex ?? null,
+      character: payload.character || DEFAULT_CHARACTER,
       emote: payload.emote ?? null,
       emoteUntil: 0,
       action: payload.action ?? null,
@@ -199,7 +346,6 @@ export const usePlayerStore = create((set, get) => ({
     set({ remoteIds: Array.from(remoteMap.keys()) });
   },
 
-  // فقط اکشن/ایموت را عوض کن (بدون دست‌زدن به موقعیت)
   patchRemote: (id, patch) => {
     const entry = remoteMap.get(id);
     if (!entry) return;
@@ -219,7 +365,6 @@ export const usePlayerStore = create((set, get) => ({
     set({ remoteIds: [] });
   },
 
-  // صندلی خالی: صندلی‌ای که بازیکن ریموت رویش نشسته نباشد
   findFreeSeat: (fromX, fromZ) => {
     const taken = new Set();
     for (const entry of remoteMap.values()) {
@@ -236,19 +381,5 @@ export const usePlayerStore = create((set, get) => ({
       }
     });
     return best;
-  },
-
-  // نزدیک‌ترین درخت برای کالیژن (فاصله‌ی خام تا مرکز تنه)
-  nearestTree: (x, z, maxDist) => {
-    let hit = null;
-    let bestDist = maxDist;
-    for (const tree of TREES) {
-      const dist = Math.hypot(tree.x - x, tree.z - z);
-      if (dist < bestDist) {
-        bestDist = dist;
-        hit = tree;
-      }
-    }
-    return hit;
   },
 }));

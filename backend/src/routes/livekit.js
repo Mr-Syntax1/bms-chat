@@ -66,6 +66,8 @@ livekitRouter.post('/token', requireAuth, async (req, res) => {
       canPublish: true,
       canSubscribe: true,
       canPublishData: true,
+      // بدون این مجوز، setAttributes (مختصات Spatial Audio) رد می‌شود
+      canUpdateOwnMetadata: true,
     });
 
     const token = await at.toJwt();
