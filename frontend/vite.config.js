@@ -53,13 +53,13 @@ export default defineConfig(({ mode }) => {
         },
         
         workbox: {
-          // اضافه کردن فرمت‌های صوتی و wasm به الگوهای کش (برای اطمینان از لود سریع‌تر)
+          // اضافه کردن فرمت‌های صوتی و wasm به الگوهای کش
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,mp3,m4a,wasm}'],
           
-          // دیکودر Draco و مدل‌های سنگین بازی نباید توسط Service Worker کش شوند (حجم زیاد + مدیریت توسط Three.js)
+          // دیکودر Draco و مدل‌های سنگین بازی نباید توسط Service Worker کش شوند
           globIgnores: ['draco/**', 'game-models/**'],
           
-          //  رفع خطای بیلد: افزایش محدودیت حجم فایل مجاز برای کش به ۱۰ مگابایت
+          //  رفع خطای اصلی: افزایش محدودیت حجم فایل مجاز برای کش به ۱۰ مگابایت
           maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, 
         }
       })
@@ -87,18 +87,28 @@ export default defineConfig(({ mode }) => {
       port: 5000 
     },
 
-    // بهینه‌سازی حیاتی (Code Splitting): جدا کردن کتابخانه‌های سنگین به فایل‌های مجزا
-    // این کار باعث می‌شود فایل index.js از ۲.۵ مگابایت به چند فایل کوچک‌تر تقسیم شود 
-    // و مرورگر بتواند آن‌ها را به صورت موازی و سریع‌تر دانلود کند.
+    //  بهینه‌سازی Code Splitting با تابع (سازگار با Rolldown)
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            three: ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing'],
-            livekit: ['@livekit/components-react', 'livekit-client'],
-            ably: ['ably', '@ably/pubsub-device'],
-            zustand: ['zustand']
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+                return 'vendor';
+              }
+              if (id.includes('three') || id.includes('@react-three')) {
+                return 'three';
+              }
+              if (id.includes('livekit')) {
+                return 'livekit';
+              }
+              if (id.includes('ably') || id.includes('@ably')) {
+                return 'ably';
+              }
+              if (id.includes('zustand')) {
+                return 'zustand';
+              }
+            }
           }
         }
       }
