@@ -115,9 +115,9 @@ const WATER_FRAGMENT = `
 const WATER_UNIFORMS = {
   uTime: { value: 0 },
   uWaveHeight: { value: 1 },
-  uShallow: { value: new THREE.Color('#3f9e9c') },
-  uDeep: { value: new THREE.Color('#123a52') },
-  uFoam: { value: new THREE.Color('#dceef2') },
+  uShallow: { value: new THREE.Color('#1d4f5c') },
+  uDeep: { value: new THREE.Color('#0a1c2b') },
+  uFoam: { value: new THREE.Color('#9fb8c4') },
   uOpacity: { value: 0.9 },
 };
 
@@ -214,7 +214,6 @@ function buildPondGeometry() {
   positions.push(POND.x, WATER_LEVEL, POND.z);
   shores.push(1);
   uvs.push(0.5, 0.5);
-
   const radii = new Array(rim + 1);
   for (let a = 0; a <= rim; a += 1) {
     const ang = (a / rim) * Math.PI * 2;
@@ -237,7 +236,8 @@ function buildPondGeometry() {
       const ang = (a / rim) * Math.PI * 2;
       const rr = radii[a] * t;
       positions.push(POND.x + Math.cos(ang) * rr, WATER_LEVEL, POND.z + Math.sin(ang) * rr);
-      shores.push(t * t);
+      // ۰ = ساحل، ۱ = عمیق (مرکز برکه عمیق‌ترین است)
+      shores.push(1 - t * t);
       uvs.push(Math.cos(ang) * t * 0.5 + 0.5, Math.sin(ang) * t * 0.5 + 0.5);
     }
   }
@@ -305,8 +305,8 @@ function buildRiverGeometry() {
       const t = c / lateral;
       const off = (t - 0.5) * 2 * halfW;
       positions.push(samples[i].x + nx * off, WATER_LEVEL, samples[i].z + nz * off);
-      // لبه‌ها کم‌عمق‌اند
-      shores.push(Math.abs(t - 0.5) * 2);
+      // ۰ = ساحل، ۱ = عمیق (وسط رودخانه)
+      shores.push(1 - Math.abs(t - 0.5) * 2);
       uvs.push(t, i / samples.length);
     }
   }

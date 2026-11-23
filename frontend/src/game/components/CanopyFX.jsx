@@ -34,7 +34,7 @@ function LightShafts() {
     for (let i = 0; i < group.children.length; i += 1) {
       const mesh = group.children[i];
       const breath = 0.5 + 0.5 * Math.sin(t * 0.35 + i * 1.9);
-      mesh.material.opacity = (0.04 + daylight * 0.16) * (0.6 + breath * 0.6);
+      mesh.material.opacity = (0.02 + daylight * 0.06) * (0.6 + breath * 0.6);
     }
   });
 

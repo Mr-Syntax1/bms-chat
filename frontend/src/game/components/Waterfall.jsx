@@ -5,9 +5,15 @@ import { WATERFALL, WATER_LEVEL, getWaterfallTopY } from '../terrain';
 import { useQualityPreset } from '../stores/useSettingsStore';
 
 const TOP_Y = getWaterfallTopY();
-const HEIGHT = Math.max(1, TOP_Y - WATERFALL.bottomY);
+// صفحه از لبه‌ی بالای دیواره تا حوضچه‌ی فرود کشیده می‌شود؛ طول = وتر،
+// نه اختلاف ارتفاع — وگرنه صفحه از صخره جدا می‌افتد و در هوا معلق می‌ماند.
+const VERT = Math.max(1, TOP_Y - WATERFALL.bottomY);
+const HORIZ = Math.abs(WATERFALL.wallZ - WATERFALL.baseZ);
+const HEIGHT = Math.hypot(VERT, HORIZ);
+// زاویه‌ی صفحه نسبت به عمود: بالا به سمت دیواره، پایین به سمت حوضچه
+const TILT = -Math.atan2(HORIZ, VERT);
 const CENTER_Y = (TOP_Y + WATERFALL.bottomY) * 0.5;
-// صفحه‌ی آبشار در نیمه‌ی راه بین لبه‌ی دیواره و محل فرود قرار می‌گیرد
+// صفحه دقیقاً در نیمه‌ی راه بین لبه‌ی دیواره و محل فرود قرار می‌گیرد
 const SHEET_Z = (WATERFALL.wallZ + WATERFALL.baseZ) * 0.5;
 
 // ---------------------------------------------------------------------------
@@ -61,8 +67,8 @@ const FALL_FRAGMENT = `
 const FALL_UNIFORMS = {
   uTime: { value: 0 },
   uLength: { value: HEIGHT },
-  uWater: { value: new THREE.Color('#4a8fa3') },
-  uFoamColor: { value: new THREE.Color('#e2f2f4') },
+  uWater: { value: new THREE.Color('#2f6272') },
+  uFoamColor: { value: new THREE.Color('#c3d8dd') },
 };
 
 function WaterfallSheet({ animate }) {
@@ -74,7 +80,7 @@ function WaterfallSheet({ animate }) {
   const centerY = CENTER_Y;
 
   return (
-    <group position={[WATERFALL.x, centerY, SHEET_Z]} rotation={[0.12, 0, 0]}>
+    <group position={[WATERFALL.x, centerY, SHEET_Z]} rotation={[TILT, 0, 0]}>
       <mesh>
         <planeGeometry args={[WATERFALL.width, height, 1, 12]} />
         <shaderMaterial

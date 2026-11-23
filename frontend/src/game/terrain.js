@@ -488,16 +488,16 @@ export function getWaterDepth(x, z) {
 // رنگ زمین (برای vertex color) — خروجی: [r, g, b] در بازه‌ی ۰..۱
 // ---------------------------------------------------------------------------
 const COL = {
-  grassA: [0.145, 0.243, 0.165],
-  grassB: [0.216, 0.318, 0.204],
-  grassDry: [0.298, 0.325, 0.196],
-  soil: [0.255, 0.208, 0.153],
+  grassA: [0.181, 0.304, 0.206],
+  grassB: [0.270, 0.398, 0.255],
+  grassDry: [0.373, 0.406, 0.245],
+  soil: [0.319, 0.260, 0.191],
   sandLight: [0.827, 0.737, 0.545],
   sandDark: [0.702, 0.612, 0.435],
   wetSand: [0.478, 0.427, 0.325],
   rock: [0.353, 0.353, 0.365],
   rockDark: [0.243, 0.243, 0.258],
-  moss: [0.196, 0.278, 0.176],
+  moss: [0.245, 0.348, 0.220],
   silt: [0.196, 0.216, 0.184],
   dirtPath: [0.361, 0.286, 0.196],
   dirtPathDark: [0.263, 0.204, 0.145],
@@ -521,7 +521,7 @@ export function groundColorAt(x, z, h, out = [0, 0, 0]) {
 
   // کمپ: خاک لگدمال‌شده
   const campT = 1 - smoothstep(CAMP_FLAT_RADIUS * 0.45, CAMP_RADIUS, r);
-  if (campT > 0) mixInto(out, out, COL.soil, campT * 0.55);
+  if (campT > 0) mixInto(out, out, COL.soil, campT * 0.7);
 
   // مسیرهای خاکی
   const pathT = pathProximity(x, z);

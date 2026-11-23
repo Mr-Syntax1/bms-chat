@@ -65,7 +65,8 @@ export default function Forest() {
     const far = [];
     for (let v = 0; v < 3; v += 1) {
       for (const t of byVariant[v]) {
-        if (Math.hypot(t.x, t.z) > lodDistance) far.push(t);
+        // درختان غول‌پیکر همیشه GLB کامل می‌گیرند (سیلوئت آن‌ها دیده می‌شود)
+        if (t.tier !== 'giant' && Math.hypot(t.x, t.z) > lodDistance) far.push(t);
         else near[v].push(t);
       }
     }
@@ -184,20 +185,24 @@ function FarTreeSet({ trees }) {
     const color = new THREE.Color();
 
     trees.forEach((t, i) => {
-      // سیلوئت از همان ارتفاع هدف درخت ساخته می‌شود
-      const h = t.targetHeight * 0.44;
-      const w = t.targetHeight * 0.055;
+      // سیلوئت از همان ارتفاع هدف درخت ساخته می‌شود.
+      // تنه از ۰ تا ۰.۳۴H و تاج از ۰.۳۰H تا ۱.۰۰H — بدون شکاف هوایی.
+      const H = t.targetHeight;
+      const trunkSY = 0.81 * H; // 0.42 * 0.81H = 0.34H
+      const trunkSXZ = 0.35 * H;
+      const crownSY = 0.7 * H;
+      const crownSXZ = 0.42 * H; // شعاع = 0.52 * 0.42H ≈ 0.22H
 
       // تنه
       dummy.position.set(t.x, t.y, t.z);
       dummy.rotation.set(0, t.rotation, 0);
-      dummy.scale.set(w * 0.5, h, w * 0.5);
+      dummy.scale.set(trunkSXZ, trunkSY, trunkSXZ);
       dummy.updateMatrix();
       trunk.setMatrixAt(i, dummy.matrix);
 
       // تاج
-      dummy.position.set(t.x, t.y + h * 0.92, t.z);
-      dummy.scale.set(w, h * 1.5, w);
+      dummy.position.set(t.x, t.y + 0.3 * H, t.z);
+      dummy.scale.set(crownSXZ, crownSY, crownSXZ);
       dummy.updateMatrix();
       crown.setMatrixAt(i, dummy.matrix);
 
@@ -227,79 +232,11 @@ function FarTreeSet({ trees }) {
 }
 
 // ---------------------------------------------------------------------------
-// حلقه‌ی backdrop: سیلوئت درختان بسیار بلند در افق — بدون سایه، بدون برخورد
+// حلقه‌ی backdrop: غیرفعال شد.
+// دلیل: ۱۷۱ از ۲۲۰ مخروط بیرون از صفحه‌ی ۲۰۰×۲۰۰ زمین قرار می‌گرفتند و پایه‌شان
+// روی ارتفاع نامعتبر می‌نشست → دیوار/مخروط شناور در آسمان.
+// (نسخه‌ی قبلی برای مرجع در git باقی است)
 // ---------------------------------------------------------------------------
-const BACKDROP_COUNT = { low: 90, medium: 150, high: 220 };
-
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 export function BackdropForest() {
-  const preset = useQualityPreset();
-  const count = BACKDROP_COUNT[preset.treeDensity > 700 ? 'high' : preset.treeDensity > 500 ? 'medium' : 'low'];
-  const meshRef = useRef(null);
-
-  const data = useMemo(() => {
-    const rand = mulberry32(30303);
-    const list = [];
-    // حلقه‌ی دایره‌ای در فاصله‌ی ۱۰۰..۱۴۵ از مرکز، پشت مه
-    for (let i = 0; i < count; i += 1) {
-      const angle = (i / count) * Math.PI * 2 + rand() * 0.06;
-      const radius = 104 + rand() * 44;
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
-      list.push({
-        x,
-        z,
-        y: getGroundHeight(x, z) - 1,
-        height: 18 + rand() * 16,
-        width: 2.6 + rand() * 2.2,
-        rotation: rand() * Math.PI,
-        shade: rand(),
-      });
-    }
-    return list;
-  }, [count]);
-
-  const geometry = useMemo(() => {
-    // مخروط ساده = سیلوئت درخت
-    const geo = new THREE.ConeGeometry(0.5, 1, 6, 1);
-    geo.translate(0, 0.5, 0);
-    return geo;
-  }, []);
-
-  useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh || !data.length) return;
-    const dummy = new THREE.Object3D();
-    const color = new THREE.Color();
-    data.forEach((d, i) => {
-      dummy.position.set(d.x, d.y, d.z);
-      dummy.rotation.set(0, d.rotation, 0);
-      dummy.scale.set(d.width, d.height, d.width);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      // تیره و آبی‌تر — عمق اتمسفری
-      color.setHSL(0.55 + d.shade * 0.06, 0.18, 0.14 + d.shade * 0.07);
-      mesh.setColorAt(i, color);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    mesh.computeBoundingSphere();
-  }, [data]);
-
-  if (!data.length) return null;
-
-  return (
-    <instancedMesh ref={meshRef} args={[geometry, undefined, data.length]} frustumCulled={false}>
-      <meshBasicMaterial transparent opacity={0.92} depthWrite />
-    </instancedMesh>
-  );
+  return null;
 }

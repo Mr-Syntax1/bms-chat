@@ -50,7 +50,7 @@ export function updateEnvState(time) {
   envState.daylight = lerp(a.daylight, b.daylight, k);
   envState.warmth = lerp(a.warmth, b.warmth, k);
   envState.phase = k < 0.5 ? a.phase : b.phase;
-  envState.ambientIntensity = lerp(0.16, 0.62, envState.daylight);
+  envState.ambientIntensity = lerp(0.22, 0.62, envState.daylight);
   envState.fogNear = lerp(26, 46, envState.daylight);
   envState.fogFar = lerp(140, 210, envState.daylight);
 
