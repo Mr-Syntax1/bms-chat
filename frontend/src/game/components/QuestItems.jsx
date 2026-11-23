@@ -4,6 +4,7 @@ import { Html, Sparkles } from '@react-three/drei';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { QUEST_SPOTS } from '../sceneLayout';
 import Fitted from '../models/Fitted';
+import { modelUrl } from '../assetManifest';
 import {
   PostLanternModel,
   WoodenSignModel,
@@ -124,7 +125,7 @@ function Parchment({ index, spot }) {
       </mesh>
 
       <group ref={ref} position={[0, 1.05, 0]}>
-        <Fitted url="/game-models/missions/ParchamentOpen.glb" height={0.95} />
+        <Fitted url={modelUrl('quest.parchment')} height={0.95} />
         <pointLight color="#ffe6a8" intensity={3} distance={5} decay={2} />
         <Sparkles count={12} scale={[0.9, 0.9, 0.9]} size={2} speed={0.25} color="#ffe6a8" />
       </group>
@@ -201,13 +202,13 @@ function FishingRod() {
     <group position={[spot.x, 0.16, spot.z]} rotation={[0, spot.rotation, 0]}>
       {/* چوب ماهیگیری خوابیده روی تخته‌های اسکله */}
       <group ref={rodRef} rotation={[0, 0, Math.PI / 2]}>
-        <Fitted url="/game-models/missions/FishingRod.glb" height={2.4} />
+        <Fitted url={modelUrl('fishing.rod')} height={2.4} />
       </group>
 
       {/* کلید صیدشده: تا باز شدن صندوقچه بالای اسکله می‌چرخد */}
       {hasKey && !chestOpened && (
         <group ref={keyRef} position={[0, 1.3, 0]}>
-          <Fitted url="/game-models/missions/Key.glb" height={0.42} />
+          <Fitted url={modelUrl('quest.key')} height={0.42} />
           <pointLight color="#ffd24d" intensity={6} distance={7} decay={2} />
         </group>
       )}
@@ -238,7 +239,7 @@ function TreasureChest() {
   return (
     <group position={[spot.x, 0.1, spot.z]}>
       <group ref={chestRef}>
-        <Fitted url="/game-models/missions/TreasureChest.glb" height={1.15} />
+        <Fitted url={modelUrl('quest.chest')} height={1.15} />
       </group>
       {opened && (
         <>
@@ -269,9 +270,9 @@ function WoodenSign({ index, spot }) {
 // صدف/ستاره‌ی قابل جمع‌آوری — Fitted هر مدل را با ارتفاع ثابت نرمال می‌کند
 // (مدل‌های Starfish/Seashell bbox بزرگ و آفست‌دار دارند)
 const SHELL_VARIANTS = [
-  { url: '/game-models/beach/ClambyPoly.glb', height: 0.3 },
-  { url: '/game-models/beach/SeashellbyPoly.glb', height: 0.34 },
-  { url: '/game-models/beach/StarfishbyPoly.glb', height: 0.26 },
+  { url: modelUrl('beach.clam'), height: 0.3 },
+  { url: modelUrl('beach.seashell'), height: 0.34 },
+  { url: modelUrl('beach.starfish'), height: 0.26 },
 ];
 
 function Collectible({ index, spot }) {

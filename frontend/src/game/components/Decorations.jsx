@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { DECORATIONS } from '../sceneLayout';
 import InstancedGLB from '../models/InstancedGLB';
+import { modelUrl } from '../assetManifest';
 
 // تزئینات جنگل با InstancedMesh (چادر، سنگ، کنده‌ی قارچ‌دار و کنده‌ی تبر)
 const SOURCES = {
-  tent: { url: '/game-models/opt/Tent.glb', height: 1.9 },
-  rocks: { url: '/game-models/opt/Rocks.glb', height: 0.75 },
-  logFungus: { url: '/game-models/opt/LogFungus.glb', height: 0.3 },
+  tent: { url: modelUrl('structures.tentOpt'), height: 1.9 },
+  rocks: { url: modelUrl('rocks.rocksOpt'), height: 0.75 },
+  logFungus: { url: modelUrl('undergrowth.logFungus'), height: 0.3 },
 };
 
 export default function Decorations() {
@@ -27,20 +28,23 @@ export default function Decorations() {
           url={source.url}
           items={groups[type]}
           targetHeight={source.height}
+          groundAlign
         />
       ))}
 
       {/* کنده‌ی زیر تبر + تبر روی آن */}
       <InstancedGLB
-        url="/game-models/opt/ChoppedLog.glb"
+        url={modelUrl('rocks.choppedLogOpt')}
         items={groups.logAxe}
         targetHeight={0.5}
+        groundAlign
       />
       <InstancedGLB
-        url="/game-models/opt/LogAxe.glb"
+        url={modelUrl('rocks.logAxeOpt')}
         items={groups.logAxe}
         targetHeight={0.4}
         y={0.48}
+        groundAlign
       />
     </group>
   );

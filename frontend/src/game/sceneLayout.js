@@ -1,16 +1,36 @@
 // چیدمان ثابت (deterministic) کمپ؛ همه‌ی کلاینت‌ها محیط یکسان می‌بینند
-export const MAP_SIZE = 200; // نقشه ۲۰۰×۲۰۰
-export const HALF_MAP = MAP_SIZE / 2;
-export const CAMP_RADIUS = 15; // شعاع دایره‌ی باز و دنج مرکزی (بدون درخت)
-export const SAND_START_X = 32; // از این x به بعد شن ساحل
-export const WATER_START_X = 74; // از این x به بعد آب
+//
+// ثابت‌های مربوط به «شکل زمین» در terrain.js زندگی می‌کنند و از اینجا دوباره
+// export می‌شوند تا بقیه‌ی کد همچنان از sceneLayout استفاده کند.
+import {
+  MAP_SIZE,
+  HALF_MAP,
+  CAMP_RADIUS,
+  SAND_START_X,
+  WATER_START_X,
+  WATER_LEVEL,
+  isPlantable,
+  pathDistance,
+  isInWater,
+  WATERFALL,
+} from './terrain';
+
+export {
+  MAP_SIZE,
+  HALF_MAP,
+  CAMP_RADIUS,
+  SAND_START_X,
+  WATER_START_X,
+  WATER_LEVEL,
+};
+
 export const FIRE_KEEPOUT = 1.9;
 export const SPAWN = { x: 0, z: 10.5 };
 export const VAN = { x: -11.5, z: -7.2, rotation: 0.62 };
 export const SEAT_COUNT = 6;
 
-// مرز حرکت بازیکن (نمی‌تواند وارد آب شود)
-export const BOUNDS = { minX: -95, maxX: WATER_START_X - 2, minZ: -95, maxZ: 95 };
+// مرز حرکت بازیکن — ورود به آب مجاز است (شنا)، ولی از نقشه بیرون نمی‌رود
+export const BOUNDS = { minX: -95, maxX: 88, minZ: -95, maxZ: 95 };
 
 // اسکله، فانوس دریایی، قایق‌ها و صندوق گنج
 export const DOCK = { x: 74, z: 0, length: 16, width: 3.4 };
@@ -90,8 +110,12 @@ export const SEAT_SPOTS = Array.from({ length: SEAT_COUNT }, (_, i) => {
 });
 
 // ---------------------------------------------------------------------------
-// درختان جنگل: تراکم گرادیانی — جنگل انبوه در غرب، تنک شدن به سمت ساحل
-// (ظرفیت پایه ۸۰۰ درخت؛ با کیفیت گرافیکی تنظیم می‌شود)
+// درختان جنگل — چیدمان biome-aware با طبقات ارتفاعی.
+//
+//   understory ۴..۷   |  mid ۸..۱۴  |  canopy ۱۵..۲۸  |  giant ۳۰..۳۸
+//
+// درختان غول فقط نزدیک آبشار و پشت کمپ رشد می‌کنند. شعاع برخورد از عرض تنه
+// می‌آید، نه ارتفاع، تا درخت بلند دیوار نامرئی نسازد.
 // ---------------------------------------------------------------------------
 const TREE_MAX = 800;
 
@@ -102,11 +126,63 @@ function densityWeight(x) {
   return 0.18 + 0.82 * (1 - t) ** 1.35;
 }
 
+// آیا این نقطه در منطقه‌ی مجاز درختان غول است؟
+function isGiantZone(x, z) {
+  // پشت کمپ (شمال/شمال‌غرب) یا نزدیک آبشار
+  const behindCamp = z < -18 && z > -50 && x > -60 && x < -8;
+  const nearWaterfall = Math.hypot(x - WATERFALL.x, z - (WATERFALL.baseZ + 6)) < 26;
+  return behindCamp || nearWaterfall;
+}
+
+// انتخاب طبقه‌ی ارتفاعی — وزن‌ها به‌گونه‌ای که جنگل «کهن» به نظر برسد
+function pickTier(rand, giantOk) {
+  const roll = rand();
+  if (giantOk && roll > 0.93) return { tier: 'giant', min: 30, max: 38 };
+  if (roll > 0.72) return { tier: 'canopy', min: 15, max: 28 };
+  if (roll > 0.34) return { tier: 'mid', min: 8, max: 14 };
+  return { tier: 'understory', min: 4, max: 7 };
+}
+
+// درختان غول نشانه‌گذاری‌شده — نقاط دستی‌چین نزدیک آبشار و پشت کمپ.
+// این‌ها همیشه وجود دارند تا افق «جنگل کهن» داشته باشد.
+const LANDMARK_GIANTS = [
+  { x: -46, z: -40, height: 36 },
+  { x: -33, z: -44, height: 33 },
+  { x: -52, z: -33, height: 31 },
+  { x: -14, z: -30, height: 34 },
+  { x: -22, z: -38, height: 32 },
+  { x: -6, z: -26, height: 30 },
+];
+
+function makeTree(rand, x, z, tierInfo, targetHeight) {
+  const xzScale = 0.62 * (targetHeight / 8.2) ** 0.45 * (0.86 + rand() * 0.28);
+  return {
+    x,
+    z,
+    targetHeight,
+    tier: tierInfo,
+    xzScale,
+    collision: 0.16 + xzScale * 0.17,
+    // سازگاری با کدهای قدیمی که scale می‌خوانند
+    scale: xzScale,
+    rotation: rand() * Math.PI * 2,
+    tint: rand(),
+    variant: rand() > 0.72 ? 2 : rand() > 0.4 ? 1 : 0,
+  };
+}
+
 export function buildTrees(limit = TREE_MAX) {
   const rand = mulberry32(20261121);
   const list = [];
-  let guard = 0;
 
+  // ۱) درختان غول نشانه‌گذاری‌شده (همیشه حاضر)
+  for (const giant of LANDMARK_GIANTS) {
+    if (!isPlantable(giant.x, giant.z, 0.62)) continue;
+    list.push(makeTree(rand, giant.x, giant.z, 'giant', giant.height));
+  }
+
+  // ۲) بقیه‌ی جنگل
+  let guard = 0;
   while (list.length < limit && guard < limit * 45) {
     guard += 1;
     const x = -95 + rand() * 121; // -95 .. 26
@@ -118,22 +194,23 @@ export function buildTrees(limit = TREE_MAX) {
     if (isNearQuestSpot(x, z)) continue;
     // مسیر باز بین کمپ و اسکله باید قابل عبور بماند
     if (Math.abs(z) < 4.5 && x > 6 && x < SAND_START_X) continue;
-    if (list.some((t) => Math.hypot(t.x - x, t.z - z) < 3.4)) continue;
+    // هیچ درختی روی مسیرهای خاکی یا داخل پهنه‌ی آب نباشد
+    if (pathDistance(x, z) < 2.6) continue;
+    if (isInWater(x, z)) continue;
+    // روی آب و شیب تند درخت نمی‌کاریم
+    if (!isPlantable(x, z, 0.5)) continue;
 
     // تراکم گرادیانی: در لبه‌ها بعضی نقاط رد می‌شوند
     if (rand() > densityWeight(x)) continue;
 
-    // ۰ = opt/Pine ، ۱ = trees/Pine2 ، ۲ = trees/Pine
-    const variantRoll = rand();
+    const tierInfo = pickTier(rand, isGiantZone(x, z));
+    const targetHeight = tierInfo.min + rand() * (tierInfo.max - tierInfo.min);
 
-    list.push({
-      x,
-      z,
-      scale: 0.8 + rand() * 0.7,
-      rotation: rand() * Math.PI * 2,
-      tint: rand(),
-      variant: variantRoll > 0.72 ? 2 : variantRoll > 0.4 ? 1 : 0,
-    });
+    // فاصله‌ی حداقلی متناسب با اندازه‌ی درخت (غول‌ها فضای بیشتری می‌خواهند)
+    const spacing = tierInfo.tier === 'giant' ? 9 : tierInfo.tier === 'canopy' ? 4.6 : 3.4;
+    if (list.some((t) => Math.hypot(t.x - x, t.z - z) < spacing)) continue;
+
+    list.push(makeTree(rand, x, z, tierInfo.tier, targetHeight));
   }
   return list;
 }

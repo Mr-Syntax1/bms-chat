@@ -1,0 +1,537 @@
+{
+  "generatedAt": "2026-11-22T23:41:29.527Z",
+  "root": "public/game-models",
+  "count": 8,
+  "totalMB": 1.59,
+  "entries": {
+    "Citizen.glb": {
+      "file": "Citizen.glb",
+      "bytes": 86452,
+      "kb": 84.4,
+      "heavy": false,
+      "bbox": {
+        "height": 1.925,
+        "width": 1.272,
+        "depth": 1.035,
+        "minY": -0.009,
+        "centerX": 0,
+        "centerZ": 0.113,
+        "min": [
+          -0.636,
+          -0.009,
+          -0.404
+        ],
+        "max": [
+          0.636,
+          1.916,
+          0.631
+        ]
+      },
+      "triangles": 4338,
+      "primitives": 2,
+      "meshes": 2,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "halloweenbits_texture.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 7784
+        }
+      ],
+      "skinned": true,
+      "bones": {
+        "head": "Head",
+        "handL": "Hand.L",
+        "handR": "Hand.R",
+        "footL": "Foot.L",
+        "footR": "Foot.R"
+      },
+      "clips": [
+        {
+          "name": "Armature|Grounded",
+          "duration": 0.33,
+          "channels": 14
+        },
+        {
+          "name": "Armature|Idle",
+          "duration": 2.5,
+          "channels": 6
+        },
+        {
+          "name": "Armature|Jump",
+          "duration": 0.29,
+          "channels": 14
+        },
+        {
+          "name": "Armature|Sprint",
+          "duration": 2.5,
+          "channels": 23
+        },
+        {
+          "name": "Armature|Walk",
+          "duration": 2.5,
+          "channels": 13
+        }
+      ],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 31,
+      "meshNames": [
+        "Cube.001",
+        "Cube.003"
+      ]
+    },
+    "CoolBannanaGuy.glb": {
+      "file": "CoolBannanaGuy.glb",
+      "bytes": 651064,
+      "kb": 635.8,
+      "heavy": true,
+      "bbox": {
+        "height": 5.471,
+        "width": 1.706,
+        "depth": 5.297,
+        "minY": -0.001,
+        "centerX": 0.034,
+        "centerZ": 0,
+        "min": [
+          -0.819,
+          -0.001,
+          -2.649
+        ],
+        "max": [
+          0.887,
+          5.47,
+          2.648
+        ]
+      },
+      "triangles": 3564,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "100Avatars_024_CoolBanana.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 23362
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "mesh_char_130"
+      ]
+    },
+    "CubeGuyCharacter.glb": {
+      "file": "CubeGuyCharacter.glb",
+      "bytes": 142980,
+      "kb": 139.6,
+      "heavy": false,
+      "bbox": {
+        "height": 2.836,
+        "width": 2.892,
+        "depth": 1.141,
+        "minY": 0.003,
+        "centerX": 0,
+        "centerZ": 0,
+        "min": [
+          -1.446,
+          0.003,
+          -0.571
+        ],
+        "max": [
+          1.446,
+          2.839,
+          0.571
+        ]
+      },
+      "triangles": 3122,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 32,
+      "textureSizes": [
+        {
+          "name": "Atlas.png",
+          "mime": "image/webp",
+          "width": 32,
+          "height": 32,
+          "bytes": 474
+        }
+      ],
+      "skinned": true,
+      "bones": {
+        "head": "Head",
+        "neck": "Neck",
+        "footL": "Foot.L",
+        "footR": "Foot.R",
+        "hips": "Hips"
+      },
+      "clips": [
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Death",
+          "duration": 0.75,
+          "channels": 19
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Duck",
+          "duration": 1.67,
+          "channels": 12
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|HitReact",
+          "duration": 0.58,
+          "channels": 14
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Idle",
+          "duration": 1.67,
+          "channels": 13
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Idle_Attack",
+          "duration": 0.5,
+          "channels": 8
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Idle_Hold",
+          "duration": 1.67,
+          "channels": 14
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Jump",
+          "duration": 0.33,
+          "channels": 16
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Jump_Idle",
+          "duration": 0.5,
+          "channels": 16
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Jump_Land",
+          "duration": 0.33,
+          "channels": 16
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|No",
+          "duration": 1.67,
+          "channels": 13
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Punch",
+          "duration": 0.83,
+          "channels": 17
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Run",
+          "duration": 0.54,
+          "channels": 28
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Run_Attack",
+          "duration": 0.54,
+          "channels": 27
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Run_Hold",
+          "duration": 0.54,
+          "channels": 28
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Walk",
+          "duration": 1,
+          "channels": 26
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Walk_Hold",
+          "duration": 1,
+          "channels": 25
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Wave",
+          "duration": 1.67,
+          "channels": 15
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Yes",
+          "duration": 1.67,
+          "channels": 13
+        }
+      ],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 35,
+      "meshNames": [
+        "Character"
+      ]
+    },
+    "CuteCharacter.glb": {
+      "file": "CuteCharacter.glb",
+      "bytes": 11108,
+      "kb": 10.8,
+      "heavy": false,
+      "bbox": {
+        "height": 1.128,
+        "width": 0.694,
+        "depth": 0.628,
+        "minY": -0.578,
+        "centerX": 0,
+        "centerZ": 0.047,
+        "min": [
+          -0.347,
+          -0.578,
+          -0.267
+        ],
+        "max": [
+          0.347,
+          0.55,
+          0.362
+        ]
+      },
+      "triangles": 1362,
+      "primitives": 6,
+      "meshes": 1,
+      "materials": 6,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Full-Character-Mesh"
+      ]
+    },
+    "CuteRedDino.glb": {
+      "file": "CuteRedDino.glb",
+      "bytes": 61764,
+      "kb": 60.3,
+      "heavy": false,
+      "bbox": {
+        "height": 1.539,
+        "width": 1.308,
+        "depth": 0.701,
+        "minY": 0,
+        "centerX": 0.057,
+        "centerZ": 0,
+        "min": [
+          -0.598,
+          0,
+          -0.35
+        ],
+        "max": [
+          0.711,
+          1.539,
+          0.35
+        ]
+      },
+      "triangles": 20726,
+      "primitives": 4,
+      "meshes": 1,
+      "materials": 4,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "dino.001"
+      ]
+    },
+    "DORAEMON.glb": {
+      "file": "DORAEMON.glb",
+      "bytes": 36836,
+      "kb": 36,
+      "heavy": false,
+      "bbox": {
+        "height": 0.922,
+        "width": 0.61,
+        "depth": 0.461,
+        "minY": -0.533,
+        "centerX": 0.003,
+        "centerZ": 0.108,
+        "min": [
+          -0.302,
+          -0.533,
+          -0.122
+        ],
+        "max": [
+          0.308,
+          0.389,
+          0.339
+        ]
+      },
+      "triangles": 2830,
+      "primitives": 28,
+      "meshes": 26,
+      "materials": 6,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 26,
+      "meshNames": [
+        "mesh85891585",
+        "mesh244486559",
+        "mesh1337545492",
+        "mesh717867994",
+        "mesh331817039",
+        "mesh326270098",
+        "mesh1761345255",
+        "mesh208904064",
+        "mesh1696229858",
+        "mesh2078688655",
+        "mesh678915788",
+        "mesh389900773"
+      ]
+    },
+    "MushroomCharacter.glb": {
+      "file": "MushroomCharacter.glb",
+      "bytes": 614872,
+      "kb": 600.5,
+      "heavy": true,
+      "bbox": {
+        "height": 5.685,
+        "width": 3.147,
+        "depth": 4.816,
+        "minY": -0.001,
+        "centerX": -0.007,
+        "centerZ": -0.004,
+        "min": [
+          -1.58,
+          -0.001,
+          -2.412
+        ],
+        "max": [
+          1.566,
+          5.684,
+          2.404
+        ]
+      },
+      "triangles": 3132,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "100Avatars_025_Mushy.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 43986
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "mesh_char_27"
+      ]
+    },
+    "miku.glb": {
+      "file": "miku.glb",
+      "bytes": 62444,
+      "kb": 61,
+      "heavy": false,
+      "bbox": {
+        "height": 1389.276,
+        "width": 1123.111,
+        "depth": 605.387,
+        "minY": -12.752,
+        "centerX": 29.478,
+        "centerZ": 40.506,
+        "min": [
+          -532.078,
+          -12.752,
+          -262.188
+        ],
+        "max": [
+          591.034,
+          1376.524,
+          343.2
+        ]
+      },
+      "triangles": 6688,
+      "primitives": 38,
+      "meshes": 38,
+      "materials": 7,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 38,
+      "meshNames": [
+        "s.0009_1",
+        "r.0010_1",
+        "s.0015_1",
+        "s.0016_1",
+        "s.0017_1",
+        "s.0018_1",
+        "s.0019_1",
+        "r.0020_1",
+        "s.0021_1",
+        "s.0022_1",
+        "r.0023_1",
+        "r.0024_1"
+      ]
+    }
+  },
+  "openQuestions": {
+    "birchTrees": null,
+    "bridges": {
+      "note": "کدام کشیده‌تر/پهن‌تر است برای عبور از رودخانه"
+    },
+    "rockPath": null,
+    "potVsCauldron": {},
+    "rigged": {}
+  }
+}

@@ -1,6 +1,7 @@
 import { CAMP_RADIUS } from '../sceneLayout';
 import InstancedGLB from '../models/InstancedGLB';
 import Fitted from '../models/Fitted';
+import { modelUrl } from '../assetManifest';
 import {
   PicnicTableModel,
   BackpackModel,
@@ -48,7 +49,7 @@ function CampProps() {
       </group>
       {/* میز پیک‌نیک دوم کنار چادرها */}
       <group position={[-13.4, 0, -2.2]} rotation={[0, -1.35, 0]}>
-        <Fitted url="/game-models/ExtraCozyProps/PicnicTable2.glb" height={0.95} />
+        <Fitted url={modelUrl('structures.picnicTable2')} height={0.95} />
       </group>
       <group position={[3.4, 0.1, 5.2]} rotation={[0, -0.9, 0]}>
         <BackpackModel scale={0.55} />
@@ -62,19 +63,19 @@ function CampProps() {
 
       {/* چادرها: Tent2/Tent3 در واحدهای بسیار بزرگ ذخیره شده‌اند؛ Fitted نرمال می‌کند */}
       <group position={[8.5, 0, -8.2]} rotation={[0, 1.6, 0]}>
-        <Fitted url="/game-models/Decorations/Tent2.glb" height={2.4} />
+        <Fitted url={modelUrl('structures.tent2')} height={2.4} />
       </group>
       <group position={[-9.5, 0, 10.5]} rotation={[0, -0.4, 0]}>
-        <Fitted url="/game-models/Decorations/Tent3.glb" height={2.6} />
+        <Fitted url={modelUrl('structures.tent3')} height={2.6} />
       </group>
 
-      {/* فانوس‌های تزئینی کمپ */}
+      {/* فانوس‌های تزئینی کمپ — Lantern.glb تکراری است، فقط Decorations نسخه‌ی رسمی است */}
       <group position={[-5.1, 1.5, 5.6]}>
-        <Fitted url="/game-models/missions/Lantern.glb" height={0.7} />
+        <Fitted url={modelUrl('structures.lantern')} height={0.7} />
         <pointLight color="#ffb84d" intensity={3.2} distance={7} decay={2} />
       </group>
       <group position={[-7.8, 0, 8.9]} rotation={[0, 0.9, 0]}>
-        <Fitted url="/game-models/Decorations/Lantern.glb" height={1.1} />
+        <Fitted url={modelUrl('structures.lantern')} height={1.1} />
         <pointLight color="#ffc46b" intensity={4} distance={8} decay={2} />
       </group>
     </group>
@@ -87,24 +88,24 @@ export default function CampDecor() {
       <CampProps />
 
       <InstancedGLB
-        url="/game-models/Decorations/BushbyQuaternius.glb"
+        url={modelUrl('undergrowth.bush')}
         items={BUSHES}
         targetHeight={1.15}
       />
       <InstancedGLB
-        url="/game-models/Decorations/Flowers.glb"
+        url={modelUrl('undergrowth.flowers')}
         items={FLOWERS}
         targetHeight={0.5}
         castShadow={false}
       />
       <InstancedGLB
-        url="/game-models/Decorations/Mushrooms.glb"
+        url={modelUrl('undergrowth.mushrooms')}
         items={MUSHROOMS}
         targetHeight={0.35}
         castShadow={false}
       />
       <InstancedGLB
-        url="/game-models/Decorations/Rocks2.glb"
+        url={modelUrl('rocks.rocks2')}
         items={ROCKS2}
         targetHeight={0.22}
         y={0.01}

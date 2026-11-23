@@ -7,9 +7,10 @@ import {
   DOCK,
   LIGHTHOUSE,
   BOATS,
-  WATER_START_X,
 } from '../sceneLayout';
+import { getGroundHeight, WATER_LEVEL, DOCK_PLATFORM } from '../terrain';
 import InstancedGLB from '../models/InstancedGLB';
+import { modelUrl } from '../assetManifest';
 import {
   PortModel,
   BoatModel,
@@ -19,9 +20,9 @@ import {
 
 // نخل‌ها بر اساس نوع مدل گروه‌بندی می‌شوند (هر گروه یک InstancedMesh)
 const PALM_URLS = [
-  '/game-models/beach/trees/PalmTree.glb',
-  '/game-models/beach/trees/PalmTree2.glb',
-  '/game-models/beach/trees/CoconutPalmTree.glb',
+  modelUrl('beach.palm'),
+  modelUrl('beach.palm2'),
+  modelUrl('beach.coconutPalm'),
 ];
 const PALM_TARGET_HEIGHT = [7, 9, 12];
 
@@ -40,6 +41,7 @@ function Palms() {
           url={PALM_URLS[i]}
           items={items}
           targetHeight={PALM_TARGET_HEIGHT[i]}
+          groundAlign
         />
       ))}
     </group>
@@ -48,9 +50,9 @@ function Palms() {
 
 // صدف/ستاره/صدف دوکفه‌ای روی شن
 const SHELL_URLS = [
-  '/game-models/beach/ClambyPoly.glb',
-  '/game-models/beach/SeashellbyPoly.glb',
-  '/game-models/beach/StarfishbyPoly.glb',
+  modelUrl('beach.clam'),
+  modelUrl('beach.seashell'),
+  modelUrl('beach.starfish'),
 ];
 
 function BeachShells() {
@@ -63,7 +65,7 @@ function BeachShells() {
   return (
     <group>
       {groups.map((items, i) => (
-        <InstancedGLB key={i} url={SHELL_URLS[i]} items={items} targetHeight={0.28} y={0.02} />
+        <InstancedGLB key={i} url={SHELL_URLS[i]} items={items} targetHeight={0.28} y={0.02} groundAlign />
       ))}
     </group>
   );
@@ -73,46 +75,55 @@ function BeachShells() {
 function RockPath() {
   return (
     <InstancedGLB
-      url="/game-models/beach/RockPathRoundSmall.glb"
+      url={modelUrl('paths.stonePath')}
       items={ROCK_PATH}
       targetHeight={0.12}
       y={0.01}
       castShadow={false}
+      groundAlign
     />
   );
 }
 
 // اسکله‌ی چوبی: مدل Port + تخته‌های اضافی
-// تخته‌ها نزدیک سطح زمین‌اند تا بازیکن (y=0) روی آن‌ها بایستد نه زیرشان
-const DECK_Y = 0.07;
+// ارتفاع از DOCK_PLATFORM می‌آید تا فیزیک و رندر یکی باشند
+const DECK_Y = DOCK_PLATFORM.topY;
 
 function Dock() {
   const planks = useMemo(() => {
     const list = [];
-    for (let i = 0; i < DOCK.length; i += 1) {
-      list.push({ x: DOCK.x + i - 2, z: DOCK.z });
+    // تخته‌ها دقیقاً روی محدوده‌ی سکوی فیزیک پخش می‌شوند
+    const startX = DOCK_PLATFORM.minX;
+    const endX = DOCK_PLATFORM.maxX;
+    const count = Math.ceil((endX - startX) / 0.92);
+    for (let i = 0; i < count; i += 1) {
+      list.push({ x: startX + 0.46 + i * 0.92, z: (DOCK_PLATFORM.minZ + DOCK_PLATFORM.maxZ) * 0.5 });
     }
     return list;
   }, []);
 
   return (
     <group>
-      <group position={[DOCK.x + 4, 0.1, DOCK.z]} rotation={[0, Math.PI / 2, 0]}>
+      <group position={[DOCK.x + 4, DECK_Y - 0.06, DOCK.z]} rotation={[0, Math.PI / 2, 0]}>
         <PortModel scale={1.6} />
       </group>
       {planks.map((p, i) => (
         <mesh key={i} position={[p.x, DECK_Y, p.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow castShadow>
-          <boxGeometry args={[0.92, DOCK.width, 0.14]} />
+          <boxGeometry args={[0.92, DOCK_PLATFORM.maxZ - DOCK_PLATFORM.minZ, 0.14]} />
           <meshStandardMaterial color="#6b5136" roughness={0.92} />
         </mesh>
       ))}
       {[-1, 1].map((side) => (
         <mesh
           key={side}
-          position={[DOCK.x + DOCK.length - 3, -0.35, DOCK.z + side * DOCK.width * 0.42]}
+          position={[
+            DOCK_PLATFORM.maxX - 2,
+            DECK_Y - 0.65,
+            (DOCK_PLATFORM.minZ + DOCK_PLATFORM.maxZ) * 0.5 + side * (DOCK_PLATFORM.maxZ - DOCK_PLATFORM.minZ) * 0.4,
+          ]}
           castShadow
         >
-          <cylinderGeometry args={[0.15, 0.15, 1.4, 8]} />
+          <cylinderGeometry args={[0.15, 0.15, 1.6, 8]} />
           <meshStandardMaterial color="#4a3826" roughness={0.95} />
         </mesh>
       ))}
@@ -123,6 +134,7 @@ function Dock() {
 // فانوس دریایی با نور چشمک‌زن
 function Lighthouse() {
   const lightRef = useRef(null);
+  const baseY = getGroundHeight(LIGHTHOUSE.x, LIGHTHOUSE.z);
 
   useFrame(({ clock }) => {
     if (!lightRef.current) return;
@@ -131,7 +143,7 @@ function Lighthouse() {
   });
 
   return (
-    <group position={[LIGHTHOUSE.x, 0, LIGHTHOUSE.z]}>
+    <group position={[LIGHTHOUSE.x, baseY, LIGHTHOUSE.z]}>
       <LighthouseModel scale={1.2} />
       <pointLight
         ref={lightRef}
@@ -153,7 +165,7 @@ function Boats() {
     const t = clock.elapsedTime;
     refs.current.forEach((group, i) => {
       if (!group) return;
-      group.position.y = Math.sin(t * 0.9 + i * 1.7) * 0.09;
+      group.position.y = WATER_LEVEL + 0.12 + Math.sin(t * 0.9 + i * 1.7) * 0.09;
       group.rotation.z = Math.sin(t * 0.7 + i) * 0.04;
     });
   });
@@ -170,7 +182,7 @@ function Boats() {
             ref={(node) => {
               refs.current[i] = node;
             }}
-            position={[boat.x, 0, boat.z]}
+            position={[boat.x, WATER_LEVEL + 0.12, boat.z]}
             rotation={[0, boat.rotation, 0]}
             scale={boat.scale}
           >
@@ -191,11 +203,6 @@ export default function Beach() {
       <Dock />
       <Boats />
       <Lighthouse />
-      {/* آب کم‌عمق نزدیک ساحل */}
-      <mesh position={[WATER_START_X - 2, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[6, 190]} />
-        <meshStandardMaterial color="#3fa8a0" transparent opacity={0.45} roughness={0.3} />
-      </mesh>
     </group>
   );
 }

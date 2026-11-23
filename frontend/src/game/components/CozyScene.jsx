@@ -4,7 +4,7 @@ import { Stars, Sparkles } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Ground, { AmbientSetup } from './Ground';
-import Forest from './Forest';
+import Forest, { BackdropForest } from './Forest';
 import Campfire from './Campfire';
 import Van from './Van';
 import Decorations from './Decorations';
@@ -14,7 +14,16 @@ import QuestItems from './QuestItems';
 import AmbientAudio from './AmbientAudio';
 import GrassField from './GrassField';
 import Butterflies from './Butterflies';
-import { useQualityPreset } from '../stores/useSettingsStore';
+import Waterfall from './Waterfall';
+import Paths from './Paths';
+import PondLife from './PondLife';
+import Weather from './Weather';
+import CanopyFX from './CanopyFX';
+import { useQualityPreset, useSettingsStore } from '../stores/useSettingsStore';
+import { updateEnvState, skyColorsFor, weatherFogFor } from '../envState';
+
+// مدت یک چرخه‌ی کامل روز/شب (ثانیه) — ۰ = بدون حرکت (کیفیت کم)
+const DAY_LENGTH = 420;
 
 // کرم شب‌تاب
 function Fireflies({ count }) {
@@ -32,8 +41,8 @@ function Fireflies({ count }) {
   );
 }
 
-// آسمان شب: گرادیان عمودی
-function NightSky() {
+// آسمان: گرادیان عمودی که با چرخه‌ی روز/شب تغییر می‌کند
+function DayNightSky({ animate }) {
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -67,6 +76,18 @@ function NightSky() {
       }),
     []
   );
+
+  // هر ۲۰ فریم یک‌بار رنگ‌ها را تازه می‌کند (به‌جای هر فریم)
+  const tick = useRef(0);
+  useFrame(({ clock }) => {
+    if (!animate) return;
+    tick.current += 1;
+    if (tick.current % 20 !== 0) return;
+    const phase = updateEnvState(clock.elapsedTime / DAY_LENGTH).phase;
+    const { top, bottom } = skyColorsFor(phase);
+    material.uniforms.topColor.value.setRGB(top[0], top[1], top[2]);
+    material.uniforms.bottomColor.value.setRGB(bottom[0], bottom[1], bottom[2]);
+  });
 
   return (
     <mesh material={material}>
@@ -176,14 +197,36 @@ function LowPolyClouds({ animate = true }) {
 
 export default function CozyScene() {
   const preset = useQualityPreset();
+  const weather = useSettingsStore((s) => s.weather);
+  const fogRef = useRef(null);
+  const bgRef = useRef(null);
+
+  // مه و رنگ پس‌زمینه با چرخه‌ی روز/شب هماهنگ می‌شوند (هر ۲۰ فریم)
+  const tick = useRef(0);
+  useFrame(({ clock }) => {
+    // حتی با انیمیشن خاموش، باران باید مه را تغییر دهد
+    if (!preset.envAnimation && weather !== 'rain') return;
+    tick.current += 1;
+    if (tick.current % 20 !== 0) return;
+    const env = updateEnvState(clock.elapsedTime / DAY_LENGTH);
+    const rainMod = weatherFogFor(weather);
+    if (fogRef.current) {
+      fogRef.current.near = env.fogNear * (rainMod?.nearMul ?? 1);
+      fogRef.current.far = env.fogFar * (rainMod?.farMul ?? 1);
+    }
+    if (bgRef.current) {
+      const { bottom } = skyColorsFor(env.phase);
+      bgRef.current.setRGB(bottom[0] * 0.32, bottom[1] * 0.34, bottom[2] * 0.4);
+    }
+  });
 
   return (
     <>
-      <color attach="background" args={['#070d1c']} />
+      <color ref={bgRef} attach="background" args={['#070d1c']} />
       {/* مه نازک آبی تیره برای حس cozy */}
-      <fog attach="fog" args={['#101c30', 30, 150]} />
+      <fog ref={fogRef} attach="fog" args={['#101c30', 30, 150]} />
 
-      <NightSky />
+      <DayNightSky animate={preset.envAnimation} />
       <Stars radius={120} depth={60} count={preset.particles > 0.5 ? 2200 : 1100} factor={3.6} saturation={0} fade speed={preset.envAnimation ? 0.4 : 0} />
       <Starfield count={preset.particles > 0.5 ? 2000 : 900} animate={preset.envAnimation} />
       <Moon />
@@ -193,6 +236,10 @@ export default function CozyScene() {
 
       <Ground />
       <Forest />
+      <BackdropForest />
+      <Waterfall />
+      <Paths />
+      <PondLife />
       <Decorations />
       <CampDecor />
       <GrassField />
@@ -200,6 +247,8 @@ export default function CozyScene() {
       <Campfire />
       <Van />
       <QuestItems />
+      <CanopyFX />
+      <Weather />
       <Fireflies count={preset.fireflies} />
       <Butterflies count={preset.butterflies} />
 

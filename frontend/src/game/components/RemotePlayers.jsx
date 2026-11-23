@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { remoteMap, usePlayerStore } from '../stores/usePlayerStore';
 import { SEAT_SPOTS } from '../sceneLayout';
+import { getWalkSurfaceY } from '../terrain';
 import Character from './Character';
 import { DEFAULT_CHARACTER } from '../models/characterConfig';
 import VoiceBubble from './VoiceActivityIndicator';
@@ -82,7 +83,7 @@ function RemoteAvatar({ id }) {
     }
 
     seatedRef.current = Boolean(seatSpot);
-    group.position.set(entry.current.x, 0, entry.current.z);
+    group.position.set(entry.current.x, getWalkSurfaceY(entry.current.x, entry.current.z), entry.current.z);
     group.rotation.y = entry.rot;
   });
 

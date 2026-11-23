@@ -2,12 +2,13 @@ import './setupDraco';
 import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { modelUrl } from '../assetManifest';
 
 /**
  * قطعات یک GLB برای InstancedMesh.
  * مدل را وسط‌چین می‌کند تا چیدمان ساده باشد.
  */
-export function usePineModel(url = '/game-models/opt/Pine.glb') {
+export function usePineModel(url = modelUrl('trees.pineOpt')) {
   const { scene } = useGLTF(url);
 
   return useMemo(() => {
@@ -44,6 +45,8 @@ export function usePineModel(url = '/game-models/opt/Pine.glb') {
   }, [scene]);
 }
 
-useGLTF.preload('/game-models/opt/Pine.glb');
-useGLTF.preload('/game-models/trees/Pine.glb');
-useGLTF.preload('/game-models/trees/Pine2.glb');
+// preload با کلید manifest (مسیر خام اینجا نوشته نمی‌شود)
+['trees.pineOpt', 'trees.pine', 'trees.pine2'].forEach((key) => {
+  const url = modelUrl(key);
+  if (url) useGLTF.preload(url);
+});

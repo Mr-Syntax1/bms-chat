@@ -1,3 +1,5 @@
+import { modelUrl } from '../assetManifest';
+
 // پیکربندی ۹ کاراکتر: ارتفاع واقعی مدل + پایین‌ترین نقطه + نگاشت کلیپ
 // بعضی مدل‌ها ریگ ندارند؛ آن‌ها انیمیشن رویه‌ای (bob/tilt) می‌گیرند.
 //
@@ -104,8 +106,24 @@ export const CHARACTER_FILES = Object.keys(CHARACTERS);
 
 export const DEFAULT_CHARACTER = 'Cactoro.glb';
 
-export const characterUrl = (file) =>
-  `/game-models/characters/${CHARACTERS[file] ? file : DEFAULT_CHARACTER}`;
+// نام فایل کاراکتر → کلید منطقی manifest
+const CHARACTER_MANIFEST_KEY = {
+  'Cactoro.glb': 'characters.cactoro',
+  'Citizen.glb': 'characters.citizen',
+  'CoolBannanaGuy.glb': 'characters.banana',
+  'CubeGuyCharacter.glb': 'characters.cubeGuy',
+  'CuteCharacter.glb': 'characters.cute',
+  'CuteRedDino.glb': 'characters.redDino',
+  'DORAEMON.glb': 'characters.doraemon',
+  'miku.glb': 'characters.miku',
+  'MushroomCharacter.glb': 'characters.mushroom',
+};
+
+// مسیر از manifest خوانده می‌شود تا مانیفست منبع واحد حقیقت بماند
+export const characterUrl = (file) => {
+  const key = CHARACTERS[file] ? file : DEFAULT_CHARACTER;
+  return modelUrl(CHARACTER_MANIFEST_KEY[key]) || modelUrl(CHARACTER_MANIFEST_KEY[DEFAULT_CHARACTER]);
+};
 
 // آفست جهت صورت برای هر مدل (yaw نهایی = yaw حرکت + این مقدار)
 export const CHARACTER_FACING_OFFSET = Object.fromEntries(

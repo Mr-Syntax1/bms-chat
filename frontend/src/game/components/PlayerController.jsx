@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, VAN, BOUNDS, DOCK } from '../sceneLayout';
+import { FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, VAN, BOUNDS } from '../sceneLayout';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import { getNearbyTrees } from '../activeTrees';
@@ -11,6 +11,9 @@ import { findNearbyQuestItem } from '../questRegistry';
 import { getQuestTarget } from '../questSteps';
 import { playPositionalOneShot } from '../audio';
 import { publishPlayerAction } from '../hooks/useGameSync';
+import { stepPlayerPhysics, resetPlayerPhysics, slopeSlide } from '../hooks/usePlayerMotion';
+import { getWalkSurfaceY, isInWater } from '../terrain';
+import { applyFovKick } from '../cameraTuning';
 import Character from './Character';
 import { GUITAR_SOUNDS, YUM_SOUND } from '../sounds';
 
@@ -29,6 +32,9 @@ const EMOTE_DURATION = 3400;
 const CAM_DIST = 2.5;
 const CAM_HEIGHT = 1.5;
 const CAM_LERP = 0.1;
+// نمونه‌های بوکه‌ی دوربین برای برخورد با زمین/درخت
+const CAM_SAMPLES = 6;
+const CAM_MIN_DIST = 0.75;
 
 const EMOTES = {
   Digit1: 'wave',
@@ -37,6 +43,9 @@ const EMOTES = {
   Digit4: 'celebrate',
   Digit5: 'sleep',
 };
+
+// بافر جهت سُر خوردن روی شیب — module-level تا در رندر re-allocate نشود
+const slideDir = { x: 0, z: 0 };
 
 // کنترلر بازیکن محلی: WASD نسبت به جهت نگاه، کالیژن، دوربین سوم‌شخص، اکشن‌ها
 export default function PlayerController({ roomId, user, look, active = true }) {
@@ -240,11 +249,14 @@ export default function PlayerController({ roomId, user, look, active = true }) 
   }, [roomId, user]);
 
   useEffect(() => {
+    resetPlayerPhysics(local.x, local.z);
     return () => {
       const state = usePlayerStore.getState();
       if (state.action) state.endAction();
       if (state.emote) state.endEmote();
     };
+    // فقط در mount — local یک شیء ماژول‌سطح است
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useFrame((_, rawDelta) => {
@@ -261,16 +273,18 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     // ---- حالت نشسته ----
     if (state.seated && state.seatIndex !== null) {
       const spot = SEAT_SPOTS[state.seatIndex];
-      group.position.set(spot.x, 0, spot.z);
+      const seatY = getWalkSurfaceY(spot.x, spot.z);
+      group.position.set(spot.x, seatY, spot.z);
       group.rotation.y = spot.rotation;
+      resetPlayerPhysics(spot.x, spot.z);
 
       desiredCam.current.set(
         spot.x + Math.sin(camYaw) * CAM_DIST,
-        CAM_HEIGHT + 0.8,
+        seatY + CAM_HEIGHT + 0.8,
         spot.z + Math.cos(camYaw) * CAM_DIST
       );
       camera.position.lerp(desiredCam.current, CAM_LERP);
-      lookTarget.set(spot.x, 1.0, spot.z);
+      lookTarget.set(spot.x, seatY + 1.0, spot.z);
       smoothLook.current.lerp(lookTarget, 0.15);
       camera.lookAt(smoothLook.current);
 
@@ -296,6 +310,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     const forward = (activeKeys.forward || virtual.forward ? 1 : 0) - (activeKeys.backward || virtual.backward ? 1 : 0);
     const strafe = (activeKeys.right || virtual.right ? 1 : 0) - (activeKeys.left || virtual.left ? 1 : 0);
     const running = activeKeys.run || virtual.run;
+    const wantsJump = Boolean(activeKeys.jump || virtual.jump);
     const emoting = Boolean(state.emote);
 
     const sin = Math.sin(camYaw);
@@ -321,15 +336,21 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       targetVelocity.z -= targetVelocity.z * Math.min(1, DAMPING * delta);
     }
 
+    // ---- شیب تند: سُر خوردن (فقط روی خشکی، نه در شنا) ----
+    const slide = isInWater(local.x, local.z) ? 0 : slopeSlide(local.x, local.z, slideDir);
+    if (slide > 0) {
+      const slidePower = slide * 3.2 * delta;
+      targetVelocity.x += slideDir.x * slidePower;
+      targetVelocity.z += slideDir.z * slidePower;
+    }
+
     // ---- حرکت + کالیژن ----
     let nextX = local.x + targetVelocity.x * delta;
     let nextZ = local.z + targetVelocity.z * delta;
 
-    // مرزهای نقشه (نمی‌تواند وارد آب شود) — فقط روی تخته‌های اسکله استثناست
-    const onDock = nextX > BOUNDS.maxX && Math.abs(nextZ - DOCK.z) < DOCK.width * 0.55;
-    const maxX = onDock ? DOCK.x + DOCK.length - 4 : BOUNDS.maxX;
+    // مرزهای نقشه — ورود به آب مجاز است (شنا)، ولی از نقشه بیرون نمی‌رود
     if (nextX < BOUNDS.minX) nextX = BOUNDS.minX;
-    if (nextX > maxX) nextX = maxX;
+    if (nextX > BOUNDS.maxX) nextX = BOUNDS.maxX;
     if (nextZ < BOUNDS.minZ) nextZ = BOUNDS.minZ;
     if (nextZ > BOUNDS.maxZ) nextZ = BOUNDS.maxZ;
 
@@ -349,7 +370,8 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       const dx = nextX - tree.x;
       const dz = nextZ - tree.z;
       const d = Math.hypot(dx, dz) || 0.0001;
-      const minDist = tree.scale * 0.5 + BODY_RADIUS;
+      // شعاع برخورد = عرض تنه، نه ارتفاع درخت
+      const minDist = (tree.collision ?? tree.scale * 0.5) + BODY_RADIUS;
       if (d < minDist) {
         nextX = tree.x + (dx / d) * minDist;
         nextZ = tree.z + (dz / d) * minDist;
@@ -382,6 +404,14 @@ export default function PlayerController({ roomId, user, look, active = true }) 
 
     // ---- چرخش نرم ----
     const speed = Math.hypot(targetVelocity.x, targetVelocity.z);
+    // ---- فیزیک زمین: گرانش، پرش، شنا، قدم‌صدا ----
+    const phys = stepPlayerPhysics(nextX, nextZ, delta, wantsJump, speed);
+    // شنا سرعت را کم می‌کند
+    if (phys.swimming && speed > 0.01) {
+      targetVelocity.x *= phys.speedFactor;
+      targetVelocity.z *= phys.speedFactor;
+    }
+
     let targetRot = group.rotation.y;
     if (speed > 0.25) {
       targetRot = Math.atan2(targetVelocity.x, targetVelocity.z);
@@ -391,7 +421,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     while (rotDelta < -Math.PI) rotDelta += Math.PI * 2;
     group.rotation.y += rotDelta * TURN_LERP;
 
-    group.position.set(nextX, 0, nextZ);
+    group.position.set(nextX, phys.y, nextZ);
 
     setLocalTransform(nextX, nextZ, group.rotation.y, speed > 0.15);
     movingRef.current = speed > 0.2;
@@ -420,21 +450,61 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     const nearFire = Math.hypot(nextX, nextZ) < SEAT_RADIUS + 1.6;
     setNearFire(nearFire);
 
-    // ---- دوربین سوم‌شخص نزدیک ----
-    // ۲.۵ واحد پشت سر و ۱.۵ واحد بالاتر؛ pitch جهت نگاه را بالا/پایین می‌برد
+    // ---- دوربین سوم‌شخص نزدیک (terrain-aware) ----
+    // نمونه‌برداری در امتداد بوکه: دوربین هرگز داخل زمین/درخت نمی‌رود
+    const camTargetY = phys.y + CAM_HEIGHT * 0.95;
+    const camDirX = Math.sin(camYaw);
+    const camDirZ = Math.cos(camYaw);
+    let camDist = CAM_DIST;
+
+    for (let i = 1; i <= CAM_SAMPLES; i += 1) {
+      const t = i / CAM_SAMPLES;
+      const sx = nextX + camDirX * CAM_DIST * t;
+      const sz = nextZ + camDirZ * CAM_DIST * t;
+      const sy = camTargetY * (1 - t) + (camTargetY + CAM_HEIGHT * 0.35) * t;
+      const surface = getWalkSurfaceY(sx, sz) + 0.35;
+      if (sy < surface) {
+        // نزدیک‌تر از این نقطه دوربین به زمین می‌خورد
+        camDist = Math.max(CAM_MIN_DIST, CAM_DIST * t - 0.25);
+        break;
+      }
+    }
+
+    // درختان نزدیک مسیر دوربین هم مانع‌اند
+    const camTrees = getNearbyTrees(
+      nextX + camDirX * camDist * 0.6,
+      nextZ + camDirZ * camDist * 0.6,
+      treeBuf
+    );
+    for (let i = 0; i < camTrees.length; i += 1) {
+      const tree = camTrees[i];
+      const dx = nextX + camDirX * camDist - tree.x;
+      const dz = nextZ + camDirZ * camDist - tree.z;
+      const trunkR = (tree.collision ?? tree.scale * 0.5) + 0.3;
+      if (Math.hypot(dx, dz) < trunkR) {
+        camDist = Math.max(CAM_MIN_DIST, camDist * 0.72);
+        break;
+      }
+    }
+
+    const camGroundY = getWalkSurfaceY(nextX, nextZ);
+    const camY = Math.max(camGroundY + CAM_HEIGHT, phys.y + CAM_HEIGHT * 0.85);
     desiredCam.current.set(
-      nextX + Math.sin(camYaw) * CAM_DIST,
-      CAM_HEIGHT,
-      nextZ + Math.cos(camYaw) * CAM_DIST
+      nextX + camDirX * camDist,
+      camY,
+      nextZ + camDirZ * camDist
     );
     camera.position.lerp(desiredCam.current, CAM_LERP);
+
+    // FOV نرم هنگام دویدن (حس سرعت)
+    applyFovKick(camera, runningRef.current, delta);
 
     // هدف نگاه: جلوی بازیکن، چرخیده با pitch (بدون اثر روی موقعیت دوربین)
     const cosP = Math.cos(camPitch);
     const sinP = Math.sin(camPitch);
     lookTarget.set(
       nextX - Math.sin(camYaw) * cosP * 8,
-      1.35 + sinP * 8,
+      phys.y + 1.35 + sinP * 8,
       nextZ - Math.cos(camYaw) * cosP * 8
     );
     smoothLook.current.lerp(lookTarget, 0.35);
@@ -444,7 +514,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     raycastTimer.current += delta;
     if (raycastTimer.current > 0.1) {
       raycastTimer.current = 0;
-      rayOrigin.set(nextX, 1.1, nextZ);
+      rayOrigin.set(nextX, phys.y + 1.1, nextZ);
       rayDirection.set(Math.sin(group.rotation.y), 0, Math.cos(group.rotation.y));
       raycaster.current.set(rayOrigin, rayDirection);
       raycaster.current.far = 5;
@@ -471,7 +541,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
   });
 
   return (
-    <group ref={groupRef} position={[local.x, 0, local.z]}>
+    <group ref={groupRef} position={[local.x, getWalkSurfaceY(local.x, local.z), local.z]}>
       <Character
         model={character}
         moving={movingRef}

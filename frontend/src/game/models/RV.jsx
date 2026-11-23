@@ -1,8 +1,9 @@
 import './setupDraco';
 import { useGLTF } from '@react-three/drei';
 import { useModelClone } from './useModel';
+import { modelUrl } from '../assetManifest';
 
-const URL = '/game-models/opt/RV.glb';
+const URL = modelUrl('structures.rvOpt');
 
 // ون/کاروان کمپ. کلون کل صحنه تا همه‌ی قطعات مدل رندر شوند.
 export function Model(props) {
@@ -14,4 +15,4 @@ export function Model(props) {
   );
 }
 
-useGLTF.preload(URL);
+if (URL) useGLTF.preload(URL);

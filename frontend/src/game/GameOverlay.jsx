@@ -5,6 +5,7 @@ import { usePointerLook } from './hooks/usePointerLook';
 import { useQuestSystem } from './hooks/useQuestSystem';
 import { useClaimCharacter } from './hooks/useClaimCharacter';
 import { useMicControl } from './hooks/useMicControl';
+import { useFishingSpots } from './hooks/useFishingSpots';
 import GameVoice from './components/GameVoice';
 import { preloadAllModels } from './preload';
 
@@ -151,6 +152,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
 
   const { micEnabled, toggleMic } = useMicControl();
   const look = usePointerLook({ onExit: () => {} });
+  useFishingSpots();
 
   const handleStart = useCallback(() => {
     setEntered(true);

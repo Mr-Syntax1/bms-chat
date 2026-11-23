@@ -73,9 +73,9 @@
 | --- | --- | --- |
 | `campfire.mp3` روی آتش (loop, distance=20) | ✅ | `AmbientAudio` |
 | `crickets.mp3` در جنگل (loop, distance=40) | ✅ | ۴ منبع مکانی |
-| `wind.mp3` سراسری | ❌ → ✅ | فایل نبود (404)؛ با ffmpeg ساخته شد + بستر `createGlobalLoop` |
+| صدای باد | 🚫 حذف‌شده | صدای باد عمداً وجود ندارد و نباید اضافه شود (طبق قواعد پروژه) |
 | `guitar1.m4a` / `guitar2.mp3` / `guitar3.m4a` با G | ✅ | تصادفی + `publishPlayerAction` برای بقیه |
-| `yum.mp3` / `water.mp3` | ❌ → ✅ | هر دو ساخته شدند؛ fallback رویه‌ای هم برای `.m4a` فعال شد |
+| `yum.mp3` / صدای آب | ✅ | `yum.mp3` موجود؛ `water.mp3` حذف شد و به `water-drop-stone.mp3` + synth `water` منتقل شد |
 | fallback رویه‌ای برای m4a | ❌ → ✅ | regex `proceduralKey` فقط `mp3|ogg|wav` را می‌گرفت |
 
 ## ۷. انیمیشن و UX
@@ -92,11 +92,236 @@
 
 ---
 
+## فاز ۰ — مانیفست دارایی‌ها و بهینه‌سازی
+
+### منبع واحد حقیقت: `game/assetManifest.js`
+
+همه‌ی مدل‌ها و صداها با **کلید منطقی** آدرس می‌گیرند، نه مسیر خام:
+
+```js
+import { MODELS, SOUNDS, modelUrl, soundUrl } from '../assetManifest';
+
+modelUrl('npc.grandpa');   // '/game-models/npc/Grandpa.glb'
+soundUrl('fishing.cast');  // '/sounds/casting-fishing-rod-for-game-fishing.mp3'
+```
+
+هر ورودی شکل `{ url, kind, heavy, placeholder, opt?, synth?, fallback?, note? }` دارد:
+
+| فیلد | معنا |
+| --- | --- |
+| `url` | مسیر نهایی؛ `null` یعنی فایل نیست → placeholder |
+| `kind` | `'model'` یا `'sound'` |
+| `heavy` | فایل بزرگ (>۵۰۰KB) → باید lazy یا بهینه استفاده شود |
+| `placeholder` | فایل واقعی نداریم؛ primitive یا synth جایگزین می‌شود |
+| `opt: true` | از نسخه‌ی بهینه‌شده در `game-models/opt/` استفاده کن |
+| `synth` | (صدا) کلید کارخانه‌ی رویه‌ای در `synth.js` |
+| `fallback` | (مدل) توضیح شکل primitive جایگزین |
+
+**قاعده‌ی طلایی:** هیچ کد جدیدی مسیر `/game-models/...` یا `/sounds/...` ننویسد.
+`characterConfig.js`، `sounds.js`، `preload.js`، `props.jsx` و بقیه‌ی مدل‌ها همگی از manifest می‌خوانند.
+
+### گروه‌های پیش‌بارگذاری (`PRELOAD_GROUPS`)
+
+| گروه | چه زمانی لود می‌شود | حجم تقریبی |
+| --- | --- | --- |
+| `core` | همان ابتدای ورود | ~1.3 MB |
+| `beach` | ابتدای ورود (فعلاً) | ~0.8 MB |
+| `quest` | ابتدای ورود | ~0.5 MB |
+| `npc` | فاز ۴ — با `preloadGroup('npc')` | ~2.9 MB |
+| `animals` | فاز ۳ | ~0.4 MB |
+| `cooking` / `food` | فاز ۳ | ~0.5 MB |
+| `comfort` | فاز ۳ | ~0.4 MB |
+| `wearables` | فاز ۲ | ~0.1 MB |
+
+`preloadAllModels()` فقط `core + beach + quest` و ۹ کاراکتر را لود می‌کند.
+گروه‌های دیگر با `preloadGroup(name)` در زمان idle گرم می‌شوند.
+
+### بهینه‌سازی GLB (`scripts/optimize-glb.mjs`)
+
+مراحل: `dedup → prune → weld → resample → textureCompress(webp, ≤1024/≤512) → draco`
+
+خروجی در `public/game-models/opt/` با حفظ نام و ساختار پوشه؛ **فایل‌های اصلی دست نمی‌خورند.**
+
+نتیجه‌ی اجرا روی ۲۸ فایل اولویت‌دار:
+
+| سنجه | قبل | بعد |
+| --- | --- | --- |
+| حجم همان ۲۸ فایل | 42.98 MB | 4.33 MB (−۸۹.۹٪) |
+| مدل‌های ورود اولیه (core+chars) | 24.00 MB | 4.28 MB (−۸۲.۲٪) |
+| کل مدل‌های manifest | 50.49 MB | 12.52 MB |
+
+نکته: `npc/Adventurer.glb` نسخه‌ی opt **استفاده نمی‌شود** چون فشرده‌سازی به اسکین آن آسیب می‌زند
+(`NODE_SKINNED_MESH_NON_ROOT`)؛ اصل فایل رفرنس می‌شود.
+
+### اسکریپت‌های ابزار
+
+```bash
+npm run verify:assets   # بررسی case-sensitive مسیرها + یتیم‌ها + جدول خلاصه
+npm run inspect:glb     # گزارش bbox/مثلث/تکسچر/استخوان/کلیپ → src/game/assetReport.json
+npm run optimize:glb    # ساخت نسخه‌های opt (--all / --only X,Y / --dry)
+```
+
+### پاسخ سؤالات باز (از `assetReport.json`)
+
+| سؤال | پاسخ |
+| --- | --- |
+| BirchTrees تک‌درخت است یا بیشه؟ | **بیشه**: ۵ مش (`BirchTree_1..5`)، عرض ۱۸.۵ واحد |
+| Bridge یا Woodbridge؟ | `Bridge` ابعاد ۲۸×۲۸×۶۵ و pivot در x≈۷۲؛ `Woodbridge` ۱۳۰۹ واحد عرض با minY=۲۲۰ → `Bridge` برای رودخانه مناسب‌تر است (باید نرمال شود) |
+| RockPathRoundSmall سنگ است یا نوار؟ | **تک‌سنگ گرد** ۱.۱×۱.۳۵ واحد → برای stepping stone عالی، برای مسیر باید instanced تکرار شود |
+| Umbrellaandchairs صندلی دارد؟ | بله؛ bbox ۳۶۱×۳۹۴×۳۷۱ با ۲ تکسچر ۱۰۲۴ → باید `Fitted` شود |
+| Pot vs Cauldron | Pot: ارتفاع ۰.۳۳، عرض ۰.۷۷ (دیگ آویزان بزرگ‌تر) · Cauldron: ۰.۲۵×۰.۳۶ (دیگ کوچک‌تر) |
+| NPCهای ریگ‌دار | فقط `Adventurer` (کامل با head/neck/hand) و `Witch` (۱ کلیپ). Grandpa/Littlegirl/Cow/Gnome **بدون ریگ** → bob رویه‌ای |
+| حیوانات ریگ‌دار | هیچ‌کدام ریگ/کلیپ ندارند → همه باید انیمیشن رویه‌ای بگیرند |
+
+---
+
+## فاز ۱ — زمین زنده، جنگل بلند، آبشار
+
+### `game/terrain.js` — منبع واحد حقیقت زمین
+
+هیچ چیزی از `sceneLayout` یا کامپوننت‌ها import نمی‌کند (جلوگیری از چرخه).
+`sceneLayout` ثابت‌های مشترک را از اینجا دوباره export می‌کند.
+
+| نماد | معنا |
+|------|------|
+| `getGroundHeight(x, z)` | ارتفاع زمین. خط لوله‌ی ثابت: تپه‌های نرم → دیواره‌ی صخره → ساحل/بستر دریا → مسطح‌سازی کمپ → بستر رودخانه → برکه → حوضچه‌ی آبشار |
+| `getGroundNormal`, `getGroundSlope` | نرمال با اختلاف محدود؛ شیب ۰..۱ (۰.۸۴ روی دیواره‌ی صخره) |
+| `WATER_LEVEL = -1.15` | سطح مشترک دریا، برکه، رودخانه، حوضچه |
+| `CAMP_FLAT_RADIUS = 13`, `CAMP_BLEND_RADIUS = 26` | داخل ۱۳ کاملاً تخت (y=0)، بعد از ۲۶ دست‌نخورده |
+| `CLIFF_START_Z = -52`, `CLIFF_END_Z = -55.5` | دیواره‌ی شمالی؛ ۱۳.۵ واحد ارتفاع در ۳.۵ واحد افقی |
+| `POND`, `PLUNGE`, `WATERFALL`, `RIVER` | مختصات پهنه‌های آبی |
+| `isInWater`, `getWaterDepth` | پرس‌وجوی آب (عمق ۰ = خشکی) |
+| `getWalkSurfaceY` | زمین یا سکوی اسکله — فیزیک و رندر از همین می‌خوانند |
+| `platformYAt`, `DOCK_PLATFORM` | سکوی چوبی اسکله که روی آب معلق است |
+| `groundColorAt(x, z, h, out)` | رنگ vertex: چمن/خاک/شن/شن خیس/سنگ/خزه/لای |
+| `isPlantable(x, z, maxSlope)` | آیا درخت اینجا می‌روید؟ (نه در آب، نه شیب تند) |
+
+### `components/Ground.jsx` — heightmap + سه پهنه‌ی آبی
+
+* زمین یک `PlaneGeometry` با ۹۶/۱۴۴/۱۹۲ تقسیم (low/medium/high)، ارتفاع هر رأس از `getGroundHeight` و رنگ از `groundColorAt` → یک draw call، `vertexColors`.
+* **دریا**: نوار با خط ساحلی واقعی (بایسکشن روی `getGroundHeight` به‌ازای هر ردیف z) — آب دقیقاً از جایی شروع می‌شود که زمین زیر سطح آب می‌رود.
+* **برکه** و **حوضچه‌ی آبشار**: دیسک با شعاع تلاقی محاسبه‌شده در ۷۲ جهت.
+* **رودخانه**: نوار در امتداد `RIVER.points` با نرمال افقی.
+* شیدر مشترک آب: موج سینوسی، `aShore` برای عمق/فوم، فوم روی لبه، `depthWrite={false}`, `renderOrder={1}`.
+* `AmbientSetup` هر ۱۵ فریم از `envState` می‌خواند: شدت ambient، رنگ/جهت/شدت خورشید (گرم در طلوع/غروب)، شدت ماه.
+
+### `components/Waterfall.jsx` — آبشار
+
+* صفحه‌ی شیدری عمودی در نیمه‌ی راه بین لبه‌ی دیواره و محل فرود، با رگه‌های آب، خم سهمی، فوم پایین و لبه‌ها.
+* دو لایه (جلو/عقب) برای ضخامت.
+* `SplashPool`: سه حلقه‌ی شفاف با پالس شعاعی.
+* `SprayParticles`: InstancedMesh با حرکت رویه‌ای (بدون آپدیت CPU per-instance).
+* ارتفاع آبشار از `getWaterfallTopY()` می‌آید، نه عدد جادویی.
+
+### `components/Forest.jsx` — جنگل سه‌لایه + LOD
+
+| لایه | توضیح |
+|------|-------|
+| نزدیک (GLB کامل) | فقط در شعاع ۲۲/۳۰/۳۸ (low/medium/high) — `trees-near-*` |
+| دور (سیلوئت) | دو مخروط ساده (تنه + تاج) برای بقیه — یک draw call |
+| backdrop | حلقه‌ی ۹۰/۱۵۰/۲۲۰ سیلوئت بسیار بلند در ۱۰۴..۱۴۸ واحد، پس‌زمینه‌ی اتمسفری |
+
+* `scaleY` با فاصله از کمپ زیاد می‌شود (`1 + depth*0.75`)، پس جنگل عمق‌دار و «کهن» دیده می‌شود.
+* درختان روی شیب تند کمی کج می‌شوند (`tilt`).
+* رنگ برگ با لایه تیره‌تر می‌شود (عمق اتمسفری).
+* `buildTrees` فقط جایی درخت می‌گذارد که `isPlantable` تأیید کند (نه در آب، نه شیب > ۰.۵).
+
+**بودجه‌ی مثلث:** ۳.۵۸M → **۰.۹۱M** (‎−۷۵٪‎) با همین LOD، بدون تغییر چیدمان.
+
+### `hooks/usePlayerMotion.js` — فیزیک زمین
+
+جدا شد از `PlayerController` (که ۵۰۰+ خط بود) تا هر دو قابل خواندن بمانند.
+
+| قابلیت | جزئیات |
+|--------|--------|
+| گرانش/پرش | `GRAVITY = -22`, `JUMP_SPEED = 7.2` → اوج ~۱.۱ واحد |
+| لبه‌ی کلید | `jumpHeld` → نگه‌داشتن Space فقط **یک** پرش می‌دهد |
+| پله | `STEP_HEIGHT = 0.55` — پله‌های کوچک بدون پرش |
+| فرود | صدای `land_soft` با حجم متناسب سرعت فرود |
+| شنا | عمق > ۱.۱۵ → شناوری ۰.۴۲ زیر سطح، سرعت ×۰.۶۲، پاشش ورود |
+| قدم‌صدا | بر اساس **مسافت** (۱.۷۵ واحد)، نه زمان — grass/sand/wood/stone |
+| سکو | روی `DOCK_PLATFORM` می‌ایستد، نه شنا می‌کند |
+
+همه‌ی state در سطح ماژول (`physics`) است — صفر re-render، صفر تخصیص در فریم.
+
+### `game/envState.js` — چرخه‌ی روز/شب
+
+* `updateEnvState(t)` با ۸ keyframe (night → dawn → day → dusk) و درون‌یابی smooth.
+* خروجی: `daylight`, `warmth`, `phase`, `ambientIntensity`, `fogNear/Far`.
+* `DAY_LENGTH = 420` ثانیه (۷ دقیقه برای یک چرخه‌ی کامل).
+* `skyColorsFor(phase)` رنگ گرادیان آسمان.
+* آسمان، مه، پس‌زمینه و نورها هر ۱۵..۲۰ فریم از این می‌خوانند (نه هر فریم).
+* با `preset.envAnimation === false` (کیفیت کم) چرخه ثابت می‌ماند.
+
+### صداهای جدید (مکانی)
+
+`AmbientAudio` علاوه بر آتش و جیرجیرک:
+* **آبشار**: منبع مکانی در `WATERFALL.baseZ`، `refDistance 9`, `maxDistance 62` — از دور شنیده می‌شود.
+* **رودخانه**: چند منبع در امتداد `RIVER.points`، دامنه‌ی کوتاه‌تر.
+
+هیچ صدای بادی وجود ندارد.
+
+---
+
+## فاز ۱ب — مسیر، پل، برکه، هوا، سایه‌بان
+
+### مسیرها و گذرگاه‌ها (`terrain.js` + `components/Paths.jsx`)
+
+* `getGroundHeight` علاوه بر ارتفاع، زمین را **روی مسیرها ۷۵٪ تخت می‌کند** (`pathProximity` → `blend`) تا راه‌رفتن روی `PATHS` ناهموار نباشد.
+* `groundColorAt` رنگ خاک مسیر (`COL.dirtPath` / `COL.dirtPathDark`) را در vertex color ترکیب می‌کند.
+* `PATHS` هم‌زمان هم شکل ارتفاع را تعیین می‌کند و هم نوار رنگی `DirtPaths` را (decal با taper و `PATH_DECAL_LIFT=0.035`) — در کیفیت low (`grassDensity < 0.45`) نوار حذف می‌شود ولی تسطیح ارتفاع می‌ماند.
+* `BRIDGE` خودکار است: نوار رودخانه در مسیر «برکه» اسکن می‌شود و مرکز/طول/عرض/ارتفاع پل از همان‌جا می‌آید (`halfLength 5.1`, `halfWidth 1.55`, `topY ≈ -0.48`).
+* `STEPPING_STONES`: ۱۰ سنگ در راستای نرمال رودخانه، `topY = WATER_LEVEL + 0.18`.
+* `platformYAt(x, z)` سه شکل را می‌شناسد: مستطیل چرخیده‌ی پل، دایره‌های سنگ، سکوی اسکله. `getWalkSurfaceY` و `getWaterDepth` هر دو از همین عبور می‌کنند.
+* **پل و سنگ‌ها رویه‌ای‌اند، نه GLB.** bbox مدل‌های `Bridge.glb` / `Woodbridge.glb` بی‌معنی است (h=28 و h=264)؛ کلیدهای `paths.bridge` / `paths.woodBridge` در مانیفست استفاده نمی‌شوند.
+
+### برکه‌ی زنده (`components/PondLife.jsx`)
+
+* نیلوفر: ۰ / ۸ / ۱۴ برگ (low/medium/high) با `y = WATER_LEVEL + 0.045` و باب موج.
+* قورباغه: `animals/Frog.glb` با `targetHeight 0.34` (مدل اصلی ۸۵.۶۸ ارتفاع دارد) و چرخه‌ی جهش ۹ ثانیه‌ای.
+
+### هوا (`components/Weather.jsx` + `stores/useSettingsStore.js`)
+
+* تنظیم `weather`: `'clear' | 'rain'`، در `localStorage` ذخیره می‌شود، در `SettingsPanel` با `SegmentedControl`.
+* باران: ۰ / ۴۲۰ / ۹۰۰ خط (low/medium/high) در یک بافر ماژول (`getRainData`)، دوربین را دنبال می‌کند.
+* `FogBanks`: ۴ دیسک چرخان، فقط وقتی `envAnimation` روشن است.
+* مه باران از `weatherFogFor('rain')` در `envState.js` می‌آید و در حلقه‌ی مه `CozyScene` اعمال می‌شود — حتی با خاموش بودن `envAnimation`.
+* صدای باران از synth (`makeRainBuffer`) با کلید placeholder `ambience.rain`.
+
+### سایه‌بان و ذرات (`components/CanopyFX.jsx`)
+
+* `LightShafts`: ۵ مخروط additive که شفافیتشان از `envState.daylight` می‌آید.
+* `Pollen`: ۹۰/۱۸۰ نقطه؛ `FallingLeaves`: ۲۶/۴۸ صفحه‌ی instanced با چرخه‌ی سقوط مستقل. هر دو فقط medium/high.
+
+### دوربین و حرکت (`cameraTuning.js`, `PlayerController.jsx`, `usePlayerMotion.js`)
+
+* برخورد دوربین: ۶ نمونه در طول بوم، تست زمین/آب/تنه‌ی درخت، حداقل فاصله ۰.۷۵.
+* FOV kick: `applyFovKick(camera, running, delta)` — ۶۲ → ۶۸ هنگام دویدن. تغییر FOV بیرون از کامپوننت است چون `react-hooks/immutability` هر آرگومان hook را immutable می‌داند.
+* `usePlayerMotion`: `COYOTE_TIME 0.12`، `JUMP_BUFFER_TIME 0.1`، `JUMP_CUT 0.45` (پرش متغیر)، `slopeSlide()` با `SLIDE_SLOPE 0.62`.
+
+### ماهیگیری سبک (`fishingSpots.js` + `hooks/useFishingSpots.js`)
+
+* ۶ نقطه (۴ لبه‌ی رودخانه + ساحل + اسکله) با `registerQuestItem` (شعاع ۲.۶، کول‌داون ۲۴۰۰ms).
+* با E: صدای پرتاب → پاشش → کشیدن، سپس توست «ماهی گاز گرفت! 🎣».
+* سیستم کامل صید (بوبِر، گاز واقعی، کشیدن، ماهی) در Phase 3 ساخته می‌شود.
+
+### درختان سه‌سطحی (`sceneLayout.js` + `Forest.jsx`)
+
+* `makeTree` هر درخت را به `{ targetHeight, tier, xzScale, collision }` تبدیل می‌کند؛ `Forest` از `targetHeight / height` مقیاس می‌سازد.
+* سطح‌ها: `giant` (فقط در ناحیه‌ی غول‌ها، `>0.93`)، `canopy` (`.72..0.93`)، `mid` (`.34..0.72`)، `understory`.
+* `LANDMARK_GIANTS`: ۶ درخت ثابت ۳۰..۳۶ متری پشت کمپ/کنار آبشار که **اول** کاشته می‌شوند.
+* فاصله‌گذاری وابسته به سطح: ۹ / ۴.۶ / ۳.۴ — تاج‌پوش‌ها هوای بیشتری می‌گیرند.
+* حذف خودکار: `pathDistance < 2.6`، `isInWater`، و شیب غیرقابل‌کاشت.
+* عدد فعلی با `buildTrees(800)`: `{giant:5, canopy:108, mid:369, understory:318}`، ارتفاع ۴.۰۱..۳۴.۰، صفر درخت در آب و صفر روی مسیر.
+
+---
+
 ## وضعیت بیلد
 
 ```
 npx eslint src/game --ext .js,.jsx   →  0 خطا
-npm run build                        →  موفق
+npm run build                        →  موفق (~۴s)
+npm run verify:assets                →  0 missing / 0 orphan
 ```
 
 خطاهای lint باقی‌مانده در `CallModal.jsx`، `ChatInput.jsx`، `Login.jsx`، `Register.jsx`، `Profile.jsx`، `Settings.jsx`، `useWebRTC.js`، `VoiceMessage.jsx` از قبل وجود داشته‌اند و به بازی مربوط نیستند.

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { CAMP_RADIUS, SAND_START_X, VAN, SPAWN, FIRE_KEEPOUT } from '../sceneLayout';
+import { getGroundHeight, getGroundSlope, WATER_LEVEL } from '../terrain';
 import { useQualityPreset } from '../stores/useSettingsStore';
 
 // مولد عدد با seed ثابت
@@ -75,7 +76,13 @@ export default function GrassField() {
       // مسیر باز کمپ→اسکله
       if (Math.abs(z) < 3.2 && x > 6 && x < SAND_START_X) continue;
 
-      dummy.position.set(x, 0.01, z);
+      // روی آب و شن و شیب تند علف نمی‌روید
+      const gy = getGroundHeight(x, z);
+      if (gy < WATER_LEVEL + 0.4) continue;
+      if (x > SAND_START_X - 2) continue;
+      if (getGroundSlope(x, z) > 0.4) continue;
+
+      dummy.position.set(x, gy + 0.01, z);
       dummy.rotation.set(0, rand() * Math.PI * 2, 0);
       const s = 0.7 + rand() * 0.9;
       dummy.scale.set(s, s * (0.75 + rand() * 0.6), s);

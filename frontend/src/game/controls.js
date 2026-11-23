@@ -5,5 +5,6 @@ export const KEY_MAP = [
   { name: 'left', keys: ['ArrowLeft', 'KeyA'] },
   { name: 'right', keys: ['ArrowRight', 'KeyD'] },
   { name: 'run', keys: ['ShiftLeft', 'ShiftRight'] },
+  { name: 'jump', keys: ['Space'] },
   { name: 'sit', keys: ['KeyE'] },
 ];

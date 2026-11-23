@@ -3,8 +3,9 @@ import { useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { modelUrl } from '../assetManifest';
 
-const GUITAR_URL = '/game-models/ExtraCozyProps/Guitar.glb';
+const GUITAR_URL = modelUrl('structures.guitar');
 
 // لنگر پیش‌فرض پروپ (مدل استاندارد ۱.۷۵ واحدی) — کاراکتر مقدار خودش را می‌دهد
 const DEFAULT_ANCHOR = { x: 0.34, y: 0.95, z: 0.28, scale: 1 };
@@ -145,4 +146,4 @@ export default function HeldProps({ action, marshmallowStage, anchor }) {
   );
 }
 
-useGLTF.preload(GUITAR_URL);
+if (GUITAR_URL) useGLTF.preload(GUITAR_URL);

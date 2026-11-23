@@ -100,6 +100,8 @@ export const useSettingsStore = create((set, get) => ({
   controls: { ...DEFAULT_CONTROLS, ...(persisted?.controls || {}) },
   // آفست چرخش دستی هر کاراکتر (برای اصلاح جهت صورت در صورت نیاز)
   facingOverrides: { ...(persisted?.facingOverrides || {}) },
+  // آب‌وهوا: 'clear' | 'rain' — پیش‌فرض شب صاف
+  weather: persisted?.weather === 'rain' ? 'rain' : 'clear',
   settingsOpen: false,
 
   get preset() {
@@ -127,6 +129,12 @@ export const useSettingsStore = create((set, get) => ({
     get().persist();
   },
 
+  setWeather: (weather) => {
+    if (weather !== 'clear' && weather !== 'rain') return;
+    set({ weather });
+    get().persist();
+  },
+
   clearFacingOverride: (model) => {
     set((s) => {
       const next = { ...s.facingOverrides };
@@ -141,10 +149,10 @@ export const useSettingsStore = create((set, get) => ({
   persist: () => {
     if (typeof localStorage === 'undefined') return;
     try {
-      const { quality, audio, controls, facingOverrides } = get();
+      const { quality, audio, controls, facingOverrides, weather } = get();
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ quality, audio, controls, facingOverrides })
+        JSON.stringify({ quality, audio, controls, facingOverrides, weather })
       );
     } catch {
       /* ignore */

@@ -1,9 +1,51 @@
-// مسیر فایل‌های صوتی بازی (موجود در public/sounds)
-export const FIRE_SOUND = '/sounds/campfire.mp3';
-export const CRICKETS_SOUND = '/sounds/crickets.mp3';
-// صدای پاشیدن آب هنگام ماهیگیری (در صورت نبود فایل، synth جایگزین می‌شود)
-export const WATER_SOUND = '/sounds/water.mp3';
-// صدای لذیذ خوردن مارشمالو (در صورت نبود فایل، synth جایگزین می‌شود)
-export const YUM_SOUND = '/sounds/yum.mp3';
-export const GUITAR_SOUNDS = ['/sounds/guitar1.m4a', '/sounds/guitar2.mp3', '/sounds/guitar3.m4a'];
+import { soundUrl } from './assetManifest';
+
+// ---------------------------------------------------------------------------
+// نام‌های منطقی صدا — همه از assetManifest خوانده می‌شوند.
+// اگر فایلی موجود نباشد url آن null است و audio.js نسخه‌ی synth می‌سازد.
+// ---------------------------------------------------------------------------
+export const FIRE_SOUND = soundUrl('ambience.fire');
+export const CRICKETS_SOUND = soundUrl('ambience.crickets');
+export const OCEAN_SOUND = soundUrl('ambience.ocean');
+export const OWL_SOUND = soundUrl('ambience.owl');
+export const STREAM_SOUND = soundUrl('ambience.stream');
+export const WATERFALL_SOUND = soundUrl('ambience.waterfall');
+export const RAIN_SOUND = soundUrl('ambience.rain');
+
+// آب (پاشش/سنگ) — فایل داریم؛ اگر نبود synth
+export const WATER_SOUND = soundUrl('water.plink');
+export const SPLASH_SOUND = soundUrl('player.splashSmall');
+
+export const YUM_SOUND = soundUrl('eat.yum');
+
+export const GUITAR_SOUNDS = [
+  soundUrl('music.guitar1'),
+  soundUrl('music.guitar2'),
+  soundUrl('music.guitar3'),
+].filter(Boolean);
 export const GUITAR_SOUND = GUITAR_SOUNDS[0];
+
+// ماهیگیری
+export const FISH_CAST_SOUND = soundUrl('fishing.cast');
+export const FISH_REEL_SOUND = soundUrl('fishing.reel');
+export const FISH_CATCH_SOUND = soundUrl('fishing.catch');
+
+// پخت
+export const FRY_LOOP_SOUND = soundUrl('cooking.fryLoop');
+export const POT_BUBBLE_SOUND = soundUrl('cooking.potBubble');
+
+// رابط کاربری و فعالیت
+export const UI_CLICK_SOUND = soundUrl('ui.click');
+export const UI_HOVER_SOUND = soundUrl('ui.hover');
+export const PICKUP_SOUND = soundUrl('ui.pickup');
+export const EMOTE_POP_SOUND = soundUrl('ui.emotePop');
+export const PLACE_ITEM_SOUND = soundUrl('ui.placeItem');
+export const EQUIP_CLOTH_SOUND = soundUrl('ui.equipCloth');
+export const TENT_ZIP_SOUND = soundUrl('ui.tentZip');
+
+export const QUEST_ACCEPT_SOUND = soundUrl('quest.accept');
+export const QUEST_COMPLETE_SOUND = soundUrl('quest.complete');
+
+export const NPC_BLIPS = [1, 2, 3, 4]
+  .map((i) => soundUrl(`npc.blip${i}`))
+  .filter(Boolean);

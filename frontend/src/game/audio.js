@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PROCEDURAL_FACTORIES } from './synth';
+import { SOUND_ENTRIES } from './assetManifest';
 
 // ---------------------------------------------------------------------------
 // مدیر صدا: یک AudioListener مشترک + کش بافر + پخش یک‌باره‌ی Positional
@@ -54,8 +55,19 @@ function applyGain(sound, channel, baseVolume) {
   registerSound(channel, sound);
 }
 
+// نگاشت url → کلید کارخانه‌ی رویه‌ای (از manifest؛ fallback به نام فایل)
+const SYNTH_BY_URL = (() => {
+  const map = new Map();
+  for (const entry of Object.values(SOUND_ENTRIES)) {
+    if (entry.url && entry.synth) map.set(entry.url, entry.synth);
+  }
+  return map;
+})();
+
 // کلید صدا از مسیر فایل: /sounds/fire.mp3 → fire
 function proceduralKey(url) {
+  const fromManifest = SYNTH_BY_URL.get(url);
+  if (fromManifest) return fromManifest;
   const match = /\/sounds\/([a-zA-Z0-9_-]+)\.(mp3|m4a|ogg|wav)$/i.exec(url || '');
   return match ? match[1] : null;
 }
@@ -169,35 +181,41 @@ function waitForUnlock() {
   return unlockPromise;
 }
 
-export function loadBuffer(url) {
-  if (bufferCache.has(url)) return Promise.resolve(bufferCache.get(url));
+export function loadBuffer(url, synthKey = null) {
+  const cacheKey = url || `synth:${synthKey}`;
+  if (bufferCache.has(cacheKey)) return Promise.resolve(bufferCache.get(cacheKey));
 
-  // اگر فایل صوتی موجود نبود، نسخه‌ی رویه‌ای می‌سازیم
+  // نسخه‌ی رویه‌ای: کلید از آرگومان یا از manifest/نام فایل
   const fallback = () => {
-    const key = proceduralKey(url);
+    const key = synthKey || proceduralKey(url);
     const factory = key ? PROCEDURAL_FACTORIES[key] : null;
     if (!factory || !listener?.context) return null;
     try {
       const buffer = factory(listener.context);
-      bufferCache.set(url, buffer);
+      bufferCache.set(cacheKey, buffer);
       return buffer;
     } catch {
       return null;
     }
   };
 
+  // فایل نداریم → مستقیم synth
+  if (!url) {
+    return Promise.resolve(fallback());
+  }
+
   return new Promise((resolve) => {
     loader.load(
       url,
       (buffer) => {
-        bufferCache.set(url, buffer);
+        bufferCache.set(cacheKey, buffer);
         resolve(buffer);
       },
       undefined,
       () => {
         // فایل نیست → صدای رویه‌ای (یا null) کش می‌شود تا دوباره تلاش نشود
         const buffer = fallback();
-        bufferCache.set(url, buffer);
+        bufferCache.set(cacheKey, buffer);
         resolve(buffer);
       }
     );
@@ -224,15 +242,15 @@ function buildPositional(buffer, position, options) {
 
 /**
  * صدای Positional یک‌باره (مثل گیتار یا yum) در مختصات مشخص
- * @param {string} url مسیر فایل صدا
+ * @param {string} url مسیر فایل صدا (null = synth)
  * @param {number[]} position [x,y,z]
- * @param {{volume?:number,channel?:string,refDistance?:number,maxDistance?:number,rolloff?:number}} options
+ * @param {{volume?:number,channel?:string,refDistance?:number,maxDistance?:number,rolloff?:number,synth?:string}} options
  * @returns {Promise<THREE.PositionalAudio|null>}
  */
 export async function playPositionalOneShot(url, position, options = {}) {
   await waitForListener();
   if (!listener || !container) return null;
-  const buffer = await loadBuffer(url);
+  const buffer = await loadBuffer(url, options.synth);
   if (!buffer) return null;
 
   await waitForUnlock();
@@ -276,7 +294,7 @@ export function createPositionalLoop(url, position, options = {}) {
 
   // ابتدا Listener آماده می‌شود تا بافر رویه‌ای به AudioContext درست بچسبد
   waitForListener()
-    .then(() => loadBuffer(url))
+    .then(() => loadBuffer(url, opts.synth))
     .then(async (buffer) => {
       if (disposed || !buffer) return;
       if (!listener || !container) return;
@@ -326,7 +344,7 @@ export function createGlobalLoop(url, options = {}) {
   let disposed = false;
 
   waitForListener()
-    .then(() => loadBuffer(url))
+    .then(() => loadBuffer(url, opts.synth))
     .then(async (buffer) => {
       if (disposed || !buffer) return;
       if (!listener) return;
