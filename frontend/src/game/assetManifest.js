@@ -81,9 +81,9 @@ export const MODELS = {
 
   // ---- درخت‌ها ----
   trees: {
-    pineOpt: m('opt/Pine.glb', { note: 'نسخه‌ی سبک برای instancing/LOD دور' }),
+    pineOpt: m('trees/Pine.glb', { opt: true, note: 'instanced — opt/trees/Pine.glb (108KB)' }),
     pine: m('trees/Pine.glb', { opt: true }),
-    pine2: m('trees/Pine2.glb', { opt: true }),
+    pine2: m('trees/Pine2.glb', { opt: true, note: 'instanced — opt/trees/Pine2.glb (110KB)' }),
     birch: m('trees/BirchTrees.glb', { opt: true, note: 'بیشه‌ی ۵ درخت (BirchTree_1..5) در یک فایل' }),
     fern: m('trees/Fern.glb', { opt: true }),
     oak: missing('procedural: تنه‌ی استوانه + ۳ تا ۵ کره‌ی شاخ‌وبرگ', 'مدل oak/broadleaf موجود نیست'),
@@ -93,6 +93,7 @@ export const MODELS = {
 
   // ---- زیربوته و کف جنگل ----
   undergrowth: {
+    grass: m('grassyellowing.glb', { note: 'بوته‌ی GLB — جایگزین تیغه‌های رویه‌ای (۱۴۷ مش، ۳ متریال)' }),
     bush: m('Decorations/BushbyQuaternius.glb'),
     flowers: m('Decorations/Flowers.glb'),
     mushrooms: m('Decorations/Mushrooms.glb'),
