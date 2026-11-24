@@ -43,7 +43,8 @@ function useMergedGrass() {
 
       const key = child.material?.uuid ?? 'default';
       if (!byMaterial.has(key)) byMaterial.set(key, { material: child.material, geos: [] });
-      byMaterial.get(key).geos.push(child.geometry);
+      // ترانسفورم گره در هندسه اعمال می‌شود، وگرنه ۱۴۷ زیرمش روی هم می‌افتند
+      byMaterial.get(key).geos.push(child.geometry.clone().applyMatrix4(child.matrixWorld));
     });
 
     const groups = [];
@@ -70,7 +71,9 @@ export default function GrassField() {
   const { groups, height, baseY, centerX, centerZ } = useMergedGrass();
   const refs = useRef([]);
 
-  const count = COUNT_BY_QUALITY[preset.treeDensity > 700 ? 'high' : preset.treeDensity > 500 ? 'medium' : 'low'];
+  const count = COUNT_BY_QUALITY[
+    preset.grassDensity > 0.8 ? 'high' : preset.grassDensity > 0.45 ? 'medium' : 'low'
+  ];
 
   const matrices = useMemo(() => {
     const rand = mulberry32(918273);

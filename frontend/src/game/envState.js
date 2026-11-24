@@ -11,8 +11,8 @@ export const envState = {
   warmth: 0, // ۰..۱ — چقدر نور گرم است (طلوع/غروب)
   ambientIntensity: 0.3,
   fogColor: [0.063, 0.11, 0.19],
-  fogNear: 30,
-  fogFar: 150,
+  fogNear: 42,
+  fogFar: 224,
 };
 
 // نقطه‌های کلیدی چرخه (ساعت ۰..۱)
@@ -51,15 +51,15 @@ export function updateEnvState(time) {
   envState.warmth = lerp(a.warmth, b.warmth, k);
   envState.phase = k < 0.5 ? a.phase : b.phase;
   envState.ambientIntensity = lerp(0.22, 0.62, envState.daylight);
-  envState.fogNear = lerp(26, 46, envState.daylight);
-  envState.fogFar = lerp(140, 210, envState.daylight);
+  envState.fogNear = lerp(42, 74, envState.daylight);
+  envState.fogFar = lerp(224, 336, envState.daylight);
 
   return envState;
 }
 
 // رنگ آسمان برای یک فاز — به‌صورت [r,g,b] نرمال‌شده
 const SKY = {
-  night: { top: [0.09, 0.08, 0.15], bottom: [0.13, 0.2, 0.3] },
+  night: { top: [0.039, 0.055, 0.153], bottom: [0.102, 0.063, 0.251] },
   dawn: { top: [0.24, 0.22, 0.36], bottom: [0.72, 0.48, 0.36] },
   day: { top: [0.28, 0.48, 0.72], bottom: [0.62, 0.76, 0.88] },
   dusk: { top: [0.18, 0.16, 0.3], bottom: [0.66, 0.38, 0.3] },

@@ -89,6 +89,9 @@ function RockPath() {
 // ارتفاع از DOCK_PLATFORM می‌آید تا فیزیک و رندر یکی باشند
 const DECK_Y = DOCK_PLATFORM.topY;
 
+// تنوع رنگ تخته‌ها حول قهوه‌ای چوبی #8B6F47
+const PLANK_TINTS = ['#8B6F47', '#82673f', '#93764d', '#7a6039', '#8e7249'];
+
 function Dock() {
   const planks = useMemo(() => {
     const list = [];
@@ -110,7 +113,7 @@ function Dock() {
       {planks.map((p, i) => (
         <mesh key={i} position={[p.x, DECK_Y, p.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow castShadow>
           <boxGeometry args={[0.92, DOCK_PLATFORM.maxZ - DOCK_PLATFORM.minZ, 0.14]} />
-          <meshStandardMaterial color="#6b5136" roughness={0.92} />
+          <meshStandardMaterial color={PLANK_TINTS[i % PLANK_TINTS.length]} roughness={0.92} />
         </mesh>
       ))}
       {[-1, 1].map((side) => (

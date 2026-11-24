@@ -2,10 +2,12 @@ import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
-import { FIRE_KEEPOUT, FIRE_STONES, SEAT_SPOTS } from '../sceneLayout';
+import { FIRE_KEEPOUT, SEAT_SPOTS } from '../sceneLayout';
 import { registerInteractable } from '../interactionRegistry';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useQualityPreset } from '../stores/useSettingsStore';
+import InstancedGLB from '../models/InstancedGLB';
+import { modelUrl } from '../assetManifest';
 import { Model as BonfireModel } from '../models/Bonfire';
 import { Model as ChoppedLogModel } from '../models/ChoppedLog';
 
@@ -14,34 +16,30 @@ const SEAT_LOG_SCALE = 0.55;
 const SEAT_LOG_OFFSET_X = -0.69;
 const SEAT_LOG_OFFSET_Y = 0.51;
 
+// حلقه‌ی ۷ سنگ دور گودال آتش
+const FIRE_ROCK_RING = Array.from({ length: 7 }, (_, i) => {
+  const angle = (i / 7) * Math.PI * 2 + 0.35;
+  const radius = FIRE_KEEPOUT + 0.22;
+  return {
+    x: Math.cos(angle) * radius,
+    z: Math.sin(angle) * radius,
+    rotation: angle + 0.7,
+    scale: 0.95 + ((i * 37) % 9) / 30,
+  };
+});
+
 export default function Campfire() {
   const preset = useQualityPreset();
   const lightRef = useRef(null);
   const emberRef = useRef(null);
   const glowRef = useRef(null);
   const fireGroupRef = useRef(null);
-  const stoneRef = useRef(null);
   const nearFire = usePlayerStore((s) => s.nearFire);
   const seated = usePlayerStore((s) => s.seated);
 
   useEffect(() => {
     const unsubscribe = registerInteractable('campfire', fireGroupRef.current);
     return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    const stones = stoneRef.current;
-    if (!stones) return;
-    const dummy = new THREE.Object3D();
-    FIRE_STONES.forEach((stone, i) => {
-      dummy.position.set(stone.x, stone.scale * 0.9, stone.z);
-      dummy.rotation.set(0, stone.rotation, 0);
-      dummy.scale.setScalar(stone.scale * 2.4);
-      dummy.updateMatrix();
-      stones.setMatrixAt(i, dummy.matrix);
-    });
-    stones.instanceMatrix.needsUpdate = true;
-    stones.computeBoundingSphere();
   }, []);
 
   useFrame(({ clock }) => {
@@ -69,10 +67,7 @@ export default function Campfire() {
         <meshStandardMaterial color="#2a221c" roughness={1} />
       </mesh>
 
-      <instancedMesh ref={stoneRef} args={[undefined, undefined, FIRE_STONES.length]} castShadow receiveShadow>
-        <dodecahedronGeometry args={[0.2, 0]} />
-        <meshStandardMaterial color="#4a4a52" roughness={0.92} flatShading />
-      </instancedMesh>
+      <InstancedGLB url={modelUrl('rocks.rocksOpt')} items={FIRE_ROCK_RING} targetHeight={0.42} groundAlign />
 
       <group ref={fireGroupRef} position={[0, 0, 0]}>
         <BonfireModel scale={0.55} />

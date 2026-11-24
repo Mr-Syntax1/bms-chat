@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-22T23:12:00.481Z",
+  "generatedAt": "2026-11-24T17:29:13.624Z",
   "root": "public/game-models",
-  "count": 103,
-  "totalMB": 49.47,
+  "count": 138,
+  "totalMB": 54.51,
   "entries": {
     "Bedroll.glb": {
       "file": "Bedroll.glb",
@@ -3720,6 +3720,59 @@
         "Bonfire_Fire"
       ]
     },
+    "grassyellowing.glb": {
+      "file": "grassyellowing.glb",
+      "bytes": 336120,
+      "kb": 328.2,
+      "heavy": false,
+      "bbox": {
+        "height": 0.295,
+        "width": 0.911,
+        "depth": 0.779,
+        "minY": -0.028,
+        "centerX": -0.082,
+        "centerZ": -0.038,
+        "min": [
+          -0.537,
+          -0.028,
+          -0.428
+        ],
+        "max": [
+          0.374,
+          0.267,
+          0.351
+        ]
+      },
+      "triangles": 2352,
+      "primitives": 147,
+      "meshes": 147,
+      "materials": 3,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": false,
+        "meshopt": false
+      },
+      "nodes": 147,
+      "meshNames": [
+        "mesh1794255474",
+        "mesh465525233",
+        "mesh945836210",
+        "mesh177561954",
+        "mesh1325005311",
+        "mesh1072724566",
+        "mesh46854911",
+        "mesh612556706",
+        "mesh449492179",
+        "mesh605530832",
+        "mesh1435258648",
+        "mesh864490805"
+      ]
+    },
     "missions/FishingRod.glb": {
       "file": "missions/FishingRod.glb",
       "bytes": 29596,
@@ -4791,6 +4844,199 @@
         "mesh1305922676"
       ]
     },
+    "opt/Corn.glb": {
+      "file": "opt/Corn.glb",
+      "bytes": 156420,
+      "kb": 152.8,
+      "heavy": false,
+      "bbox": {
+        "height": 37.081,
+        "width": 23.348,
+        "depth": 18.733,
+        "minY": 2.684,
+        "centerX": -0.218,
+        "centerZ": 1.365,
+        "min": [
+          -11.892,
+          2.684,
+          -8.001
+        ],
+        "max": [
+          11.456,
+          39.766,
+          10.732
+        ]
+      },
+      "triangles": 54632,
+      "primitives": 3,
+      "meshes": 2,
+      "materials": 3,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "Sphere001_1",
+        "Tube001_1"
+      ]
+    },
+    "opt/Decorations/RockMedium.glb": {
+      "file": "opt/Decorations/RockMedium.glb",
+      "bytes": 62604,
+      "kb": 61.1,
+      "heavy": false,
+      "bbox": {
+        "height": 2.316,
+        "width": 3.42,
+        "depth": 3.476,
+        "minY": -0.316,
+        "centerX": -0.114,
+        "centerZ": 0.848,
+        "min": [
+          -1.824,
+          -0.316,
+          -0.89
+        ],
+        "max": [
+          1.596,
+          2.001,
+          2.586
+        ]
+      },
+      "triangles": 522,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "Rocks_Diffuse.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 57592
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "Rock_Medium_3"
+      ]
+    },
+    "opt/Decorations/Treestump.glb": {
+      "file": "opt/Decorations/Treestump.glb",
+      "bytes": 65600,
+      "kb": 64.1,
+      "heavy": false,
+      "bbox": {
+        "height": 3.972,
+        "width": 8.027,
+        "depth": 7.156,
+        "minY": -0.095,
+        "centerX": -0.124,
+        "centerZ": -0.06,
+        "min": [
+          -4.138,
+          -0.095,
+          -3.637
+        ],
+        "max": [
+          3.89,
+          3.876,
+          3.518
+        ]
+      },
+      "triangles": 344,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "treeStumpTxt",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 62570
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Node-Mesh"
+      ]
+    },
+    "opt/Lilypad.glb": {
+      "file": "opt/Lilypad.glb",
+      "bytes": 41496,
+      "kb": 40.5,
+      "heavy": false,
+      "bbox": {
+        "height": 2.995,
+        "width": 10.712,
+        "depth": 10.878,
+        "minY": 0,
+        "centerX": 0.175,
+        "centerZ": 0,
+        "min": [
+          -5.181,
+          0,
+          -5.439
+        ],
+        "max": [
+          5.532,
+          2.995,
+          5.439
+        ]
+      },
+      "triangles": 728,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "Lilypad_BaseColor",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 35170
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Lilypad_mesh_1"
+      ]
+    },
     "opt/LogAxe.glb": {
       "file": "opt/LogAxe.glb",
       "bytes": 9752,
@@ -4873,6 +5119,56 @@
       "nodes": 1,
       "meshNames": [
         "mesh1819006870"
+      ]
+    },
+    "opt/MushroomLaetiporus.glb": {
+      "file": "opt/MushroomLaetiporus.glb",
+      "bytes": 114024,
+      "kb": 111.4,
+      "heavy": false,
+      "bbox": {
+        "height": 0.767,
+        "width": 1.366,
+        "depth": 1.103,
+        "minY": -0.16,
+        "centerX": 0.033,
+        "centerZ": 0.223,
+        "min": [
+          -0.65,
+          -0.16,
+          -0.328
+        ],
+        "max": [
+          0.716,
+          0.607,
+          0.775
+        ]
+      },
+      "triangles": 3216,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "Mushrooms.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 98350
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "Mushroom_Laetiporus"
       ]
     },
     "opt/Pine.glb": {
@@ -5079,6 +5375,1770 @@
       "nodes": 1,
       "meshNames": [
         "Node-Mesh"
+      ]
+    },
+    "opt/Umbrellaandchairs.glb": {
+      "file": "opt/Umbrellaandchairs.glb",
+      "bytes": 96316,
+      "kb": 94.1,
+      "heavy": false,
+      "bbox": {
+        "height": 394.174,
+        "width": 361.247,
+        "depth": 371.2,
+        "minY": -218.676,
+        "centerX": -20.736,
+        "centerZ": 32.285,
+        "min": [
+          -201.359,
+          -218.676,
+          -153.315
+        ],
+        "max": [
+          159.888,
+          175.498,
+          217.885
+        ]
+      },
+      "triangles": 600,
+      "primitives": 4,
+      "meshes": 3,
+      "materials": 2,
+      "textures": 2,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "Cabana Texture",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 14612
+        },
+        {
+          "name": "Hey 2",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 72512
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 3,
+      "meshNames": [
+        "Beach_Chair1_1",
+        "Beach_Chair_1",
+        "Beach_Umbrella_1"
+      ]
+    },
+    "opt/animals/Mallardduck.glb": {
+      "file": "opt/animals/Mallardduck.glb",
+      "bytes": 10696,
+      "kb": 10.4,
+      "heavy": false,
+      "bbox": {
+        "height": 1.87,
+        "width": 0.982,
+        "depth": 2.548,
+        "minY": 0,
+        "centerX": 0,
+        "centerZ": 0,
+        "min": [
+          -0.491,
+          0,
+          -1.274
+        ],
+        "max": [
+          0.491,
+          1.87,
+          1.274
+        ]
+      },
+      "triangles": 656,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 512,
+      "textureSizes": [
+        {
+          "name": "MallardDuck_BaseColor",
+          "mime": "image/webp",
+          "width": 512,
+          "height": 512,
+          "bytes": 5266
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "MallardDuck_Mesh_1"
+      ]
+    },
+    "opt/animals/Muledeer.glb": {
+      "file": "opt/animals/Muledeer.glb",
+      "bytes": 17404,
+      "kb": 17,
+      "heavy": false,
+      "bbox": {
+        "height": 14.889,
+        "width": 4.794,
+        "depth": 14.687,
+        "minY": 0,
+        "centerX": 0,
+        "centerZ": 0.353,
+        "min": [
+          -2.397,
+          0,
+          -6.99
+        ],
+        "max": [
+          2.397,
+          14.889,
+          7.697
+        ]
+      },
+      "triangles": 1318,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 512,
+      "textureSizes": [
+        {
+          "name": "MuleDeer_BaseColor",
+          "mime": "image/webp",
+          "width": 512,
+          "height": 512,
+          "bytes": 8202
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "MuleDeer_mesh_1"
+      ]
+    },
+    "opt/animals/Owl.glb": {
+      "file": "opt/animals/Owl.glb",
+      "bytes": 33152,
+      "kb": 32.4,
+      "heavy": false,
+      "bbox": {
+        "height": 6.314,
+        "width": 2.991,
+        "depth": 4.616,
+        "minY": -1.197,
+        "centerX": 0,
+        "centerZ": -0.151,
+        "min": [
+          -1.495,
+          -1.197,
+          -2.459
+        ],
+        "max": [
+          1.495,
+          5.117,
+          2.157
+        ]
+      },
+      "triangles": 1520,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 512,
+      "textureSizes": [
+        {
+          "name": "ScreechOwl_BaseColor",
+          "mime": "image/webp",
+          "width": 512,
+          "height": 512,
+          "bytes": 22804
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "ScreechOwl_mesh_1"
+      ]
+    },
+    "opt/animals/Porcupine.glb": {
+      "file": "opt/animals/Porcupine.glb",
+      "bytes": 39692,
+      "kb": 38.8,
+      "heavy": false,
+      "bbox": {
+        "height": 1.289,
+        "width": 0.969,
+        "depth": 1.832,
+        "minY": 0,
+        "centerX": 0,
+        "centerZ": 0,
+        "min": [
+          -0.484,
+          0,
+          -0.916
+        ],
+        "max": [
+          0.484,
+          1.289,
+          0.916
+        ]
+      },
+      "triangles": 1728,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 512,
+      "textureSizes": [
+        {
+          "name": "Porcupine_BaseColor",
+          "mime": "image/webp",
+          "width": 512,
+          "height": 512,
+          "bytes": 23318
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Porcupine_mesh_1"
+      ]
+    },
+    "opt/beach/ClambyPoly.glb": {
+      "file": "opt/beach/ClambyPoly.glb",
+      "bytes": 54560,
+      "kb": 53.3,
+      "heavy": false,
+      "bbox": {
+        "height": 0.603,
+        "width": 1.11,
+        "depth": 0.963,
+        "minY": -0.225,
+        "centerX": 0,
+        "centerZ": 0.012,
+        "min": [
+          -0.555,
+          -0.225,
+          -0.47
+        ],
+        "max": [
+          0.555,
+          0.378,
+          0.493
+        ]
+      },
+      "triangles": 644,
+      "primitives": 2,
+      "meshes": 1,
+      "materials": 2,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "clamTxt",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 50068
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Node-Mesh"
+      ]
+    },
+    "opt/beach/RockPathRoundSmall.glb": {
+      "file": "opt/beach/RockPathRoundSmall.glb",
+      "bytes": 60920,
+      "kb": 59.5,
+      "heavy": false,
+      "bbox": {
+        "height": 0.105,
+        "width": 1.14,
+        "depth": 1.354,
+        "minY": -0.008,
+        "centerX": 0.009,
+        "centerZ": -0.082,
+        "min": [
+          -0.56,
+          -0.008,
+          -0.759
+        ],
+        "max": [
+          0.579,
+          0.097,
+          0.595
+        ]
+      },
+      "triangles": 1126,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "PathRocks_Diffuse.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 52216
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "RockPath_Round_Small_2"
+      ]
+    },
+    "opt/beach/SeashellbyPoly.glb": {
+      "file": "opt/beach/SeashellbyPoly.glb",
+      "bytes": 43656,
+      "kb": 42.6,
+      "heavy": false,
+      "bbox": {
+        "height": 4.293,
+        "width": 5.263,
+        "depth": 3.165,
+        "minY": -2.528,
+        "centerX": -1.294,
+        "centerZ": -0.216,
+        "min": [
+          -3.926,
+          -2.528,
+          -1.798
+        ],
+        "max": [
+          1.337,
+          1.765,
+          1.367
+        ]
+      },
+      "triangles": 1416,
+      "primitives": 2,
+      "meshes": 1,
+      "materials": 2,
+      "textures": 2,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "seaShellTxt",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 17692
+        },
+        {
+          "name": "seaShell2Txt",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 18194
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Node-Mesh"
+      ]
+    },
+    "opt/beach/StarfishbyPoly.glb": {
+      "file": "opt/beach/StarfishbyPoly.glb",
+      "bytes": 100912,
+      "kb": 98.5,
+      "heavy": false,
+      "bbox": {
+        "height": 0.761,
+        "width": 8.371,
+        "depth": 10.307,
+        "minY": 0,
+        "centerX": -1.92,
+        "centerZ": -2.556,
+        "min": [
+          -6.105,
+          0,
+          -7.709
+        ],
+        "max": [
+          2.266,
+          0.761,
+          2.598
+        ]
+      },
+      "triangles": 780,
+      "primitives": 3,
+      "meshes": 1,
+      "materials": 3,
+      "textures": 3,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "starFishAquaTxt",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 31712
+        },
+        {
+          "name": "starFishWhiteTxt",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 33312
+        },
+        {
+          "name": "starFishOrangeTxt",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 29162
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Node-Mesh"
+      ]
+    },
+    "opt/beach/boat/BoatbyPoly.glb": {
+      "file": "opt/beach/boat/BoatbyPoly.glb",
+      "bytes": 48468,
+      "kb": 47.3,
+      "heavy": false,
+      "bbox": {
+        "height": 558.041,
+        "width": 929.051,
+        "depth": 410.004,
+        "minY": -27.841,
+        "centerX": 4.525,
+        "centerZ": -0.534,
+        "min": [
+          -460,
+          -27.841,
+          -205.536
+        ],
+        "max": [
+          469.051,
+          530.2,
+          204.468
+        ]
+      },
+      "triangles": 4486,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "Boat texture",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 25026
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Boat_1"
+      ]
+    },
+    "opt/beach/boat/RowboatbyPoly.glb": {
+      "file": "opt/beach/boat/RowboatbyPoly.glb",
+      "bytes": 37076,
+      "kb": 36.2,
+      "heavy": false,
+      "bbox": {
+        "height": 181.038,
+        "width": 773.397,
+        "depth": 863.16,
+        "minY": -94.749,
+        "centerX": 7.365,
+        "centerZ": 0,
+        "min": [
+          -379.333,
+          -94.749,
+          -431.58
+        ],
+        "max": [
+          394.064,
+          86.288,
+          431.58
+        ]
+      },
+      "triangles": 1898,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "rowboatSurface_Color",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 28692
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Node-Mesh"
+      ]
+    },
+    "opt/beach/port/Port.glb": {
+      "file": "opt/beach/port/Port.glb",
+      "bytes": 35276,
+      "kb": 34.4,
+      "heavy": false,
+      "bbox": {
+        "height": 1.429,
+        "width": 1.752,
+        "depth": 2.878,
+        "minY": -0.419,
+        "centerX": 0.294,
+        "centerZ": 0.389,
+        "min": [
+          -0.582,
+          -0.419,
+          -1.05
+        ],
+        "max": [
+          1.17,
+          1.01,
+          1.828
+        ]
+      },
+      "triangles": 6672,
+      "primitives": 6,
+      "meshes": 1,
+      "materials": 6,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "Port_SecondAge_Level1"
+      ]
+    },
+    "opt/beach/trees/CoconutPalmTree.glb": {
+      "file": "opt/beach/trees/CoconutPalmTree.glb",
+      "bytes": 67936,
+      "kb": 66.3,
+      "heavy": false,
+      "bbox": {
+        "height": 27.079,
+        "width": 12.752,
+        "depth": 12.158,
+        "minY": 0,
+        "centerX": 2.316,
+        "centerZ": -0.67,
+        "min": [
+          -4.06,
+          0,
+          -6.749
+        ],
+        "max": [
+          8.693,
+          27.079,
+          5.409
+        ]
+      },
+      "triangles": 2784,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "CoconutPalmTree_BaseColor",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 50476
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "CoconutPalmTree_mesh_1"
+      ]
+    },
+    "opt/beach/trees/PalmTree2.glb": {
+      "file": "opt/beach/trees/PalmTree2.glb",
+      "bytes": 52384,
+      "kb": 51.2,
+      "heavy": false,
+      "bbox": {
+        "height": 17.24,
+        "width": 15.283,
+        "depth": 16.545,
+        "minY": 0,
+        "centerX": -6.325,
+        "centerZ": 0.007,
+        "min": [
+          -13.966,
+          0,
+          -8.266
+        ],
+        "max": [
+          1.317,
+          17.24,
+          8.28
+        ]
+      },
+      "triangles": 2182,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "SunshinePalmTree_BaseColor",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 37380
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Node-Mesh"
+      ]
+    },
+    "opt/characters/Citizen.glb": {
+      "file": "opt/characters/Citizen.glb",
+      "bytes": 86452,
+      "kb": 84.4,
+      "heavy": false,
+      "bbox": {
+        "height": 1.925,
+        "width": 1.272,
+        "depth": 1.035,
+        "minY": -0.009,
+        "centerX": 0,
+        "centerZ": 0.113,
+        "min": [
+          -0.636,
+          -0.009,
+          -0.404
+        ],
+        "max": [
+          0.636,
+          1.916,
+          0.631
+        ]
+      },
+      "triangles": 4338,
+      "primitives": 2,
+      "meshes": 2,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "halloweenbits_texture.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 7784
+        }
+      ],
+      "skinned": true,
+      "bones": {
+        "head": "Head",
+        "handL": "Hand.L",
+        "handR": "Hand.R",
+        "footL": "Foot.L",
+        "footR": "Foot.R"
+      },
+      "clips": [
+        {
+          "name": "Armature|Grounded",
+          "duration": 0.33,
+          "channels": 14
+        },
+        {
+          "name": "Armature|Idle",
+          "duration": 2.5,
+          "channels": 6
+        },
+        {
+          "name": "Armature|Jump",
+          "duration": 0.29,
+          "channels": 14
+        },
+        {
+          "name": "Armature|Sprint",
+          "duration": 2.5,
+          "channels": 23
+        },
+        {
+          "name": "Armature|Walk",
+          "duration": 2.5,
+          "channels": 13
+        }
+      ],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 31,
+      "meshNames": [
+        "Cube.001",
+        "Cube.003"
+      ]
+    },
+    "opt/characters/CoolBannanaGuy.glb": {
+      "file": "opt/characters/CoolBannanaGuy.glb",
+      "bytes": 651064,
+      "kb": 635.8,
+      "heavy": true,
+      "bbox": {
+        "height": 5.471,
+        "width": 1.706,
+        "depth": 5.297,
+        "minY": -0.001,
+        "centerX": 0.034,
+        "centerZ": 0,
+        "min": [
+          -0.819,
+          -0.001,
+          -2.649
+        ],
+        "max": [
+          0.887,
+          5.47,
+          2.648
+        ]
+      },
+      "triangles": 3564,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "100Avatars_024_CoolBanana.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 23362
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "mesh_char_130"
+      ]
+    },
+    "opt/characters/CubeGuyCharacter.glb": {
+      "file": "opt/characters/CubeGuyCharacter.glb",
+      "bytes": 142980,
+      "kb": 139.6,
+      "heavy": false,
+      "bbox": {
+        "height": 2.836,
+        "width": 2.892,
+        "depth": 1.141,
+        "minY": 0.003,
+        "centerX": 0,
+        "centerZ": 0,
+        "min": [
+          -1.446,
+          0.003,
+          -0.571
+        ],
+        "max": [
+          1.446,
+          2.839,
+          0.571
+        ]
+      },
+      "triangles": 3122,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 32,
+      "textureSizes": [
+        {
+          "name": "Atlas.png",
+          "mime": "image/webp",
+          "width": 32,
+          "height": 32,
+          "bytes": 474
+        }
+      ],
+      "skinned": true,
+      "bones": {
+        "head": "Head",
+        "neck": "Neck",
+        "footL": "Foot.L",
+        "footR": "Foot.R",
+        "hips": "Hips"
+      },
+      "clips": [
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Death",
+          "duration": 0.75,
+          "channels": 19
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Duck",
+          "duration": 1.67,
+          "channels": 12
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|HitReact",
+          "duration": 0.58,
+          "channels": 14
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Idle",
+          "duration": 1.67,
+          "channels": 13
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Idle_Attack",
+          "duration": 0.5,
+          "channels": 8
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Idle_Hold",
+          "duration": 1.67,
+          "channels": 14
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Jump",
+          "duration": 0.33,
+          "channels": 16
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Jump_Idle",
+          "duration": 0.5,
+          "channels": 16
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Jump_Land",
+          "duration": 0.33,
+          "channels": 16
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|No",
+          "duration": 1.67,
+          "channels": 13
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Punch",
+          "duration": 0.83,
+          "channels": 17
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Run",
+          "duration": 0.54,
+          "channels": 28
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Run_Attack",
+          "duration": 0.54,
+          "channels": 27
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Run_Hold",
+          "duration": 0.54,
+          "channels": 28
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Walk",
+          "duration": 1,
+          "channels": 26
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Walk_Hold",
+          "duration": 1,
+          "channels": 25
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Wave",
+          "duration": 1.67,
+          "channels": 15
+        },
+        {
+          "name": "CharacterArmature|CharacterArmature|CharacterArmature|Yes",
+          "duration": 1.67,
+          "channels": 13
+        }
+      ],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 35,
+      "meshNames": [
+        "Character"
+      ]
+    },
+    "opt/characters/CuteCharacter.glb": {
+      "file": "opt/characters/CuteCharacter.glb",
+      "bytes": 11108,
+      "kb": 10.8,
+      "heavy": false,
+      "bbox": {
+        "height": 1.128,
+        "width": 0.694,
+        "depth": 0.628,
+        "minY": -0.578,
+        "centerX": 0,
+        "centerZ": 0.047,
+        "min": [
+          -0.347,
+          -0.578,
+          -0.267
+        ],
+        "max": [
+          0.347,
+          0.55,
+          0.362
+        ]
+      },
+      "triangles": 1362,
+      "primitives": 6,
+      "meshes": 1,
+      "materials": 6,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 1,
+      "meshNames": [
+        "Full-Character-Mesh"
+      ]
+    },
+    "opt/characters/CuteRedDino.glb": {
+      "file": "opt/characters/CuteRedDino.glb",
+      "bytes": 61764,
+      "kb": 60.3,
+      "heavy": false,
+      "bbox": {
+        "height": 1.539,
+        "width": 1.308,
+        "depth": 0.701,
+        "minY": 0,
+        "centerX": 0.057,
+        "centerZ": 0,
+        "min": [
+          -0.598,
+          0,
+          -0.35
+        ],
+        "max": [
+          0.711,
+          1.539,
+          0.35
+        ]
+      },
+      "triangles": 20726,
+      "primitives": 4,
+      "meshes": 1,
+      "materials": 4,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "dino.001"
+      ]
+    },
+    "opt/characters/DORAEMON.glb": {
+      "file": "opt/characters/DORAEMON.glb",
+      "bytes": 36836,
+      "kb": 36,
+      "heavy": false,
+      "bbox": {
+        "height": 0.922,
+        "width": 0.61,
+        "depth": 0.461,
+        "minY": -0.533,
+        "centerX": 0.003,
+        "centerZ": 0.108,
+        "min": [
+          -0.302,
+          -0.533,
+          -0.122
+        ],
+        "max": [
+          0.308,
+          0.389,
+          0.339
+        ]
+      },
+      "triangles": 2830,
+      "primitives": 28,
+      "meshes": 26,
+      "materials": 6,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 26,
+      "meshNames": [
+        "mesh85891585",
+        "mesh244486559",
+        "mesh1337545492",
+        "mesh717867994",
+        "mesh331817039",
+        "mesh326270098",
+        "mesh1761345255",
+        "mesh208904064",
+        "mesh1696229858",
+        "mesh2078688655",
+        "mesh678915788",
+        "mesh389900773"
+      ]
+    },
+    "opt/characters/MushroomCharacter.glb": {
+      "file": "opt/characters/MushroomCharacter.glb",
+      "bytes": 614872,
+      "kb": 600.5,
+      "heavy": true,
+      "bbox": {
+        "height": 5.685,
+        "width": 3.147,
+        "depth": 4.816,
+        "minY": -0.001,
+        "centerX": -0.007,
+        "centerZ": -0.004,
+        "min": [
+          -1.58,
+          -0.001,
+          -2.412
+        ],
+        "max": [
+          1.566,
+          5.684,
+          2.404
+        ]
+      },
+      "triangles": 3132,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "100Avatars_025_Mushy.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 43986
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "mesh_char_27"
+      ]
+    },
+    "opt/characters/miku.glb": {
+      "file": "opt/characters/miku.glb",
+      "bytes": 62444,
+      "kb": 61,
+      "heavy": false,
+      "bbox": {
+        "height": 1389.276,
+        "width": 1123.111,
+        "depth": 605.387,
+        "minY": -12.752,
+        "centerX": 29.478,
+        "centerZ": 40.506,
+        "min": [
+          -532.078,
+          -12.752,
+          -262.188
+        ],
+        "max": [
+          591.034,
+          1376.524,
+          343.2
+        ]
+      },
+      "triangles": 6688,
+      "primitives": 38,
+      "meshes": 38,
+      "materials": 7,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 38,
+      "meshNames": [
+        "s.0009_1",
+        "r.0010_1",
+        "s.0015_1",
+        "s.0016_1",
+        "s.0017_1",
+        "s.0018_1",
+        "s.0019_1",
+        "r.0020_1",
+        "s.0021_1",
+        "s.0022_1",
+        "r.0023_1",
+        "r.0024_1"
+      ]
+    },
+    "opt/missions/TreasureChest.glb": {
+      "file": "opt/missions/TreasureChest.glb",
+      "bytes": 287940,
+      "kb": 281.2,
+      "heavy": false,
+      "bbox": {
+        "height": 0.381,
+        "width": 0.361,
+        "depth": 0.429,
+        "minY": -0.245,
+        "centerX": -0.048,
+        "centerZ": 0.022,
+        "min": [
+          -0.229,
+          -0.245,
+          -0.193
+        ],
+        "max": [
+          0.133,
+          0.136,
+          0.237
+        ]
+      },
+      "triangles": 12400,
+      "primitives": 296,
+      "meshes": 295,
+      "materials": 4,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 295,
+      "meshNames": [
+        "mesh1673624899",
+        "mesh1246643598",
+        "mesh1188779229",
+        "mesh1135518375",
+        "mesh1111637101",
+        "mesh621290532",
+        "mesh2130799938",
+        "mesh1253408431",
+        "mesh833255169",
+        "mesh929752709",
+        "mesh89601079",
+        "mesh1176336403"
+      ]
+    },
+    "opt/npc/Adventurer.glb": {
+      "file": "opt/npc/Adventurer.glb",
+      "bytes": 452268,
+      "kb": 441.7,
+      "heavy": false,
+      "bbox": {
+        "height": 1.857,
+        "width": 1.675,
+        "depth": 0.55,
+        "minY": -0.001,
+        "centerX": 0,
+        "centerZ": 0.012,
+        "min": [
+          -0.838,
+          -0.001,
+          -0.263
+        ],
+        "max": [
+          0.838,
+          1.856,
+          0.287
+        ]
+      },
+      "triangles": 10198,
+      "primitives": 15,
+      "meshes": 5,
+      "materials": 11,
+      "textures": 0,
+      "maxTextureSize": 0,
+      "textureSizes": [],
+      "skinned": true,
+      "bones": {
+        "head": "Head",
+        "neck": "Neck",
+        "footL": "Foot.L",
+        "footR": "Foot.R",
+        "hips": "Hips"
+      },
+      "clips": [
+        {
+          "name": "CharacterArmature|Death",
+          "duration": 1.04,
+          "channels": 30
+        },
+        {
+          "name": "CharacterArmature|Gun_Shoot",
+          "duration": 0.58,
+          "channels": 34
+        },
+        {
+          "name": "CharacterArmature|HitRecieve",
+          "duration": 0.54,
+          "channels": 18
+        },
+        {
+          "name": "CharacterArmature|HitRecieve_2",
+          "duration": 0.54,
+          "channels": 19
+        },
+        {
+          "name": "CharacterArmature|Idle",
+          "duration": 1.67,
+          "channels": 21
+        },
+        {
+          "name": "CharacterArmature|Idle_Gun",
+          "duration": 1.67,
+          "channels": 35
+        },
+        {
+          "name": "CharacterArmature|Idle_Gun_Pointing",
+          "duration": 1.67,
+          "channels": 35
+        },
+        {
+          "name": "CharacterArmature|Idle_Gun_Shoot",
+          "duration": 0.67,
+          "channels": 38
+        },
+        {
+          "name": "CharacterArmature|Idle_Neutral",
+          "duration": 1.67,
+          "channels": 29
+        },
+        {
+          "name": "CharacterArmature|Idle_Sword",
+          "duration": 1.67,
+          "channels": 34
+        },
+        {
+          "name": "CharacterArmature|Interact",
+          "duration": 1.25,
+          "channels": 23
+        },
+        {
+          "name": "CharacterArmature|Kick_Left",
+          "duration": 0.92,
+          "channels": 54
+        },
+        {
+          "name": "CharacterArmature|Kick_Right",
+          "duration": 0.92,
+          "channels": 56
+        },
+        {
+          "name": "CharacterArmature|Punch_Left",
+          "duration": 0.83,
+          "channels": 55
+        },
+        {
+          "name": "CharacterArmature|Punch_Right",
+          "duration": 0.83,
+          "channels": 56
+        },
+        {
+          "name": "CharacterArmature|Roll",
+          "duration": 1.33,
+          "channels": 58
+        },
+        {
+          "name": "CharacterArmature|Run",
+          "duration": 0.79,
+          "channels": 54
+        },
+        {
+          "name": "CharacterArmature|Run_Back",
+          "duration": 0.83,
+          "channels": 54
+        },
+        {
+          "name": "CharacterArmature|Run_Left",
+          "duration": 0.79,
+          "channels": 55
+        },
+        {
+          "name": "CharacterArmature|Run_Right",
+          "duration": 0.79,
+          "channels": 56
+        },
+        {
+          "name": "CharacterArmature|Run_Shoot",
+          "duration": 0.83,
+          "channels": 54
+        },
+        {
+          "name": "CharacterArmature|Sword_Slash",
+          "duration": 1,
+          "channels": 37
+        },
+        {
+          "name": "CharacterArmature|Walk",
+          "duration": 1.33,
+          "channels": 37
+        },
+        {
+          "name": "CharacterArmature|Wave",
+          "duration": 1.67,
+          "channels": 23
+        }
+      ],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 69,
+      "meshNames": [
+        "Adventurer_Feet",
+        "Adventurer_Legs",
+        "Adventurer_Body",
+        "Adventurer_Head",
+        "Backpack"
+      ]
+    },
+    "opt/npc/CowCharacter.glb": {
+      "file": "opt/npc/CowCharacter.glb",
+      "bytes": 616536,
+      "kb": 602.1,
+      "heavy": true,
+      "bbox": {
+        "height": 4.977,
+        "width": 1.17,
+        "depth": 5.158,
+        "minY": 0.001,
+        "centerX": 0.19,
+        "centerZ": 0,
+        "min": [
+          -0.396,
+          0.001,
+          -2.579
+        ],
+        "max": [
+          0.775,
+          4.977,
+          2.579
+        ]
+      },
+      "triangles": 4352,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "100Avatars_190_CoolCow.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 21760
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "_100Avatars_190_CoolCow"
+      ]
+    },
+    "opt/trees/BirchTrees.glb": {
+      "file": "opt/trees/BirchTrees.glb",
+      "bytes": 477276,
+      "kb": 466.1,
+      "heavy": false,
+      "bbox": {
+        "height": 7.57,
+        "width": 18.561,
+        "depth": 3.515,
+        "minY": -0.03,
+        "centerX": 161.2,
+        "centerZ": 0.005,
+        "min": [
+          151.92,
+          -0.03,
+          -1.752
+        ],
+        "max": [
+          170.481,
+          7.54,
+          1.762
+        ]
+      },
+      "triangles": 27158,
+      "primitives": 10,
+      "meshes": 5,
+      "materials": 2,
+      "textures": 3,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "BirchTree_Bark_Normal.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 107342
+        },
+        {
+          "name": "BirchTree_Bark.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 103346
+        },
+        {
+          "name": "BirchTree_Leaves.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 44380
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 6,
+      "meshNames": [
+        "BirchTree_3",
+        "BirchTree_5",
+        "BirchTree_4",
+        "BirchTree_1",
+        "BirchTree_2"
+      ]
+    },
+    "opt/trees/Fern.glb": {
+      "file": "opt/trees/Fern.glb",
+      "bytes": 83320,
+      "kb": 81.4,
+      "heavy": false,
+      "bbox": {
+        "height": 2.689,
+        "width": 9.046,
+        "depth": 8.487,
+        "minY": -0.247,
+        "centerX": 0.103,
+        "centerZ": 0.152,
+        "min": [
+          -4.42,
+          -0.247,
+          -4.091
+        ],
+        "max": [
+          4.626,
+          2.441,
+          4.396
+        ]
+      },
+      "triangles": 288,
+      "primitives": 1,
+      "meshes": 1,
+      "materials": 1,
+      "textures": 1,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "Leaves.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 78788
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "Fern_1"
+      ]
+    },
+    "opt/trees/Pine.glb": {
+      "file": "opt/trees/Pine.glb",
+      "bytes": 110840,
+      "kb": 108.2,
+      "heavy": false,
+      "bbox": {
+        "height": 10.236,
+        "width": 5.802,
+        "depth": 5.371,
+        "minY": -0.235,
+        "centerX": 0.029,
+        "centerZ": -0.26,
+        "min": [
+          -2.872,
+          -0.235,
+          -2.946
+        ],
+        "max": [
+          2.93,
+          10.001,
+          2.425
+        ]
+      },
+      "triangles": 3370,
+      "primitives": 2,
+      "meshes": 1,
+      "materials": 2,
+      "textures": 3,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "Bark_NormalTree_Normal.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 36040
+        },
+        {
+          "name": "Bark_NormalTree.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 33430
+        },
+        {
+          "name": "Leaf_Pine_C.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 17686
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "Pine_4"
+      ]
+    },
+    "opt/trees/Pine2.glb": {
+      "file": "opt/trees/Pine2.glb",
+      "bytes": 112388,
+      "kb": 109.8,
+      "heavy": false,
+      "bbox": {
+        "height": 7.392,
+        "width": 3.611,
+        "depth": 3.996,
+        "minY": -0.235,
+        "centerX": -0.308,
+        "centerZ": -0.294,
+        "min": [
+          -2.114,
+          -0.235,
+          -2.292
+        ],
+        "max": [
+          1.498,
+          7.157,
+          1.703
+        ]
+      },
+      "triangles": 4964,
+      "primitives": 2,
+      "meshes": 1,
+      "materials": 2,
+      "textures": 3,
+      "maxTextureSize": 1024,
+      "textureSizes": [
+        {
+          "name": "Bark_NormalTree_Normal.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 36040
+        },
+        {
+          "name": "Bark_NormalTree.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 33430
+        },
+        {
+          "name": "Leaf_Pine_C.png",
+          "mime": "image/webp",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 17686
+        }
+      ],
+      "skinned": false,
+      "bones": {},
+      "clips": [],
+      "compressed": {
+        "draco": true,
+        "meshopt": false
+      },
+      "nodes": 2,
+      "meshNames": [
+        "Pine_3"
       ]
     },
     "trees/BirchTrees.glb": {

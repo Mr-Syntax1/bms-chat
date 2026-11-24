@@ -8,8 +8,8 @@ import { modelUrl } from '../assetManifest';
 import { getGroundHeight, getGroundSlope } from '../terrain';
 
 // فقط GLB واقعی — هیچ سیلوئت مخروطی/استوانه‌ای در این فایل وجود ندارد.
-// چگالی از preset می‌آید (۴۲۰/۶۲۰/۸۰۰)؛ هرگز به مخروط سقوط نمی‌کند.
-const URLS = [modelUrl('trees.pineOpt'), modelUrl('trees.pine2')];
+// چگالی از preset می‌آید (۳۰۰/۵۰۰/۸۰۰)؛ هرگز به مخروط سقوط نمی‌کند.
+const URLS = [modelUrl('trees.pineOpt'), modelUrl('trees.pine2'), modelUrl('trees.birch')];
 
 /**
  * جنگل: همه‌ی درخت‌ها GLB کامل و instanced.
@@ -19,6 +19,7 @@ export default function Forest() {
   const preset = useQualityPreset();
   const pine = usePineModel(URLS[0]);
   const pine2 = usePineModel(URLS[1]);
+  const birch = usePineModel(URLS[2]);
 
   // چگالی بر اساس کیفیت — seed ثابت، پس چیدمان پایدار است
   const trees = useMemo(() => buildTrees(preset.treeDensity), [preset.treeDensity]);
@@ -39,18 +40,31 @@ export default function Forest() {
     [trees]
   );
 
-  const groupA = useMemo(() => placed.filter((t) => t.variant !== 1), [placed]);
-  const groupB = useMemo(() => placed.filter((t) => t.variant === 1), [placed]);
+  // ۳ واریانت: Pine / Pine2 / Birch. بیشه‌ی Birch پنج درخت در یک فایل است،
+  // پس فقط هر ششمین درختِ واریانت ۲ بیشه می‌شود تا مثلث‌ها منفجر نشوند.
+  const groups = useMemo(() => {
+    const a = [];
+    const b = [];
+    const c = [];
+    placed.forEach((tree, i) => {
+      if (tree.variant === 1) b.push(tree);
+      else if (tree.variant === 2 && i % 6 === 0) c.push(tree);
+      else a.push(tree);
+    });
+    return { a, b, c };
+  }, [placed]);
 
   return (
     <group>
-      <TreeSet model={pine} trees={groupA} />
-      <TreeSet model={pine2} trees={groupB} />
+      <TreeSet model={pine} trees={groups.a} />
+      <TreeSet model={pine2} trees={groups.b} />
+      {/* بیشه‌ی چنده‌درختی → مقیاس یکنواخت تا تناسب حفظ شود */}
+      <TreeSet model={birch} trees={groups.c} uniform />
     </group>
   );
 }
 
-function TreeSet({ model, trees }) {
+function TreeSet({ model, trees, uniform = false }) {
   const refs = useRef([]);
   const { parts, height, baseY, centerX, centerZ } = model;
 
@@ -65,11 +79,18 @@ function TreeSet({ model, trees }) {
       // نرمال‌سازی XZ تا تنه‌ی درخت دقیقاً روی نقطه‌ی تولیدشده بایستد
       dummy.position.set(tree.x - centerX * s, tree.y + baseY * sy, tree.z - centerZ * s);
       dummy.rotation.set(tree.tilt * 0.6, tree.rotation, tree.tilt * 0.4);
-      dummy.scale.set(s, sy, s);
+      if (uniform) {
+        // بیشه‌ی چنده‌درختی (~۷.۶ واحد ارتفاع) → مقیاس یکنواخت ۱.۳..۲.۲
+        const u = 1.3 + tree.tint * 0.9;
+        dummy.position.set(tree.x - centerX * u, tree.y + baseY * u, tree.z - centerZ * u);
+        dummy.scale.setScalar(u);
+      } else {
+        dummy.scale.set(s, sy, s);
+      }
       dummy.updateMatrix();
       return dummy.matrix.clone();
     });
-  }, [trees, height, baseY, centerX, centerZ]);
+  }, [trees, height, baseY, centerX, centerZ, uniform]);
 
   const leafColors = useMemo(() => {
     if (!trees.length) return [];

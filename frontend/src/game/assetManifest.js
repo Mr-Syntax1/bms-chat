@@ -119,7 +119,7 @@ export const MODELS = {
     choppedLogOpt: m('opt/ChoppedLog.glb'),
     logAxe: m('Decorations/LogAxe.glb'),
     logAxeOpt: m('opt/LogAxe.glb'),
-    cliff: missing('procedural: RockMedium/Rocks بزرگ‌شده + terrain cliff', 'مدل cliff/boulder موجود نیست'),
+    cliff: m('Decorations/RockMedium.glb', { opt: true, note: 'صخره‌ی آبشار — RockMedium بزرگ‌شده و instanced' }),
   },
 
   // ---- پل و مسیر ----
