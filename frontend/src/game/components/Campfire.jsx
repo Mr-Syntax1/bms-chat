@@ -4,7 +4,7 @@ import { Html, Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
 import { FIRE_KEEPOUT, SEAT_SPOTS } from '../sceneLayout';
 import { registerInteractable } from '../interactionRegistry';
-import { usePlayerStore } from '../stores/usePlayerStore';
+import { usePlayerStore, campMood } from '../stores/usePlayerStore';
 import { useQualityPreset } from '../stores/useSettingsStore';
 import InstancedGLB from '../models/InstancedGLB';
 import { modelUrl } from '../assetManifest';
@@ -45,18 +45,20 @@ export default function Campfire() {
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
     const flicker = 0.84 + Math.sin(t * 7.9) * 0.08 + Math.sin(t * 12.3 + 1.7) * 0.05;
+    // کمپ شلوغ (۳+ نفر) آتش را کمی درخشان‌تر می‌کند
+    const boost = campMood.fireBoost;
 
     if (lightRef.current) {
-      lightRef.current.intensity = 38 * flicker;
+      lightRef.current.intensity = 38 * flicker * boost;
       lightRef.current.position.y = 1.25 + Math.sin(t * 4.7) * 0.07;
     }
     if (emberRef.current) {
-      emberRef.current.intensity = 9 * flicker;
+      emberRef.current.intensity = 9 * flicker * boost;
     }
     if (glowRef.current) {
       const s = 0.92 + Math.sin(t * 5.3) * 0.07;
       glowRef.current.scale.setScalar(s);
-      glowRef.current.material.opacity = 0.13 * flicker;
+      glowRef.current.material.opacity = 0.13 * flicker * boost;
     }
   });
 
@@ -101,7 +103,8 @@ export default function Campfire() {
         </Html>
       )}
 
-      {SEAT_SPOTS.map((spot, i) => (
+      {/* فقط ۶ صندلی دور آتش کنده دارند؛ نقاط استراحت مدل خودشان را دارند */}
+      {SEAT_SPOTS.filter((spot) => !spot.key).map((spot, i) => (
         <group key={i} position={[spot.x, 0, spot.z]} rotation={[0, spot.rotation, 0]} scale={SEAT_LOG_SCALE}>
           <ChoppedLogModel position={[SEAT_LOG_OFFSET_X, SEAT_LOG_OFFSET_Y, 0]} />
         </group>

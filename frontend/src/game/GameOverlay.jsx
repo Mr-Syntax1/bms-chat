@@ -17,6 +17,11 @@ import Toasts from './ui/Toasts';
 import InteractionPrompt from './ui/InteractionPrompt';
 import GameLoadingScreen from './ui/GameLoadingScreen';
 import FacingDebug from './ui/FacingDebug';
+import EmoteWheel from './ui/EmoteWheel';
+import CharacterSelector from './ui/CharacterSelector';
+import Wardrobe from './ui/Wardrobe';
+import { useChatBubbles } from './hooks/useChatBubbles';
+import { loadWardrobe } from './models/wardrobeConfig';
 
 const GameCanvas = lazy(() => import('./GameCanvas'));
 
@@ -108,6 +113,27 @@ function Crosshair() {
   );
 }
 
+// لاگ کوچک گوشه: آخرین ۳ پیام اتاق
+function ChatLogCorner() {
+  const chatLog = usePlayerStore((s) => s.chatLog);
+
+  if (chatLog.length === 0) return null;
+
+  return (
+    <div className="pointer-events-none absolute bottom-24 right-3 z-30 flex w-[210px] flex-col gap-1">
+      {chatLog.map((m) => (
+        <div
+          key={m.id}
+          className="rounded-lg border border-white/10 bg-[#171426]/70 px-2 py-1 text-[10px] leading-snug text-[#f5ebdd]/85 backdrop-blur-md"
+        >
+          <span className="font-bold text-[#ffc66d]/85">{m.sender}: </span>
+          <span>{m.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 export default function GameOverlay({ roomId, user, onClose }) {
   const seated = usePlayerStore((s) => s.seated);
@@ -121,13 +147,24 @@ export default function GameOverlay({ roomId, user, onClose }) {
   const voiceReady = usePlayerStore((s) => s.voiceReady);
   const voiceTokenReady = usePlayerStore((s) => s.voiceTokenReady);
   const setSelfId = usePlayerStore((s) => s.setSelfId);
+  const setWardrobe = usePlayerStore((s) => s.setWardrobe);
 
   const [entered, setEntered] = useState(false);
+  // انتخابگر کاراکتر همیشه پیش از ورود نمایش داده می‌شود؛ انتخاب قبلی پیش‌فرض است.
+  const [characterPicked, setCharacterPicked] = useState(false);
+  const [selecting, setSelecting] = useState(true);
   const [logOpen, setLogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [wardrobeOpen, setWardrobeOpen] = useState(false);
   const preloadStarted = useRef(false);
 
   const { currentQuest } = useQuestSystem();
+
+  // بازیابی کمد ذخیره‌شده برای این کاربر (پیش از ورود)
+  useEffect(() => {
+    if (!user?.id) return;
+    setWardrobe(loadWardrobe(user.id));
+  }, [user?.id, setWardrobe]);
 
   // شروع پیش‌بارگذاری واقعی مدل‌ها (بعد از mount شدن صفحه‌ی لودینگ)
   useEffect(() => {
@@ -143,7 +180,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
 
   useClaimCharacter({
     roomId,
-    enabled: true,
+    enabled: characterPicked,
     onFull: () => {
       pushToast('ظرفیت بازی پر است', 'warn');
       onClose?.();
@@ -153,6 +190,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
   const { micEnabled, toggleMic } = useMicControl();
   const look = usePointerLook({ onExit: () => {} });
   useFishingSpots();
+  useChatBubbles(roomId, user);
 
   const handleStart = useCallback(() => {
     setEntered(true);
@@ -210,7 +248,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
   }, [setVirtualInput, teleport, setSelfId]);
 
   const locked = look.locked;
-  const paused = entered && !locked && !logOpen && !settingsOpen;
+  const paused = entered && !locked && !logOpen && !settingsOpen && !wardrobeOpen;
   const loading = !entered;
 
   // وضعیت‌های واقعی برای صفحه‌ی لودینگ.
@@ -282,6 +320,10 @@ export default function GameOverlay({ roomId, user, onClose }) {
                 look.unlock();
                 setLogOpen(true);
               }}
+              onOpenWardrobe={() => {
+                look.unlock();
+                setWardrobeOpen(true);
+              }}
             />
 
             {/* مأموریت فعلی — فقط دسکتاپ */}
@@ -324,6 +366,8 @@ export default function GameOverlay({ roomId, user, onClose }) {
       <TouchPad />
       {entered && locked && <ControlsHint />}
       <FacingDebug />
+      {entered && <EmoteWheel roomId={roomId} user={user} />}
+      {entered && <ChatLogCorner />}
 
       {paused && (
         <PauseMenu
@@ -335,6 +379,14 @@ export default function GameOverlay({ roomId, user, onClose }) {
       )}
 
       <QuestLog open={logOpen} onClose={() => setLogOpen(false)} />
+      <Wardrobe
+        open={wardrobeOpen}
+        userId={user?.id}
+        onClose={() => {
+          setWardrobeOpen(false);
+          if (entered) look.lock();
+        }}
+      />
       {settingsOpen && (
         <SettingsPanel
           onClose={() => {
@@ -344,6 +396,15 @@ export default function GameOverlay({ roomId, user, onClose }) {
           }}
         />
       )}
+
+      {/* انتخاب کاراکتر پیش از بازی — قبل از لودینگ/ورود */}
+      <CharacterSelector
+        open={selecting}
+        onConfirm={() => {
+          setCharacterPicked(true);
+          setSelecting(false);
+        }}
+      />
     </div>
   );
 }

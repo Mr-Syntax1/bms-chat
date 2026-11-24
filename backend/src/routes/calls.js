@@ -585,7 +585,7 @@ const GAME_CHARACTERS = [
 const GAME_CAPACITY = GAME_CHARACTERS.length;
 const CLAIM_TTL = 2 * 60 * 60 * 1000;
 
-// userId → { file, at }
+// userId → { file, at, roomId }
 const gameAssignments = new Map();
 
 const characterUrl = (file) => `/game-models/characters/${file}`;
@@ -602,10 +602,15 @@ setInterval(pruneAssignments, 60 * 1000).unref();
 callsRouter.post('/game/claim-character', requireAuth, (req, res) => {
   pruneAssignments();
   const userId = req.user.id;
+  const roomId =
+    typeof req.body?.roomId === 'string' && req.body.roomId.trim()
+      ? req.body.roomId.trim().slice(0, 100)
+      : 'camp-main';
 
   const existing = gameAssignments.get(userId);
   if (existing) {
     existing.at = Date.now();
+    existing.roomId = roomId;
     return res.json({
       character: existing.file,
       url: characterUrl(existing.file),
@@ -618,8 +623,13 @@ callsRouter.post('/game/claim-character', requireAuth, (req, res) => {
   const free = GAME_CHARACTERS.filter((file) => !taken.has(file));
   if (!free.length) return deny(res, 409, 'ظرفیت بازی پر است');
 
-  const file = free[Math.floor(Math.random() * free.length)];
-  gameAssignments.set(userId, { file, at: Date.now() });
+  // کاراکتر ترجیحی کاربر (اگر آزاد باشد) با اولویت؛ وگرنه تصادفی
+  const preferred = typeof req.body?.preferred === 'string' ? req.body.preferred : null;
+  const file =
+    preferred && free.includes(preferred)
+      ? preferred
+      : free[Math.floor(Math.random() * free.length)];
+  gameAssignments.set(userId, { file, at: Date.now(), roomId });
 
   return res.json({
     character: file,
@@ -627,6 +637,21 @@ callsRouter.post('/game/claim-character', requireAuth, (req, res) => {
     players: gameAssignments.size,
     capacity: GAME_CAPACITY,
   });
+});
+
+// فهرست کمپ‌های فعال: roomId → تعداد بازیکن
+callsRouter.get('/game/campsites', requireAuth, (req, res) => {
+  pruneAssignments();
+  const byRoom = new Map();
+  for (const rec of gameAssignments.values()) {
+    const key = rec.roomId || 'camp-main';
+    byRoom.set(key, (byRoom.get(key) || 0) + 1);
+  }
+  const campsites = [...byRoom.entries()]
+    .map(([roomId, players]) => ({ roomId, players, capacity: GAME_CAPACITY }))
+    .sort((a, b) => b.players - a.players)
+    .slice(0, 30);
+  return res.json({ campsites, capacity: GAME_CAPACITY });
 });
 
 // آزاد کردن کاراکتر هنگام خروج

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { SPAWN, SEAT_SPOTS, CAMP_RADIUS, BOUNDS } from '../sceneLayout';
 import { DEFAULT_CHARACTER } from '../models/characterConfig';
+import { DEFAULT_WARDROBE, normalizeWardrobe } from '../models/wardrobeConfig';
+import { findNearbyRestSpot } from '../interactionRegistry';
 
 // ---------------------------------------------------------------------------
 // state های mutable: در هر فریم آپدیت می‌شوند و باعث re-render نمی‌شوند
@@ -11,6 +13,7 @@ const local = {
   z: SPAWN.z,
   rot: 0,
   seat: null,
+  rest: null,
   moving: false,
   emote: null,
   action: null,
@@ -18,6 +21,26 @@ const local = {
 
 // نگاشت بازیکنان ریموت: id → { target, current, rot, seat, emote, action, character, ... }
 export const remoteMap = new Map();
+
+// حباب چت بالای سر: کلید (نام کاربر) → { text, until } — بیرون از React
+export const chatBubbleMap = new Map();
+export const CHAT_BUBBLE_MS = 5000;
+
+export function showChatBubble(key, text, ms = CHAT_BUBBLE_MS) {
+  if (!key || !text) return;
+  chatBubbleMap.set(key, { text: String(text).slice(0, 160), until: Date.now() + ms });
+}
+
+// پرچم‌های UI که دوربین/ورودی باید ببینند (بدون re-render)
+export const uiFlags = { emoteWheelOpen: false };
+
+// حس زنده‌بودن کمپ: ضریب گروه (۱ = عادی، ۱.۵ = شلوغ) — بیرون React برای فریم‌لوپ
+export const campMood = { crowdFactor: 0, fireBoost: 1 };
+export function setCampCrowd(peerCount) {
+  const crowded = peerCount >= 3;
+  campMood.crowdFactor = crowded ? 1 : 0;
+  campMood.fireBoost = crowded ? 1.3 : 1;
+}
 
 // لیسنرهای Spatial Audio (LiveKit): مختصات همه‌ی بازیکنان
 const spatialListeners = new Set();
@@ -62,6 +85,19 @@ export function emitSpatialFrame() {
 export const newActionId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
+// پیشرفت کل مأموریت (برای «پرش شادی» کاراکتر) — جمع مراحل انجام‌شده
+export function totalQuestProgress(quests) {
+  if (!quests) return 0;
+  return (
+    (quests.parchments || 0) +
+    (quests.lanterns || 0) +
+    (quests.shells || 0) +
+    (quests.signsRead || 0) +
+    (quests.hasKey ? 1 : 0) +
+    (quests.chestOpened ? 1 : 0)
+  );
+}
+
 // ---------------------------------------------------------------------------
 // وضعیت اولیه‌ی مأموریت‌ها
 // ---------------------------------------------------------------------------
@@ -80,6 +116,7 @@ export const usePlayerStore = create((set, get) => ({
   local,
   seated: false,
   seatIndex: null,
+  rest: null,
   nearFire: false,
   hovered: null,
   headlights: false,
@@ -94,6 +131,9 @@ export const usePlayerStore = create((set, get) => ({
   characterUrl: null,
   characterLoading: false,
   characterError: null,
+
+  // کمد لباس محلی (کلاه/عینک/پیراهن/اکسسوری) — از localStorage بازیابی می‌شود
+  wardrobe: { ...DEFAULT_WARDROBE },
 
   // اکشن‌ها و ایموت‌های محلی
   action: null,
@@ -118,6 +158,8 @@ export const usePlayerStore = create((set, get) => ({
   collected: { parchments: [], lanterns: [], shells: [] },
   toasts: [],
   nearInteractable: null, // { key, label }
+  // لاگ کوچک چت گوشه‌ی صفحه (آخرین ۳ پیام)
+  chatLog: [],
   // فاصله‌ی بازیکن تا هدف مرحله‌ی فعال (متر، گردشده) — برای راهنمای مسیر
   questDistance: null,
   // دیباگ جهت کاراکتر (Ctrl+Shift+F) — null یعنی خاموش
@@ -132,6 +174,9 @@ export const usePlayerStore = create((set, get) => ({
   setCharacter: (character, url) => set({ character, characterUrl: url, characterLoading: false }),
   setCharacterLoading: (loading) => set({ characterLoading: loading }),
   setCharacterError: (error) => set({ characterError: error, characterLoading: false }),
+
+  // کمد: کل شیء wardrobe در store؛ ذخیره‌سازی localStorage در لایه‌ی UI انجام می‌شود
+  setWardrobe: (wardrobe) => set({ wardrobe: normalizeWardrobe(wardrobe) }),
 
   setMicEnabled: (on) => set({ micEnabled: on }),
   setVoiceReady: (ready) => set({ voiceReady: Boolean(ready) }),
@@ -158,9 +203,10 @@ export const usePlayerStore = create((set, get) => ({
     local.z = z;
   },
 
-  setSeat: (index) => {
+  setSeat: (index, rest = 'sit') => {
     local.seat = index;
-    set({ seated: index !== null, seatIndex: index });
+    local.rest = index !== null ? rest : null;
+    set({ seated: index !== null, seatIndex: index, rest: index !== null ? rest : null });
   },
 
   sitAuto: () => {
@@ -169,9 +215,19 @@ export const usePlayerStore = create((set, get) => ({
       state.setSeat(null);
       return;
     }
+    // اول نزدیک‌ترین نقطه‌ی استراحت ثبت‌شده (هاموک/کیسه‌خواب/کنده/میز)
+    const taken = new Set();
+    for (const entry of remoteMap.values()) {
+      if (entry.seat !== null && entry.seat !== undefined) taken.add(entry.seat);
+    }
+    const restSpot = findNearbyRestSpot(local.x, local.z, taken);
+    if (restSpot) {
+      state.setSeat(restSpot.seatIndex, restSpot.rest || 'sit');
+      return;
+    }
     if (!state.nearFire) return;
     const index = state.findFreeSeat(local.x, local.z);
-    if (index !== null) state.setSeat(index);
+    if (index !== null) state.setSeat(index, SEAT_SPOTS[index]?.rest || 'sit');
   },
 
   setNearFire: (near) => {
@@ -197,7 +253,10 @@ export const usePlayerStore = create((set, get) => ({
 
   setHeadlights: (on) => set({ headlights: on }),
   setSyncStatus: (status) => set({ syncStatus: status }),
-  setPeerCount: (count) => set({ peerCount: count }),
+  setPeerCount: (count) => {
+    setCampCrowd(count);
+    set({ peerCount: count });
+  },
   setFacingDebug: (value) => set({ facingDebug: value }),
 
   // -------------------------------------------------------------------------
@@ -213,6 +272,15 @@ export const usePlayerStore = create((set, get) => ({
   },
 
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
+  // آخرین ۳ پیام برای لاگ گوشه (بدون تکرار)
+  pushChatLog: (entry) => {
+    if (!entry?.text) return;
+    set((s) => {
+      if (s.chatLog.some((m) => m.id === entry.id)) return s;
+      return { chatLog: [...s.chatLog, entry].slice(-3) };
+    });
+  },
 
   // -------------------------------------------------------------------------
   // اکشن‌های تعاملی
@@ -344,6 +412,7 @@ export const usePlayerStore = create((set, get) => ({
       if ('emote' in payload) existing.emote = payload.emote ?? null;
       if ('action' in payload) existing.action = payload.action ?? null;
       if ('marshmallowStage' in payload) existing.marshmallowStage = payload.marshmallowStage ?? null;
+      if (payload.wardrobe) existing.wardrobe = payload.wardrobe;
       existing.lastSeen = performance.now();
       if (usernameChanged || characterChanged) set({ remoteIds: Array.from(remoteMap.keys()) });
       return;
@@ -367,6 +436,7 @@ export const usePlayerStore = create((set, get) => ({
       action: payload.action ?? null,
       actionUntil: 0,
       marshmallowStage: payload.marshmallowStage ?? null,
+      wardrobe: payload.wardrobe ?? null,
       lastSeen: performance.now(),
     });
 

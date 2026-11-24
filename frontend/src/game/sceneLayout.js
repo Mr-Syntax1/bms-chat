@@ -100,14 +100,32 @@ function mulberry32(seed) {
 export const SEAT_RADIUS = 4.1;
 export const SEAT_HEIGHT = 0.52;
 
-export const SEAT_SPOTS = Array.from({ length: SEAT_COUNT }, (_, i) => {
+const FIRE_SEATS = Array.from({ length: SEAT_COUNT }, (_, i) => {
   const angle = -Math.PI / 2 + (i * Math.PI * 2) / SEAT_COUNT;
   return {
     x: Math.cos(angle) * SEAT_RADIUS,
     z: Math.sin(angle) * SEAT_RADIUS,
     rotation: Math.atan2(-Math.cos(angle), -Math.sin(angle)),
+    rest: 'sit',
   };
 });
+
+// نقاط استراحت: هاموک، کیسه‌خواب، کنده‌های نشیمن و میز پیک‌نیک
+// restY = ارتفاع گروه بازیکن نسبت به سطح زمین (نشستن خودش ۰.۳۵ پایین می‌آید)
+export const REST_SPOTS = [
+  { key: 'rest-hammock', label: 'دراز کشیدن در هاموک', x: 7.4, z: 7.2, rotation: -0.6, rest: 'sleep', restY: 0.72 },
+  { key: 'rest-bedroll', label: 'خوابیدن روی کیسه‌خواب', x: 4.2, z: 2.4, rotation: 2.4, rest: 'sleep', restY: 0.02 },
+  { key: 'rest-stump-a', label: 'نشستن روی کنده', x: 5.4, z: -2.2, rotation: -1.18, rest: 'sit', restY: 0.2 },
+  { key: 'rest-stump-b', label: 'نشستن روی کنده', x: 2.2, z: -5.4, rotation: -0.39, rest: 'sit', restY: 0.2 },
+  { key: 'rest-picnic-a', label: 'نشستن سر میز', x: -5.75, z: 7.23, rotation: -2.64, rest: 'sit', restY: 0.1 },
+  { key: 'rest-picnic-b', label: 'نشستن سر میز', x: -12.47, z: -2.41, rotation: 1.79, rest: 'sit', restY: 0.1 },
+].map((spot, i) => ({ ...spot, seatIndex: SEAT_COUNT + i, radius: 1.8 }));
+
+// ایندکس‌ها بین همه‌ی کلاینت‌ها یکسان: ۶ صندلی آتش + نقاط استراحت
+export const SEAT_SPOTS = [
+  ...FIRE_SEATS,
+  ...REST_SPOTS.map(({ x, z, rotation, rest, restY, key }) => ({ x, z, rotation, rest, restY, key })),
+];
 
 // ---------------------------------------------------------------------------
 // درختان جنگل — چیدمان biome-aware با طبقات ارتفاعی.

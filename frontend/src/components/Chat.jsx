@@ -14,6 +14,7 @@ import CallModal from './CallModal';
 import GroupCallModal from './GroupCallModal';
 import GroupCallBanner from './GroupCallBanner';
 import GameOverlay from '../game/GameOverlay';
+import CampsiteBrowser from '../game/ui/CampsiteBrowser';
 
 export default function Chat({ chat, user, onLogout }) {
   const {
@@ -50,6 +51,7 @@ export default function Chat({ chat, user, onLogout }) {
   const [sidebar, setSidebar] = useState(null);
   const [groupCallExpanded, setGroupCallExpanded] = useState(true);
   const [gameRoomId, setGameRoomId] = useState(null);
+  const [campsitesOpen, setCampsitesOpen] = useState(false);
 
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
@@ -157,6 +159,16 @@ export default function Chat({ chat, user, onLogout }) {
 
   const handleCloseGame = useCallback(() => setGameRoomId(null), []);
 
+  // ورود به یک کمپ از مرورگر: اتاق چت عوض می‌شود و بازی همان اتاق باز می‌شود
+  const handleJoinCampsite = useCallback((roomId) => {
+    if (!roomId) return;
+    setCampsitesOpen(false);
+    startTransition(() => {
+      switchRoom(roomId);
+    });
+    setGameRoomId(roomId);
+  }, [switchRoom]);
+
   return (
     // 🔑 قانون ۱: ارتفاع دقیق داینامیک + جلوگیری مطلق از اسکرول کل صفحه
     <div className="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-transparent text-surface-50">
@@ -180,6 +192,7 @@ export default function Chat({ chat, user, onLogout }) {
           onGroupCallToggle={handleGroupCallToggle}
           inGroupCall={groupCall.callState !== 'idle'}
           onOpenGame={handleOpenGame}
+          onBrowseCampsites={() => setCampsitesOpen(true)}
         />
       </div>
 
@@ -309,6 +322,14 @@ export default function Chat({ chat, user, onLogout }) {
           onClose={handleCloseGame}
         />
       )}
+
+      {/* مرور کمپ‌های فعال */}
+      <CampsiteBrowser
+        open={campsitesOpen}
+        onClose={() => setCampsitesOpen(false)}
+        onJoin={handleJoinCampsite}
+        currentRoomId={currentRoom}
+      />
 
       {/* سایدبار موبایل */}
       {sidebar && (

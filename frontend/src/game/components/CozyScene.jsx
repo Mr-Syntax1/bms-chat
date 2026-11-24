@@ -20,6 +20,7 @@ import PondLife from './PondLife';
 import Weather from './Weather';
 import CanopyFX from './CanopyFX';
 import { useQualityPreset, useSettingsStore } from '../stores/useSettingsStore';
+import { usePlayerStore } from '../stores/usePlayerStore';
 import { updateEnvState, skyColorsFor, weatherFogFor } from '../envState';
 
 // مدت یک چرخه‌ی کامل روز/شب (ثانیه) — ۰ = بدون حرکت (کیفیت کم)
@@ -198,6 +199,9 @@ function LowPolyClouds({ animate = true }) {
 export default function CozyScene() {
   const preset = useQualityPreset();
   const weather = useSettingsStore((s) => s.weather);
+  // کمپ شلوغ (۳+ نفر) کرم‌شب‌تاب بیشتری روشن می‌کند
+  const crowded = usePlayerStore((s) => s.peerCount >= 3);
+  const fireflyCount = Math.round(preset.fireflies * (crowded ? 1.5 : 1));
   const fogRef = useRef(null);
   const bgRef = useRef(null);
 
@@ -249,7 +253,7 @@ export default function CozyScene() {
       <QuestItems />
       <CanopyFX />
       <Weather />
-      <Fireflies count={preset.fireflies} />
+      <Fireflies count={fireflyCount} />
       <Butterflies count={preset.butterflies} />
 
       <AmbientAudio />

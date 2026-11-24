@@ -14,7 +14,7 @@ export default function InteractionPrompt() {
   let key = 'E';
 
   if (seated) {
-    label = 'بلند شدن از کنده';
+    label = 'بلند شدن';
     key = 'E';
   } else if (nearInteractable) {
     label = nearInteractable.label;

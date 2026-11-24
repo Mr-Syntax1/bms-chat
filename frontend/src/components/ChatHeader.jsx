@@ -17,6 +17,7 @@ export default function ChatHeader({
   onGroupCallToggle,
   inGroupCall = false,
   onOpenGame,
+  onBrowseCampsites,
 }) {
 
   const handleProfileClick = () => {
@@ -186,6 +187,19 @@ export default function ChatHeader({
             </svg>
           </button>
         )}
+
+        {/* مرور کمپ‌های فعال */}
+        <button
+          type="button"
+          onClick={() => onBrowseCampsites?.()}
+          className="btn-ghost p-1.5 sm:p-2 rounded-lg sm:rounded-xl ml-1 text-sky-400 hover:text-sky-300 hover:bg-sky-500/10 transition-colors cursor-pointer"
+          title="مرور کمپ‌ها"
+          aria-label="مرور کمپ‌های فعال"
+        >
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 20l6-14 6 14M9 12h8M15 20l3-7 3 7" />
+          </svg>
+        </button>
 
         {/* پروفایل - فقط تبلت و دسکتاپ */}
         <button

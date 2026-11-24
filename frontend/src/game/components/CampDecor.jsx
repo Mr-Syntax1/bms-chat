@@ -1,7 +1,9 @@
-import { CAMP_RADIUS } from '../sceneLayout';
+import { useEffect, useRef } from 'react';
+import { CAMP_RADIUS, REST_SPOTS } from '../sceneLayout';
 import InstancedGLB from '../models/InstancedGLB';
 import Fitted from '../models/Fitted';
 import { modelUrl } from '../assetManifest';
+import { registerInteractable, registerRestSpot } from '../interactionRegistry';
 import {
   PicnicTableModel,
   BackpackModel,
@@ -82,10 +84,91 @@ function CampProps() {
   );
 }
 
+// نقاط استراحت: هاموک، کیسه‌خواب، کنده‌های نشیمن — ثبت در interactionRegistry
+function RestSpotProps() {
+  const groupRefs = useRef({});
+
+  useEffect(() => {
+    const unsubs = REST_SPOTS.map((spot) =>
+      registerRestSpot({
+        key: spot.key,
+        label: spot.label,
+        x: spot.x,
+        z: spot.z,
+        seatIndex: spot.seatIndex,
+        rest: spot.rest,
+        radius: spot.radius,
+      })
+    );
+    const objectUnsubs = REST_SPOTS.map((spot) =>
+      registerInteractable(spot.key, groupRefs.current[spot.key])
+    );
+    return () => {
+      unsubs.forEach((fn) => fn());
+      objectUnsubs.forEach((fn) => fn());
+    };
+  }, []);
+
+  const hammock = REST_SPOTS.find((s) => s.key === 'rest-hammock');
+  const bedroll = REST_SPOTS.find((s) => s.key === 'rest-bedroll');
+  const stumps = REST_SPOTS.filter((s) => s.key.startsWith('rest-stump'));
+
+  return (
+    <group>
+      {/* هاموک بین دو درخت کمپ */}
+      <group
+        ref={(el) => {
+          groupRefs.current[hammock.key] = el;
+        }}
+        position={[hammock.x, 0, hammock.z]}
+        rotation={[0, hammock.rotation, 0]}
+      >
+        <mesh position={[-1.25, 1.15, 0]} castShadow>
+          <cylinderGeometry args={[0.13, 0.17, 2.3, 8]} />
+          <meshStandardMaterial color="#5a4030" roughness={0.95} />
+        </mesh>
+        <mesh position={[1.25, 1.15, 0]} castShadow>
+          <cylinderGeometry args={[0.13, 0.17, 2.3, 8]} />
+          <meshStandardMaterial color="#5a4030" roughness={0.95} />
+        </mesh>
+        <group position={[0, 0.9, 0]}>
+          <Fitted url={modelUrl('comfort.hammock')} height={0.7} rotation={[0, Math.PI / 2, 0]} />
+        </group>
+      </group>
+
+      {/* کیسه‌خواب روی زمین */}
+      <group
+        ref={(el) => {
+          groupRefs.current[bedroll.key] = el;
+        }}
+        position={[bedroll.x, 0.02, bedroll.z]}
+        rotation={[0, bedroll.rotation, 0]}
+      >
+        <Fitted url={modelUrl('comfort.bedroll')} height={0.18} />
+      </group>
+
+      {/* دو کنده‌ی نشیمن */}
+      {stumps.map((spot) => (
+        <group
+          key={spot.key}
+          ref={(el) => {
+            groupRefs.current[spot.key] = el;
+          }}
+          position={[spot.x, 0, spot.z]}
+          rotation={[0, spot.rotation, 0]}
+        >
+          <Fitted url={modelUrl('rocks.stump')} height={0.55} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
 export default function CampDecor() {
   return (
     <group>
       <CampProps />
+      <RestSpotProps />
 
       <InstancedGLB
         url={modelUrl('undergrowth.bush')}

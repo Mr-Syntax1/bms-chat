@@ -144,6 +144,28 @@ export function getPropAnchor(model) {
 
 export const TARGET_HEIGHT = 1.75;
 
+// ---------------------------------------------------------------------------
+// لنگر سر برای کلاه/عینک — در فضای نرمال‌شده‌ی ۱.۷۵ واحدی (بالای سر، جلوی صورت).
+// y بالای سر است؛ اگر بون Head در مدل باشد، Character به آن بایند می‌شود.
+// مدل‌های chibi سر بزرگ‌تر و بالاتر دارند.
+// ---------------------------------------------------------------------------
+export const HEAD_ANCHORS = {
+  'Cactoro.glb': { y: 1.66, z: 0.06, scale: 1, bone: 'Head' },
+  'Citizen.glb': { y: 1.63, z: 0.03, scale: 1, bone: 'Head' },
+  'CoolBannanaGuy.glb': { y: 1.68, z: 0.03, scale: 1 },
+  'CubeGuyCharacter.glb': { y: 1.62, z: 0.04, scale: 1, bone: 'Head' },
+  'CuteCharacter.glb': { y: 1.56, z: 0.05, scale: 1.25 },
+  'CuteRedDino.glb': { y: 1.52, z: 0.05, scale: 1.15 },
+  'DORAEMON.glb': { y: 1.5, z: 0.03, scale: 1.3 },
+  'miku.glb': { y: 1.7, z: 0.03, scale: 0.95 },
+  'MushroomCharacter.glb': { y: 1.66, z: 0.04, scale: 1.05 },
+};
+
+export function getHeadAnchor(model) {
+  const key = CHARACTERS[model] ? model : DEFAULT_CHARACTER;
+  return { y: 1.63, z: 0.04, scale: 1, ...(HEAD_ANCHORS[key] || {}) };
+}
+
 // نگاشت اکشن منطقی → پسوند نام کلیپ
 export const CLIP_SUFFIX = {
   idle: 'Idle',
@@ -153,8 +175,11 @@ export const CLIP_SUFFIX = {
   dance: 'Duck',
   laugh: 'Yes',
   celebrate: 'Jump',
+  cheer: 'Jump',
+  highfive: 'Wave',
+  hug: 'Yes',
+  sit: 'Duck',
   sleep: 'Death',
   guitar: 'Weapon',
   marshmallow: 'Punch',
-  sit: 'Duck',
 };

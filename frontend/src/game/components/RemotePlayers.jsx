@@ -1,12 +1,13 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
 import { remoteMap, usePlayerStore } from '../stores/usePlayerStore';
 import { SEAT_SPOTS } from '../sceneLayout';
 import { getWalkSurfaceY } from '../terrain';
 import Character from './Character';
 import { DEFAULT_CHARACTER } from '../models/characterConfig';
-import VoiceBubble from './VoiceActivityIndicator';
+import NameTag from './NameTag';
+import ChatBubble from './ChatBubble';
+
 const PALETTE = ['#8ab4f8', '#f28b82', '#fdd663', '#81c995', '#c58af9', '#78d9ec', '#f6aea9', '#b6e3a8'];
 
 function colorForId(id) {
@@ -24,11 +25,21 @@ function RemoteAvatar({ id }) {
   const movingRef = useRef(false);
   const runningRef = useRef(false);
   const seatedRef = useRef(false);
+  const restRef = useRef(null);
+  const wardrobeKeyRef = useRef('');
+  // کمد ریموت فقط وقتی عوض شود re-render می‌دهد (نه هر فریم)
+  const [wardrobe, setWardrobe] = useState(() => remoteMap.get(id)?.wardrobe || null);
 
   useFrame((_, rawDelta) => {
     const entry = remoteMap.get(id);
     const group = groupRef.current;
     if (!entry || !group) return;
+
+    const nextKey = entry.wardrobe ? JSON.stringify(entry.wardrobe) : '';
+    if (nextKey !== wardrobeKeyRef.current) {
+      wardrobeKeyRef.current = nextKey;
+      setWardrobe(entry.wardrobe || null);
+    }
 
     const delta = Math.min(rawDelta, 0.05);
     // میرایی مستقل از نرخ فریم (۶۰fps ≈ همان مقادیر قبلی)
@@ -83,7 +94,8 @@ function RemoteAvatar({ id }) {
     }
 
     seatedRef.current = Boolean(seatSpot);
-    group.position.set(entry.current.x, getWalkSurfaceY(entry.current.x, entry.current.z), entry.current.z);
+    restRef.current = seatSpot?.rest ?? null;
+    group.position.set(entry.current.x, getWalkSurfaceY(entry.current.x, entry.current.z) + (seatSpot?.restY || 0), entry.current.z);
     group.rotation.y = entry.rot;
   });
 
@@ -101,6 +113,8 @@ function RemoteAvatar({ id }) {
         action={() => remoteMap.get(id)?.action ?? null}
         marshmallowStage={() => remoteMap.get(id)?.marshmallowStage ?? null}
         seated={seatedRef}
+        rest={restRef}
+        wardrobe={wardrobe}
         castShadow
       />
 
@@ -109,12 +123,8 @@ function RemoteAvatar({ id }) {
         <meshBasicMaterial color={color} transparent opacity={0.5} depthWrite={false} />
       </mesh>
 
-      <Html center position={[0, 2.15, 0]} distanceFactor={14} occlude={false} zIndexRange={[20, 0]}>
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-950/75 border border-white/15 text-[11px] text-surface-50 whitespace-nowrap backdrop-blur-sm">
-          <VoiceBubble id={id} />
-          <span>{username}</span>
-        </div>
-      </Html>
+      <NameTag name={username} id={id} color={color} groupRef={groupRef} />
+      <ChatBubble id={id} />
     </group>
   );
 }

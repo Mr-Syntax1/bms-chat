@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { apiRequest } from '../../hooks/useChat';
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { loadPreferredCharacter } from '../models/wardrobeConfig';
 
 // کش سطح ماژول: StrictMode دو بار mount می‌کند، نباید دو درخواست بفرستیم
 const inflight = new Map(); // roomId → Promise
@@ -9,7 +10,12 @@ let releaseTimer = null;
 function claimCharacter(roomId, onFull) {
   if (inflight.has(roomId)) return inflight.get(roomId);
 
-  const promise = apiRequest('/api/calls/game/claim-character', { method: 'POST' })
+  // کاراکتر ترجیحی از localStorage؛ بک‌اند اگر آزاد نبود تصادفی می‌دهد
+  const preferred = loadPreferredCharacter();
+  const promise = apiRequest('/api/calls/game/claim-character', {
+    method: 'POST',
+    body: JSON.stringify({ ...(preferred ? { preferred } : {}), roomId }),
+  })
     .then((res) => {
       if (!res?.character) throw new Error('کاراکتر دریافت نشد');
       usePlayerStore.getState().setCharacter(res.character, res.url);

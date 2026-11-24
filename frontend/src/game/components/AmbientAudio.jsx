@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPositionalLoop, setVolumeGains } from '../audio';
 import { FIRE_SOUND, CRICKETS_SOUND, WATERFALL_SOUND, STREAM_SOUND } from '../sounds';
 import { useSettingsStore } from '../stores/useSettingsStore';
+import { usePlayerStore } from '../stores/usePlayerStore';
 import { WATERFALL, RIVER, WATER_LEVEL } from '../terrain';
 
 // چند نقطه در لبه‌ی جنگل برای جیرجیرک‌ها (صدای مکانی)
@@ -30,6 +31,8 @@ const STREAM_SPOTS = (() => {
 // توجه: هیچ صدای بادی در بازی وجود ندارد و نباید اضافه شود.
 export default function AmbientAudio() {
   const audio = useSettingsStore((s) => s.audio);
+  const crowded = usePlayerStore((s) => s.peerCount >= 3);
+  const cricketsRef = useRef([]);
 
   // تغییر اسلایدرهای صدا بلافاصله روی صداهای در حال پخش اثر می‌گذارد
   useEffect(() => {
@@ -56,6 +59,7 @@ export default function AmbientAudio() {
         channel: 'ambient',
       })
     );
+    cricketsRef.current = crickets;
 
     // آبشار: منبع مکانی با دامنه‌ی بلند
     const waterfall = createPositionalLoop(
@@ -84,12 +88,20 @@ export default function AmbientAudio() {
     );
 
     return () => {
+      cricketsRef.current = [];
       fire.dispose();
       crickets.forEach((c) => c.dispose());
       waterfall.dispose();
       streams.forEach((s) => s.dispose());
     };
   }, []);
+
+  // کمپ شلوغ (۳+ نفر): جیرجیرک‌ها کمی بلندتر می‌شوند
+  useEffect(() => {
+    const list = cricketsRef.current;
+    if (!list.length) return;
+    list.forEach((c, i) => c.setVolume((0.42 - i * 0.04) * (crowded ? 1.35 : 1)));
+  }, [crowded]);
 
   return null;
 }

@@ -3,18 +3,23 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { FIRE_KEEPOUT, SEAT_RADIUS, SEAT_SPOTS, VAN, BOUNDS } from '../sceneLayout';
-import { usePlayerStore } from '../stores/usePlayerStore';
+import { usePlayerStore, remoteMap, totalQuestProgress } from '../stores/usePlayerStore';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import { getNearbyTrees } from '../activeTrees';
-import { getInteractables, resolveInteractableKey } from '../interactionRegistry';
+import {
+  getInteractables,
+  resolveInteractableKey,
+  findNearbyRestSpot,
+} from '../interactionRegistry';
 import { findNearbyQuestItem } from '../questRegistry';
 import { getQuestTarget } from '../questSteps';
 import { playPositionalOneShot } from '../audio';
 import { publishPlayerAction } from '../hooks/useGameSync';
-import { stepPlayerPhysics, resetPlayerPhysics, slopeSlide } from '../hooks/usePlayerMotion';
+import { stepPlayerPhysics, resetPlayerPhysics, slopeSlide, getPlayerPhysics } from '../hooks/usePlayerMotion';
 import { getWalkSurfaceY, isInWater } from '../terrain';
 import { applyFovKick } from '../cameraTuning';
 import Character from './Character';
+import ChatBubble from './ChatBubble';
 import { GUITAR_SOUNDS, YUM_SOUND } from '../sounds';
 
 const WALK_SPEED = 3.6;
@@ -27,6 +32,8 @@ const GUITAR_DURATION = 6000;
 const MARSHMALLOW_DURATION = 3000;
 const MARSHMALLOW_READY_HOLD = 4000;
 const EMOTE_DURATION = 3400;
+// برد تعامل هدفمند با بازیکن نزدیک (E)
+const TARGET_RANGE = 2.5;
 
 // دوربین سوم‌شخص نزدیک
 const CAM_DIST = 2.5;
@@ -36,11 +43,12 @@ const CAM_LERP = 0.1;
 const CAM_SAMPLES = 6;
 const CAM_MIN_DIST = 0.75;
 
+// ایموت‌های چرخ (Q) از EmoteWheel می‌آیند؛ 1..5 همچنان میان‌بر است
 const EMOTES = {
   Digit1: 'wave',
   Digit2: 'dance',
   Digit3: 'laugh',
-  Digit4: 'celebrate',
+  Digit4: 'cheer',
   Digit5: 'sleep',
 };
 
@@ -70,6 +78,8 @@ export default function PlayerController({ roomId, user, look, active = true }) 
   const movingRef = useRef(false);
   const runningRef = useRef(false);
   const debugTimer = useRef(0);
+  // squash/stretch پرش: بیرون از React، فقط یک شیء mutable
+  const squashRef = useRef({ s: 1 });
   // بافر ثابت برای کوئری گرید درختان (بدون تخصیص در هر فریم)
   const treeBuf = useMemo(() => [], []);
 
@@ -112,9 +122,11 @@ export default function PlayerController({ roomId, user, look, active = true }) 
   const setNearInteractable = usePlayerStore((s) => s.setNearInteractable);
   const setQuestDistance = usePlayerStore((s) => s.setQuestDistance);
   const seated = usePlayerStore((s) => s.seated);
+  const rest = usePlayerStore((s) => s.rest);
   const emote = usePlayerStore((s) => s.emote);
   const action = usePlayerStore((s) => s.action);
   const character = usePlayerStore((s) => s.character);
+  const wardrobe = usePlayerStore((s) => s.wardrobe);
   const local = usePlayerStore((s) => s.local);
 
   // کلیدهای تعاملی: E تعامل، F چراغ ون، G گیتار، M مارشمالو، 1..5 ایموت
@@ -157,12 +169,40 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             state.pushToast('این مرحله هنوز قفل است!', 'warn');
             break;
           }
-          // اگر آیتم تعاملی نزدیک است، تعامل کن؛ وگرنه نشستن روی کنده
+          // اولویت: آیتم تعاملی → بازیکن نزدیک (تعامل هدفمند) → نشستن روی کنده
           if (state.nearInteractable?.action) {
             state.nearInteractable.action();
-          } else {
-            state.sitAuto();
+            break;
           }
+          let bestId = null;
+          let bestDist = TARGET_RANGE;
+          for (const [id, entry] of remoteMap) {
+            const d = Math.hypot(entry.current.x - x, entry.current.z - z);
+            if (d < bestDist) {
+              bestDist = d;
+              bestId = id;
+            }
+          }
+          if (bestId) {
+            const entry = remoteMap.get(bestId);
+            const emoteName = bestDist <= 1.6 ? 'hug' : 'wave';
+            state.startEmote(emoteName, EMOTE_DURATION);
+            if (entry) {
+              entry.emote = emoteName;
+              entry.emoteUntil = Date.now() + EMOTE_DURATION;
+            }
+            publishPlayerAction(roomId, user, 'emote', {
+              emote: emoteName,
+              duration: EMOTE_DURATION,
+              targetId: bestId,
+            });
+            if (emoteTimer.current) clearTimeout(emoteTimer.current);
+            emoteTimer.current = setTimeout(() => {
+              usePlayerStore.getState().endEmote();
+            }, EMOTE_DURATION);
+            break;
+          }
+          state.sitAuto();
           break;
         }
         case 'KeyF':
@@ -273,7 +313,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     // ---- حالت نشسته ----
     if (state.seated && state.seatIndex !== null) {
       const spot = SEAT_SPOTS[state.seatIndex];
-      const seatY = getWalkSurfaceY(spot.x, spot.z);
+      const seatY = getWalkSurfaceY(spot.x, spot.z) + (spot.restY || 0);
       group.position.set(spot.x, seatY, spot.z);
       group.rotation.y = spot.rotation;
       resetPlayerPhysics(spot.x, spot.z);
@@ -288,7 +328,8 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       smoothLook.current.lerp(lookTarget, 0.15);
       camera.lookAt(smoothLook.current);
 
-      setNearFire(true);
+      // فقط صندلی‌های دور آتش اجازه‌ی مارشمالو می‌دهند (نقاط استراحت نه)
+      setNearFire(!spot.key || Math.hypot(spot.x, spot.z) < SEAT_RADIUS + 1.6);
       setLocalTransform(spot.x, spot.z, spot.rotation, false);
       velocity.current.multiplyScalar(0.5);
       movingRef.current = false;
@@ -406,6 +447,16 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     const speed = Math.hypot(targetVelocity.x, targetVelocity.z);
     // ---- فیزیک زمین: گرانش، پرش، شنا، قدم‌صدا ----
     const phys = stepPlayerPhysics(nextX, nextZ, delta, wantsJump, speed);
+
+    // ---- squash/stretch: کشیده شدن در پرش و فشرده شدن در فرود ----
+    const physics = getPlayerPhysics();
+    if (!phys.grounded && physics.vy > 0) {
+      squashRef.current.s += (1.1 - squashRef.current.s) * Math.min(1, delta * 10);
+    } else if (phys.landed) {
+      squashRef.current.s = 0.74;
+    } else {
+      squashRef.current.s += (1 - squashRef.current.s) * Math.min(1, delta * 9);
+    }
     // شنا سرعت را کم می‌کند
     if (phys.swimming && speed > 0.01) {
       targetVelocity.x *= phys.speedFactor;
@@ -523,6 +574,15 @@ export default function PlayerController({ roomId, user, look, active = true }) 
 
       // نزدیک‌ترین آیتم تعاملی مأموریت (فاصله‌ی اقلیدسی)
       const near = findNearbyQuestItem(nextX, nextZ);
+      // اگر آیتم مأموریت نبود، نقطه‌ی استراحت نزدیک (هاموک/کیسه‌خواب/کنده/میز)
+      let restNear = null;
+      if (!near) {
+        const taken = new Set();
+        for (const entry of remoteMap.values()) {
+          if (entry.seat !== null && entry.seat !== undefined) taken.add(entry.seat);
+        }
+        restNear = findNearbyRestSpot(nextX, nextZ, taken);
+      }
       setNearInteractable(
         near
           ? {
@@ -531,7 +591,14 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             locked: Boolean(near.isLocked?.()),
             action: near.action,
           }
-          : null
+          : restNear
+            ? {
+              key: restNear.key,
+              label: restNear.label,
+              locked: false,
+              action: () => usePlayerStore.getState().setSeat(restNear.seatIndex, restNear.rest),
+            }
+            : null
       );
 
       // راهنمای مسیر: فاصله تا هدف مرحله‌ی فعال (گردشده تا re-render کمینه شود)
@@ -550,6 +617,10 @@ export default function PlayerController({ roomId, user, look, active = true }) 
         action={action}
         marshmallowStage={() => usePlayerStore.getState().marshmallow}
         seated={seated}
+        rest={rest}
+        squashRef={squashRef}
+        questProgress={() => totalQuestProgress(usePlayerStore.getState().quests)}
+        wardrobe={wardrobe}
         castShadow
       />
 
@@ -557,6 +628,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
         <ringGeometry args={[0.5, 0.62, 26]} />
         <meshBasicMaterial color="#8ad6c1" transparent opacity={0.5} depthWrite={false} />
       </mesh>
+      <ChatBubble id={user?.id != null ? String(user.id) : 'local'} />
     </group>
   );
 }

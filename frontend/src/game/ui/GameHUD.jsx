@@ -37,7 +37,7 @@ function Avatar({ username }) {
 /**
  * HUD اصلی بالا-راست: آواتار، نام، میکروفن، تعداد بازیکن، وضعیت اتصال.
  */
-export default function GameHUD({ user, roomId, micEnabled, toggleMic, connected, onOpenSettings, onOpenLog }) {
+export default function GameHUD({ user, roomId, micEnabled, toggleMic, connected, onOpenSettings, onOpenLog, onOpenWardrobe }) {
   const peerCount = usePlayerStore((s) => s.peerCount);
   const syncStatus = usePlayerStore((s) => s.syncStatus);
   const quests = usePlayerStore((s) => s.quests);
@@ -64,6 +64,15 @@ export default function GameHUD({ user, roomId, micEnabled, toggleMic, connected
             </span>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={onOpenWardrobe}
+          aria-label="کمد لباس"
+          title="کمد لباس"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#f5ebdd]/55 transition-colors hover:bg-white/10 hover:text-[#f5ebdd]"
+        >
+          <span aria-hidden="true" className="text-[13px]">👕</span>
+        </button>
         <button
           type="button"
           onClick={onOpenSettings}

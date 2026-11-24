@@ -44,7 +44,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
     let onConnectionReady = null;
 
     const selfPayload = () => {
-      const { local, character, marshmallow } = usePlayerStore.getState();
+      const { local, character, marshmallow, wardrobe } = usePlayerStore.getState();
       return {
         x: round2(local.x),
         z: round2(local.z),
@@ -56,6 +56,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
         userId: user.id,
         username: user.username,
         character,
+        wardrobe,
       };
     };
 
@@ -70,7 +71,8 @@ export function useGameSync({ roomId, user, enabled = true }) {
         last.seat === payload.seat &&
         last.emote === payload.emote &&
         last.action === payload.action &&
-        last.marshmallowStage === payload.marshmallowStage
+        last.marshmallowStage === payload.marshmallowStage &&
+        last.wardrobe === payload.wardrobe
       ) {
         return;
       }
@@ -136,10 +138,38 @@ export function useGameSync({ roomId, user, enabled = true }) {
             volume: 0.7,
           });
           break;
-        case 'emote':
+        case 'emote': {
           entry.emote = data.emote ?? null;
           entry.emoteUntil = duration ? now + duration : 0;
+          // تعامل هدفمند: اگر این ایموت به ما اشاره دارد، ما هم متقابل اجرا می‌کنیم
+          const targetedAtMe =
+            data.targetId != null && String(data.targetId) === String(user.id);
+          // بغل/بزن‌قدش دو نفره: اگر فرستنده در فاصله‌ی نزدیک ماست، ما هم اجرا می‌کنیم
+          if ((data.emote === 'hug' || data.emote === 'highfive') && data.emote) {
+            const { local } = usePlayerStore.getState();
+            const dist = Math.hypot(entry.current.x - local.x, entry.current.z - local.z);
+            if (dist <= 2.5) {
+              const store = usePlayerStore.getState();
+              store.startEmote(data.emote, duration || 3400);
+              setTimeout(() => {
+                if (usePlayerStore.getState().emote === data.emote) {
+                  usePlayerStore.getState().endEmote();
+                }
+              }, duration || 3400);
+            }
+          } else if (targetedAtMe && data.emote) {
+            // بزن‌قدش/دست‌تکون هدفمند: طرف مقابل هم پاسخ می‌دهد
+            const store = usePlayerStore.getState();
+            const reply = data.emote === 'wave' ? 'wave' : data.emote;
+            store.startEmote(reply, duration || 3400);
+            setTimeout(() => {
+              if (usePlayerStore.getState().emote === reply) {
+                usePlayerStore.getState().endEmote();
+              }
+            }, duration || 3400);
+          }
           break;
+        }
         default:
           break;
       }
@@ -161,6 +191,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
       if (member.data && 'marshmallowStage' in member.data) {
         payload.marshmallowStage = member.data.marshmallowStage;
       }
+      if (member.data && 'wardrobe' in member.data) payload.wardrobe = member.data.wardrobe;
       usePlayerStore.getState().upsertRemote(String(member.clientId), payload);
     };
 
@@ -206,12 +237,13 @@ export function useGameSync({ roomId, user, enabled = true }) {
       if (disposedRef.current || ready || isStale()) return;
       ready = true;
 
-      const { local, character } = usePlayerStore.getState();
+      const { local, character, wardrobe } = usePlayerStore.getState();
 
       channel.presence
         .enter({
           username: user.username,
           character,
+          wardrobe,
           x: round2(local.x),
           z: round2(local.z),
           rot: round2(local.rot),

@@ -30,3 +30,39 @@ export function resolveInteractableKey(object) {
 export function clearInteractables() {
   objects.clear();
 }
+
+// ---------------------------------------------------------------------------
+// نقاط استراحت (هاموک، کیسه‌خواب، کنده، میز پیک‌نیک) — از سیستم نشستن موجود
+// استفاده می‌کنند: seatIndex همان ایندکس در SEAT_SPOTS است.
+// ---------------------------------------------------------------------------
+const restSpots = new Map();
+
+export function registerRestSpot(spot) {
+  restSpots.set(spot.key, spot);
+  return () => {
+    if (restSpots.get(spot.key) === spot) restSpots.delete(spot.key);
+  };
+}
+
+export function getRestSpots() {
+  return Array.from(restSpots.values());
+}
+
+// نزدیک‌ترین نقطه‌ی استراحت آزاد (seatهای اشغال‌شده رد می‌شوند)
+export function findNearbyRestSpot(x, z, taken) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const spot of restSpots.values()) {
+    if (taken && taken.has(spot.seatIndex)) continue;
+    const dist = Math.hypot(spot.x - x, spot.z - z);
+    if (dist <= (spot.radius ?? 1.5) && dist < bestDist) {
+      bestDist = dist;
+      best = spot;
+    }
+  }
+  return best;
+}
+
+export function clearRestSpots() {
+  restSpots.clear();
+}

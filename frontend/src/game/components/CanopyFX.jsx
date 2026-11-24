@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useQualityPreset } from '../stores/useSettingsStore';
+import { usePlayerStore } from '../stores/usePlayerStore';
 import { envState } from '../envState';
 import { getGroundHeight } from '../terrain';
 
@@ -200,15 +201,19 @@ function FallingLeaves({ count }) {
 
 export default function CanopyFX() {
   const preset = useQualityPreset();
+  // کمپ شلوغ (۳+ نفر) چگالی ذرات تاج را ۵۰٪ بیشتر می‌کند
+  const crowded = usePlayerStore((s) => s.peerCount >= 3);
   const tier = preset.treeDensity > 700 ? 'high' : preset.treeDensity > 500 ? 'medium' : 'low';
 
   if (tier === 'low') return null;
 
+  const crowdMul = crowded ? 1.5 : 1;
+
   return (
     <group>
       <LightShafts count={SHAFT_COUNT[tier]} />
-      <Pollen count={POLLEN_COUNT[tier]} />
-      <FallingLeaves count={LEAF_COUNT[tier]} />
+      <Pollen count={Math.round(POLLEN_COUNT[tier] * crowdMul)} />
+      <FallingLeaves count={Math.round(LEAF_COUNT[tier] * crowdMul)} />
     </group>
   );
 }
