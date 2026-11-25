@@ -577,7 +577,7 @@ export default function Register({ onAuth }) {
         </main>
 
         <p className="hidden sm:block mt-6 md:mt-8 text-center text-xs md:text-sm text-surface-500">
-          © {currentYear} چت مدرن اختصاصی برای — BMS
+          © {currentYear} اختصاصی برای — BMS Chat
         </p>
       </div>
     </div>

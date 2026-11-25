@@ -187,7 +187,7 @@ export default function Login({ onAuth }) {
     setMessages([]);
     (async () => {
       await botSay('سلام! 👋');
-      await botSay('به چت مدرن خوش اومدی. برای ورود، نام کاربریت رو بنویس.');
+      await botSay('به چت BMS خوش اومدی. برای ورود، نام کاربریت رو بنویس.');
       if (alive) setLocked(false);
     })();
     return () => {
@@ -372,7 +372,7 @@ export default function Login({ onAuth }) {
           <header className="flex items-center gap-4 px-6 py-5 md:px-8 md:py-6 border-b border-white/5">
             <BotAvatar className="w-10 h-10 md:w-12 md:h-12" />
             <div className="min-w-0">
-              <h1 className="text-base md:text-lg font-bold text-surface-50 leading-tight">چت مدرن</h1>
+              <h1 className="text-base md:text-lg font-bold text-surface-50 leading-tight">ورود به حساب</h1>
               <p className="text-xs md:text-sm text-surface-400 flex items-center gap-1.5 mt-1" aria-live="polite">
                 <span
                   className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${typing ? 'bg-primary-400 animate-pulse' : connected ? 'bg-emerald-400' : 'bg-emerald-500'}`}
@@ -499,7 +499,7 @@ export default function Login({ onAuth }) {
         </main>
 
         <p className="hidden sm:block mt-6 md:mt-8 text-center text-xs md:text-sm text-surface-500">
-          © {currentYear} چت مدرن اختصاصی برای — BMS
+          © {currentYear} اختصاصی برای — BMS Chat
         </p>
       </div>
     </div>
