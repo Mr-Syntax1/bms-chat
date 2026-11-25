@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useTransition } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
@@ -33,8 +33,6 @@ export default function Chat({ chat, user, onLogout }) {
     openDM,
     deleteMessage,
     editMessage,
-    connectSocket,
-    disconnectSocket,
     connected,
     notifications,
     unreadCount,
@@ -44,6 +42,7 @@ export default function Chat({ chat, user, onLogout }) {
     setUnreadCount,
     setShowNotifications,
     markMessagesAsRead,
+    markSingleNotificationAsRead,
   } = chat;
 
   const [isPending, startTransition] = useTransition();
@@ -54,6 +53,8 @@ export default function Chat({ chat, user, onLogout }) {
   const [campsitesOpen, setCampsitesOpen] = useState(false);
 
   const closeSidebar = useCallback(() => setSidebar(null), []);
+
+  const location = useLocation();
 
   const rtc = useWebRTC({
     currentUser: user,
@@ -85,11 +86,6 @@ export default function Chat({ chat, user, onLogout }) {
       switchRoom(roomName);
     });
   }, [switchRoom, closeSidebar]);
-
-  useEffect(() => {
-    connectSocket();
-    return () => disconnectSocket();
-  }, [connectSocket, disconnectSocket]);
 
   const toggleSidebar = useCallback((panel = 'rooms') => {
     setSidebar((prev) => (prev === panel ? null : panel));
@@ -143,6 +139,16 @@ export default function Chat({ chat, user, onLogout }) {
     }
   }, [messages, currentRoom, user?.id, markMessagesAsRead]);
 
+  useEffect(() => {
+    if (location.state?.dmTarget) {
+      const { id, username } = location.state.dmTarget;
+      openDM(id, username);
+
+      // پاک کردن state از تاریخچه مرورگر تا با رفرش کردن صفحه دوباره اجرا نشود
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, openDM]);
+  
   const handleOpenNotifications = useCallback(() => {
     setShowNotifications((prev) => {
       const next = !prev;
@@ -364,6 +370,7 @@ export default function Chat({ chat, user, onLogout }) {
         <NotificationDropdown
           notifications={notifications}
           unreadCount={unreadCount}
+          onMarkAsRead={markSingleNotificationAsRead}
           showNotifications={showNotifications}
           onClose={() => setShowNotifications(false)}
           onOpenDM={handleOpenDM}

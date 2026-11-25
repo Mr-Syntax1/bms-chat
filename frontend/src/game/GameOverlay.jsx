@@ -7,7 +7,7 @@ import { useClaimCharacter } from './hooks/useClaimCharacter';
 import { useMicControl } from './hooks/useMicControl';
 import { useFishingSpots } from './hooks/useFishingSpots';
 import GameVoice from './components/GameVoice';
-import { preloadAllModels } from './preload';
+import { preloadAllModels, preloadGroup } from './preload';
 
 import GameHUD from './ui/GameHUD';
 import QuestLog from './ui/QuestLog';
@@ -20,6 +20,8 @@ import FacingDebug from './ui/FacingDebug';
 import EmoteWheel from './ui/EmoteWheel';
 import CharacterSelector from './ui/CharacterSelector';
 import Wardrobe from './ui/Wardrobe';
+import CookingUI from './ui/CookingUI';
+import FishingUI from './ui/FishingUI';
 import { useChatBubbles } from './hooks/useChatBubbles';
 import { loadWardrobe } from './models/wardrobeConfig';
 
@@ -28,6 +30,24 @@ const GameCanvas = lazy(() => import('./GameCanvas'));
 // ---------------------------------------------------------------------------
 // کنترل لمسی موبایل
 // ---------------------------------------------------------------------------
+function TouchArrow({ rotate = 0 }) {
+  return (
+    <svg
+      className="h-5 w-5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ transform: `rotate(${rotate}deg)` }}
+      aria-hidden="true"
+    >
+      <path d="M12 19V5M5 12l7-7 7 7" />
+    </svg>
+  );
+}
+
 function TouchPad() {
   const setVirtualInput = usePlayerStore((s) => s.setVirtualInput);
 
@@ -42,22 +62,22 @@ function TouchPad() {
   });
 
   const buttonClass =
-    'flex h-14 w-14 select-none touch-none items-center justify-center rounded-2xl border border-white/15 bg-[#171426]/75 text-lg font-bold text-[#f5ebdd] backdrop-blur-md active:bg-[#ff9a4d]/35';
+    'flex h-14 w-14 cursor-pointer select-none touch-none items-center justify-center rounded-2xl border border-white/15 bg-[#171426]/75 text-[#f5ebdd] backdrop-blur-md active:bg-[#ff9a4d]/35';
 
   return (
     <div className="pointer-events-auto absolute bottom-6 left-4 z-20 flex flex-col items-center gap-2 lg:hidden">
       <button type="button" className={buttonClass} {...bind('forward')} aria-label="جلو">
-        ▲
+        <TouchArrow />
       </button>
       <div className="flex gap-2">
         <button type="button" className={buttonClass} {...bind('left')} aria-label="چپ">
-          ◀
+          <TouchArrow rotate={-90} />
         </button>
         <button type="button" className={buttonClass} {...bind('backward')} aria-label="عقب">
-          ▼
+          <TouchArrow rotate={180} />
         </button>
         <button type="button" className={buttonClass} {...bind('right')} aria-label="راست">
-          ▶
+          <TouchArrow rotate={90} />
         </button>
       </div>
     </div>
@@ -78,11 +98,12 @@ function ControlsHint() {
   if (faded) return null;
 
   return (
-    <div className="pointer-events-none absolute bottom-4 left-4 z-30 hidden max-w-[230px] rounded-xl border border-white/8 bg-[#171426]/70 px-3 py-2 text-[10.5px] leading-relaxed text-[#f5ebdd]/55 backdrop-blur-md lg:block">
+    <div className="pointer-events-none absolute bottom-4 left-4 z-30 hidden max-w-[250px] rounded-xl border border-white/8 bg-[#171426]/70 px-3 py-2 text-[10.5px] leading-relaxed text-[#f5ebdd]/55 backdrop-blur-md lg:block">
       <div>WASD حرکت • Shift دویدن</div>
       <div>موس: چرخش دوربین • ESC توقف</div>
-      <div>E تعامل/نشستن • G گیتار • M مارشمالو</div>
-      <div>1-5 ایموت • F چراغ ون</div>
+      <div>E تعامل/نشستن • Q ایموت</div>
+      <div>G گیتار • M مارشمالو • F چراغ ون</div>
+      <div>L دفترچه • C کمد • 1-5 ایموت سریع</div>
     </div>
   );
 }
@@ -148,6 +169,8 @@ export default function GameOverlay({ roomId, user, onClose }) {
   const voiceTokenReady = usePlayerStore((s) => s.voiceTokenReady);
   const setSelfId = usePlayerStore((s) => s.setSelfId);
   const setWardrobe = usePlayerStore((s) => s.setWardrobe);
+  const cookingStation = usePlayerStore((s) => s.cookingStation);
+  const fishingActive = usePlayerStore((s) => s.fishingState.spotIndex >= 0);
 
   const [entered, setEntered] = useState(false);
   // انتخابگر کاراکتر همیشه پیش از ورود نمایش داده می‌شود؛ انتخاب قبلی پیش‌فرض است.
@@ -171,6 +194,12 @@ export default function GameOverlay({ roomId, user, onClose }) {
     if (preloadStarted.current) return;
     preloadStarted.current = true;
     preloadAllModels();
+    // مدل‌های پخت/غذا بعد از ورود (idle) warm می‌شوند
+    const id = setTimeout(() => {
+      preloadGroup('cooking');
+      preloadGroup('food');
+    }, 1200);
+    return () => clearTimeout(id);
   }, []);
 
   // شناسه‌ی کاربر برای تطبیق activeSpeakers با بازیکن محلی
@@ -210,6 +239,11 @@ export default function GameOverlay({ roomId, user, onClose }) {
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.code !== 'Escape') return;
+      if (cookingStation) {
+        usePlayerStore.getState().closeCooking();
+        return;
+      }
+      if (fishingActive) return;
       if (logOpen) return;
       if (settingsOpen) return;
       if (document.pointerLockElement === document.body) {
@@ -220,7 +254,31 @@ export default function GameOverlay({ roomId, user, onClose }) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose, logOpen, settingsOpen]);
+  }, [onClose, logOpen, settingsOpen, cookingStation, fishingActive]);
+
+  // باز شدن ایستگاه پخت: قفل موس آزاد تا دکمه‌ها قابل کلیک باشند
+  const prevCooking = useRef(null);
+  useEffect(() => {
+    if (cookingStation) {
+      look.unlock();
+    } else if (prevCooking.current && entered) {
+      look.lock();
+    }
+    prevCooking.current = cookingStation;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cookingStation]);
+
+  // ماهیگیری فعال: قفل موس آزاد تا کارت نتیجه/دکمه‌ها کلیک‌پذیر باشند
+  const prevFishing = useRef(false);
+  useEffect(() => {
+    if (fishingActive) {
+      look.unlock();
+    } else if (prevFishing.current && entered) {
+      look.lock();
+    }
+    prevFishing.current = fishingActive;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fishingActive]);
 
   // کلید L برای دفترچه
   useEffect(() => {
@@ -242,13 +300,14 @@ export default function GameOverlay({ roomId, user, onClose }) {
       document.body.style.overflow = previousOverflow;
       setVirtualInput({ forward: false, backward: false, left: false, right: false, run: false });
       usePlayerStore.getState().setSeat(null);
+      usePlayerStore.getState().closeCooking();
       teleport(SPAWN.x, SPAWN.z);
       setSelfId(null);
     };
   }, [setVirtualInput, teleport, setSelfId]);
 
   const locked = look.locked;
-  const paused = entered && !locked && !logOpen && !settingsOpen && !wardrobeOpen;
+  const paused = entered && !locked && !logOpen && !settingsOpen && !wardrobeOpen && !cookingStation && !fishingActive;
   const loading = !entered;
 
   // وضعیت‌های واقعی برای صفحه‌ی لودینگ.
@@ -379,6 +438,10 @@ export default function GameOverlay({ roomId, user, onClose }) {
       )}
 
       <QuestLog open={logOpen} onClose={() => setLogOpen(false)} />
+      {entered && cookingStation && (
+        <CookingUI key={cookingStation} stationId={cookingStation} roomId={roomId} user={user} />
+      )}
+      {entered && <FishingUI roomId={roomId} user={user} />}
       <Wardrobe
         open={wardrobeOpen}
         userId={user?.id}

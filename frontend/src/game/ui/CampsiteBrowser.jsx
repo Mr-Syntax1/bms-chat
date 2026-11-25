@@ -38,7 +38,7 @@ export default function CampsiteBrowser({ open, onClose, onJoin, currentRoomId }
         type="button"
         aria-label="بستن"
         onClick={onClose}
-        className="fixed inset-0 z-[102] cursor-default bg-black/50 backdrop-blur-[2px] cozy-fade-in"
+        className="fixed inset-0 cursor-pointer z-[102] cursor-default bg-black/50 backdrop-blur-[2px] cozy-fade-in"
       />
 
       <div className="fixed left-1/2 top-1/2 z-[103] w-[340px] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#171426]/96 p-4 backdrop-blur-xl cozy-pop-in">
@@ -48,7 +48,7 @@ export default function CampsiteBrowser({ open, onClose, onJoin, currentRoomId }
             <button
               type="button"
               onClick={load}
-              className="rounded-lg border border-white/12 px-2 py-1 text-[10px] text-[#f5ebdd]/70 hover:bg-white/10 hover:text-[#f5ebdd]"
+              className="rounded-lg cursor-pointer border border-white/12 px-2 py-1 text-[10px] text-[#f5ebdd]/70 hover:bg-white/10 hover:text-[#f5ebdd]"
             >
               بازخوانی
             </button>
@@ -90,7 +90,7 @@ export default function CampsiteBrowser({ open, onClose, onJoin, currentRoomId }
                     type="button"
                     disabled={full}
                     onClick={() => onJoin?.(camp.roomId)}
-                    className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-right transition-colors ${
+                    className={`flex w-full items-center justify-between gap-2 cursor-pointer rounded-xl border px-3 py-2.5 text-right transition-colors ${
                       isCurrent
                         ? 'border-[#ffc66d]/50 bg-[#ff9a4d]/14'
                         : full

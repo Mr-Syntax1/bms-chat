@@ -8,18 +8,19 @@ import {
   savePreferredCharacter,
 } from '../models/wardrobeConfig';
 import { PrimaryButton } from './primitives';
+import { GameIcon } from './icons';
 
 // آیکون هر کاراکتر برای کارت انتخاب
 const CHARACTER_ICONS = {
-  'Cactoro.glb': '🌵',
-  'Citizen.glb': '🧑',
-  'CoolBannanaGuy.glb': '🍌',
-  'CubeGuyCharacter.glb': '🧊',
-  'CuteCharacter.glb': '🐣',
-  'CuteRedDino.glb': '🦖',
-  'DORAEMON.glb': '🐱',
-  'miku.glb': '🎤',
-  'MushroomCharacter.glb': '🍄',
+  'Cactoro.glb': 'cactus',
+  'Citizen.glb': 'person',
+  'CoolBannanaGuy.glb': 'banana',
+  'CubeGuyCharacter.glb': 'cube',
+  'CuteCharacter.glb': 'chick',
+  'CuteRedDino.glb': 'dino',
+  'DORAEMON.glb': 'cat',
+  'miku.glb': 'mic',
+  'MushroomCharacter.glb': 'mushroom',
 };
 
 const FILES = Object.keys(CHARACTERS);
@@ -93,13 +94,13 @@ export default function CharacterSelector({ open = true, onConfirm }) {
                   key={file}
                   type="button"
                   onClick={() => setSelected(file)}
-                  className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-3 transition-all ${
+                  className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-1 py-3 transition-all ${
                     active
                       ? 'border-[#ffc66d]/70 bg-[#ff9a4d]/18 text-[#fff4e4] shadow-[0_0_16px_rgba(255,154,77,0.35)]'
                       : 'border-white/10 bg-white/[0.03] text-[#f5ebdd]/70 hover:bg-white/[0.08]'
                   }`}
                 >
-                  <span className="text-xl leading-none">{CHARACTER_ICONS[file] || '🙂'}</span>
+                  <GameIcon name={CHARACTER_ICONS[file] || 'person'} className="h-6 w-6" strokeWidth={1.6} />
                   <span className="text-[10px] font-bold">{CHARACTER_LABELS[file] || file}</span>
                 </button>
               );

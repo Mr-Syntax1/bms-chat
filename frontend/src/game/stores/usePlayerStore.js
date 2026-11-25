@@ -156,6 +156,14 @@ export const usePlayerStore = create((set, get) => ({
   // مأموریت‌ها و اینونتوری
   quests: { ...initialQuests },
   collected: { parchments: [], lanterns: [], shells: [] },
+  // اینونتوری پخت: شمارش مواد اولیه + غذاهای پخته‌شده (Phase 3a)
+  ingredients: { raw_meat: 3, egg: 3, potato: 2, carrot: 2, corn: 2, flour: 2, milk: 2, mushroom: 2 },
+  foods: [],
+  // ایستگاه پخت باز — null = بسته
+  cookingStation: null,
+  // اینونتوری ماهی صیدشده + وضعیت گسسته‌ی ماهیگیری (Phase 3b)
+  fishCaught: [],
+  fishingState: { isCasting: false, isWaiting: false, isReeling: false, spotIndex: -1 },
   toasts: [],
   nearInteractable: null, // { key, label }
   // لاگ کوچک چت گوشه‌ی صفحه (آخرین ۳ پیام)
@@ -308,6 +316,59 @@ export const usePlayerStore = create((set, get) => ({
   },
 
   // -------------------------------------------------------------------------
+  // پخت (Phase 3a)
+  // -------------------------------------------------------------------------
+  openCooking: (stationId) => set({ cookingStation: stationId }),
+  closeCooking: () => set({ cookingStation: null }),
+
+  addIngredient: (id, count = 1) => {
+    if (!id) return;
+    set((s) => ({ ingredients: { ...s.ingredients, [id]: (s.ingredients[id] || 0) + count } }));
+  },
+
+  // برداشتن مواد برای پخت؛ اگر یکی کم بود هیچ‌کدام کم نمی‌شود
+  consumeIngredients: (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return false;
+    const state = get();
+    const counts = {};
+    for (const id of ids) counts[id] = (counts[id] || 0) + 1;
+    for (const [id, need] of Object.entries(counts)) {
+      if ((state.ingredients[id] || 0) < need) return false;
+    }
+    const next = { ...state.ingredients };
+    for (const [id, need] of Object.entries(counts)) next[id] -= need;
+    set({ ingredients: next });
+    return true;
+  },
+
+  addFood: (dish) => {
+    if (!dish?.id) return;
+    set((s) => ({ foods: [...s.foods.slice(-29), dish] }));
+  },
+
+  eatFood: (uid) => {
+    const { foods } = get();
+    const dish = foods.find((f) => f.uid === uid);
+    if (!dish) return null;
+    set({ foods: foods.filter((f) => f.uid !== uid) });
+    if (dish.hunger > 0) get().pushToast(`${dish.name} خورده شد (+${dish.hunger} سیری)`, 'success');
+    else get().pushToast(`${dish.name} خوردنی نبود…`, 'warn');
+    return dish;
+  },
+
+  // -------------------------------------------------------------------------
+  // ماهیگیری (Phase 3b)
+  // -------------------------------------------------------------------------
+  setFishingState: (patch) => set((s) => ({ fishingState: { ...s.fishingState, ...patch } })),
+
+  addFish: (fish) => {
+    if (!fish?.id) return;
+    set((s) => ({ fishCaught: [...s.fishCaught.slice(-39), fish] }));
+    const label = fish.junk ? fish.name : `${fish.name} (${fish.weight} کیلو)`;
+    get().pushToast(`صید شد: ${label}`, fish.junk ? 'warn' : 'success');
+  },
+
+  // -------------------------------------------------------------------------
   // مأموریت‌ها
   // -------------------------------------------------------------------------
   addParchment: (index) => {
@@ -370,7 +431,7 @@ export const usePlayerStore = create((set, get) => ({
       return false;
     }
     set({ quests: { ...quests, chestOpened: true } });
-    get().pushToast('گنج دزدان دریایی پیدا شد! کاپیتان پامپکین خوشحال است 🎃', 'success');
+    get().pushToast('گنج دزدان دریایی پیدا شد! کاپیتان پامپکین خوشحال است', 'success');
     return true;
   },
   collectShell: (index) => {

@@ -9,6 +9,7 @@ import {
   PostLanternModel,
   WoodenSignModel,
 } from '../models/props';
+import { GameIcon } from '../ui/icons';
 
 // نشانگر تعامل: دایره + متن بالای شیء (قفل‌دار یا فعال)
 function InteractHint({ label, locked = false, y = 2.2 }) {
@@ -21,8 +22,9 @@ function InteractHint({ label, locked = false, y = 2.2 }) {
             : 'border-primary-300 bg-primary-500/40'
             }`}
         />
-        <div className="px-2 py-0.5 rounded-full bg-surface-950/85 border border-white/20 text-[10px] text-surface-50 whitespace-nowrap">
-          {locked ? `🔒 ${label}` : `${label} — E`}
+        <div className="px-2 py-0.5 rounded-full bg-surface-950/85 border border-white/20 text-[10px] text-surface-50 whitespace-nowrap flex items-center gap-1">
+          {locked && <GameIcon name="lock" className="h-3 w-3" />}
+          {locked ? label : `${label} — E`}
         </div>
       </div>
     </Html>

@@ -5,28 +5,28 @@ import { QUEST_SPOTS } from './sceneLayout';
 export const QUEST_STEPS = [
   {
     key: 'parchments',
-    icon: '🗺️',
+    icon: 'map',
     title: 'تکه‌های نقشه',
     desc: 'سه تکه نقشه را در جنگل پیدا کن.',
     max: 3,
   },
   {
     key: 'lanterns',
-    icon: '🏮',
+    icon: 'lantern',
     title: 'روشن کردن فانوس‌ها',
     desc: 'مسیر ساحل را با فانوس‌ها روشن کن.',
     max: 5,
   },
   {
     key: 'key',
-    icon: '🎣',
+    icon: 'rod',
     title: 'ماهیگیری کلید',
     desc: 'از انتهای اسکله کلید زنگ‌زده را صید کن.',
     max: 1,
   },
   {
     key: 'chest',
-    icon: '🗝️',
+    icon: 'key',
     title: 'صندوقچه‌ی گنج',
     desc: 'صندوقچه‌ی کنار فانوس دریایی را باز کن.',
     max: 1,
@@ -117,7 +117,7 @@ export function getQuestTarget(quests, collected) {
 export function describeQuestStep(active) {
   if (!active) return '';
   const { step, value, max, done } = active;
-  if (done) return 'گنج پیدا شد! داستان کامل شد 🎉';
-  if (max === 1) return `${step.icon} ${step.desc}`;
-  return `${step.icon} ${step.title}: ${value}/${max}`;
+  if (done) return 'گنج پیدا شد! داستان کامل شد';
+  if (max === 1) return step.desc;
+  return `${step.title}: ${value}/${max}`;
 }

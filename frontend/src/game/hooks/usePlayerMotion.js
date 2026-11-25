@@ -7,8 +7,8 @@
 // مسئولیت‌ها:
 //   • ارتفاع زمین و گرانش/پرش
 //   • شنا وقتی عمق آب کافی است (شناوری، سرعت کمتر، بدون پرش)
-//   • قدم‌صدا با نوع سطح (چمن/شن/چوب/سنگ)
-//   • پاشش ورود به آب و ذرات ساده
+//   • پاشش ورود به آب
+// (صدای قدم برداشته شد — سکوت ترجیح داده می‌شود.)
 // ---------------------------------------------------------------------------
 
 import {
@@ -28,7 +28,6 @@ const JUMP_SPEED = 7.2;
 const STEP_HEIGHT = 0.55; // پله‌ای که بازیکن بدون پرش بالا می‌رود
 const SWIM_SPEED_FACTOR = 0.62;
 const SWIM_DEPTH_THRESHOLD = 1.15;
-const FOOTSTEP_DISTANCE = 1.75;
 const LAND_MIN_SPEED = 4.5;
 
 // پنجره‌ی کویوت: بعد از ترک لبه‌ی زمین، تا این مدت هنوز می‌توان پرید
@@ -40,14 +39,7 @@ const JUMP_CUT = 0.45;
 // شیب بیش از این حد = سُر خوردن (بالا رفتن سخت، سرازیری شتاب)
 const SLIDE_SLOPE = 0.62;
 
-// صداهای سطح — از مانیفست؛ اگر نبود audio.js synth می‌سازد
-export const SURFACE_SOUNDS = {
-  grass: soundUrl('player.footstepsGrass'),
-  sand: soundUrl('player.footstepsSand'),
-  wood: soundUrl('player.footstepsWood'),
-  stone: soundUrl('player.footstepsStone'),
-  water: soundUrl('player.waterEnter'),
-};
+// صداهای بازیکن — از مانیفست؛ اگر نبود audio.js synth می‌سازد
 const JUMP_SOUND = soundUrl('player.jump');
 const LAND_SOUND = soundUrl('player.landSoft');
 const SPLASH_SOUND = soundUrl('player.splashSmall');
@@ -96,7 +88,6 @@ const physics = {
   swimming: false,
   jumpHeld: false,
   surface: 'grass',
-  stepAccum: 0,
   lastX: 0,
   lastZ: 0,
   coyote: 0,
@@ -115,7 +106,6 @@ export function resetPlayerPhysics(x, z) {
   physics.grounded = true;
   physics.swimming = false;
   physics.jumpHeld = false;
-  physics.stepAccum = 0;
   physics.lastX = x;
   physics.lastZ = z;
   physics.coyote = 0;
@@ -129,7 +119,7 @@ export function resetPlayerPhysics(x, z) {
  * یک گام فیزیک.
  * @returns {{ y: number, swimming: boolean, speedFactor: number, landed: boolean }}
  */
-export function stepPlayerPhysics(x, z, delta, wantsJump, speed) {
+export function stepPlayerPhysics(x, z, delta, wantsJump) {
   if (!physics.initialized) resetPlayerPhysics(x, z);
 
   // تشخیص لبه‌ی کلید: نگه‌داشتن Space نباید باعث پرش پشت‌سرهم شود
@@ -218,23 +208,6 @@ export function stepPlayerPhysics(x, z, delta, wantsJump, speed) {
     physics.vy = 0;
   }
 
-  // قدم‌صدا بر اساس مسافت طی‌شده، نه زمان
-  if (physics.grounded && !swimming && speed > 0.6) {
-    physics.stepAccum += Math.hypot(x - physics.lastX, z - physics.lastZ);
-    if (physics.stepAccum >= FOOTSTEP_DISTANCE) {
-      physics.stepAccum = 0;
-      const surface = surfaceAt(x, z);
-      physics.surface = surface;
-      const url = SURFACE_SOUNDS[surface];
-      playPositionalOneShot(url, [x, physics.y + 0.1, z], {
-        volume: 0.32,
-        synth: `footstep_${surface}`,
-      });
-    }
-  } else if (swimming) {
-    physics.stepAccum = 0;
-  }
-
   physics.lastX = x;
   physics.lastZ = z;
 
@@ -252,5 +225,4 @@ export const MOTION_CONSTANTS = {
   JUMP_SPEED,
   SWIM_DEPTH_THRESHOLD,
   SWIM_SPEED_FACTOR,
-  FOOTSTEP_DISTANCE,
 };

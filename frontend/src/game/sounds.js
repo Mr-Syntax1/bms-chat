@@ -29,10 +29,14 @@ export const GUITAR_SOUND = GUITAR_SOUNDS[0];
 export const FISH_CAST_SOUND = soundUrl('fishing.cast');
 export const FISH_REEL_SOUND = soundUrl('fishing.reel');
 export const FISH_CATCH_SOUND = soundUrl('fishing.catch');
+export const FISH_BITE_SOUND = soundUrl('fishing.bite');
 
 // پخت
 export const FRY_LOOP_SOUND = soundUrl('cooking.fryLoop');
 export const POT_BUBBLE_SOUND = soundUrl('cooking.potBubble');
+export const FLIP_SOUND = soundUrl('cooking.flip');
+export const COOK_DONE_SOUND = soundUrl('cooking.done');
+export const BURN_SOUND = soundUrl('cooking.burn');
 
 // رابط کاربری و فعالیت
 export const UI_CLICK_SOUND = soundUrl('ui.click');

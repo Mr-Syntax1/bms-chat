@@ -28,21 +28,21 @@ export const DEFAULT_WARDROBE = {
 };
 
 export const HAT_ITEMS = [
-  { id: 'none', label: 'بدون کلاه', icon: '🚫' },
-  { id: 'party', label: 'کلاه جشن', icon: '🎉' },
-  { id: 'wizard', label: 'کلاه جادوگر', icon: '🧙', unlock: { key: 'parchments', count: 3 }, hint: 'هر ۳ تکه نقشه' },
-  { id: 'chef', label: 'کلاه آشپز', icon: '👨‍🍳' },
-  { id: 'beanie', label: 'کلاه بافت', icon: '🧢' },
-  { id: 'straw', label: 'کلاه حصیری', icon: '👒' },
-  { id: 'baseball', label: 'کلاه نقاب‌دار', icon: '⚾' },
-  { id: 'flowerCrown', label: 'تاج گل', icon: '🌸', unlock: { key: 'chestOpened' }, hint: 'باز کردن صندوقچه' },
-  { id: 'catEars', label: 'گوش گربه', icon: '🐱', unlock: { key: 'shells', count: 5 }, hint: '۵ صدف یا ستاره' },
+  { id: 'none', label: 'بدون کلاه', icon: 'ban' },
+  { id: 'party', label: 'کلاه جشن', icon: 'party' },
+  { id: 'wizard', label: 'کلاه جادوگر', icon: 'crown', unlock: { key: 'parchments', count: 3 }, hint: 'هر ۳ تکه نقشه' },
+  { id: 'chef', label: 'کلاه آشپز', icon: 'hat' },
+  { id: 'beanie', label: 'کلاه بافت', icon: 'hat' },
+  { id: 'straw', label: 'کلاه حصیری', icon: 'hat' },
+  { id: 'baseball', label: 'کلاه نقاب‌دار', icon: 'hat' },
+  { id: 'flowerCrown', label: 'تاج گل', icon: 'crown', unlock: { key: 'chestOpened' }, hint: 'باز کردن صندوقچه' },
+  { id: 'catEars', label: 'گوش گربه', icon: 'cat', unlock: { key: 'shells', count: 5 }, hint: '۵ صدف یا ستاره' },
 ];
 
 export const FACE_ITEMS = [
-  { id: 'none', label: 'بدون عینک', icon: '🚫' },
-  { id: 'round', label: 'عینک گرد', icon: '🤓' },
-  { id: 'sun', label: 'عینک آفتابی', icon: '😎', unlock: { key: 'lanterns', count: 5 }, hint: '۵ فانوس روشن' },
+  { id: 'none', label: 'بدون عینک', icon: 'ban' },
+  { id: 'round', label: 'عینک گرد', icon: 'glassesRound' },
+  { id: 'sun', label: 'عینک آفتابی', icon: 'sunglasses', unlock: { key: 'lanterns', count: 5 }, hint: '۵ فانوس روشن' },
 ];
 
 export const SHIRT_COLORS = ['#8ab4f8', '#f28b82', '#fdd663', '#81c995', '#c58af9', '#78d9ec'];
@@ -53,9 +53,9 @@ export const SHIRT_PATTERNS = [
 ];
 
 export const ACCESSORY_ITEMS = [
-  { id: 'none', label: 'بدون اکسسوری', icon: '🚫' },
-  { id: 'backpack', label: 'کوله‌پشتی', icon: '🎒' },
-  { id: 'scarf', label: 'شال گردن', icon: '🧣', unlock: { key: 'hasKey' }, hint: 'پیدا کردن کلید' },
+  { id: 'none', label: 'بدون اکسسوری', icon: 'ban' },
+  { id: 'backpack', label: 'کوله‌پشتی', icon: 'backpack' },
+  { id: 'scarf', label: 'شال گردن', icon: 'scarf', unlock: { key: 'hasKey' }, hint: 'پیدا کردن کلید' },
 ];
 
 export function isUnlocked(item, quests) {

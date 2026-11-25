@@ -182,4 +182,7 @@ export const CLIP_SUFFIX = {
   sleep: 'Death',
   guitar: 'Weapon',
   marshmallow: 'Punch',
+  'cooking-stir': 'Weapon',
+  'cooking-flip': 'Punch',
+  'fishing-hold': 'Weapon',
 };

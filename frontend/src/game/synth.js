@@ -324,17 +324,8 @@ export function makeMusicEveningBuffer(context) {
 }
 
 // ---------------------------------------------------------------------------
-// بازیکن (قدم‌صدا/پرش/فرود/آب)
+// بازیکن (پرش/فرود/آب)
 // ---------------------------------------------------------------------------
-export const makeFootstepGrass = (context) =>
-  filteredNoiseHit(context, 0.18, { lp: 0.62, hp: 0.2, decay: 0.05, gain: 0.35, seed: 11 });
-export const makeFootstepSand = (context) =>
-  filteredNoiseHit(context, 0.22, { lp: 0.45, hp: 0.45, decay: 0.08, gain: 0.32, seed: 12 });
-export const makeFootstepWood = (context) =>
-  filteredNoiseHit(context, 0.16, { lp: 0.3, hp: 0.5, decay: 0.04, gain: 0.4, seed: 13 });
-export const makeFootstepStone = (context) =>
-  filteredNoiseHit(context, 0.14, { lp: 0.25, hp: 0.6, decay: 0.03, gain: 0.38, seed: 14 });
-
 export const makeJumpBuffer = (context) =>
   toneBuffer(context, 0.24, [{ freq: 320, start: 0, dur: 0.2, gain: 0.16 }], { vibrato: 20 });
 
@@ -464,10 +455,6 @@ export const PROCEDURAL_FACTORIES = {
   rain: makeRainBuffer,
 
   // بازیکن
-  footstep_grass: makeFootstepGrass,
-  footstep_sand: makeFootstepSand,
-  footstep_wood: makeFootstepWood,
-  footstep_stone: makeFootstepStone,
   jump: makeJumpBuffer,
   land_soft: makeLandSoftBuffer,
   splash_small: makeSplashSmallBuffer,

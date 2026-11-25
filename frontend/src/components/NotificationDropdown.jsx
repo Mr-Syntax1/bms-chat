@@ -9,6 +9,7 @@ export default function NotificationDropdown({
   onOpenDM,
   onSwitchRoom,
   clearBadge,
+  onMarkAsRead
 }) {
   // استیت برای کنترل انیمیشن (با تاخیر مقداردهی اولیه می‌شود)
   const [isVisible, setIsVisible] = useState(false);
@@ -30,8 +31,8 @@ export default function NotificationDropdown({
     bg-surface-900 border border-white/10 rounded-2xl shadow-2xl z-50 
     overflow-hidden origin-top-left
     transition-all duration-200 ease-out
-    ${showNotifications && isVisible 
-      ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' 
+    ${showNotifications && isVisible
+      ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
       : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
     }
   `;
@@ -60,14 +61,20 @@ export default function NotificationDropdown({
 
   const groupLabels = { today: 'امروز', yesterday: 'دیروز', other: 'سایر' };
 
-  const handleNotifClick = (notif) => {
-    if (notif.isRead) return;
-    if (notif.roomName.startsWith('dm_')) {
-      onOpenDM?.(notif.senderId, notif.senderName);
+  const handleNotifClick = async (notif) => {
+    // ۱. ابتدا کاربر را به اتاق مربوطه هد کن (حتی اگر قبلاً خوانده شده باشد)
+    if (notif.roomName?.startsWith('dm_')) {
+      await onOpenDM?.(notif.senderId, notif.senderName);
     } else {
-      onSwitchRoom?.(notif.roomName);
+      await onSwitchRoom?.(notif.roomName);
     }
-    clearBadge?.();
+
+    // ۲. اگر نوتیفیکیشن خوانده نشده بود، آن را خوانده شده علامت بزن
+    if (!notif.isRead) {
+      onMarkAsRead?.(notif.id, notif.roomName);
+    }
+
+    // ۳. منوی نوتیفیکیشن را ببند
     onClose?.();
   };
 

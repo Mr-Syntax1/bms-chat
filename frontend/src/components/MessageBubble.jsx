@@ -278,7 +278,7 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
           {showHeader && (
             <button
               onClick={() => navigate(`/profile/${msg.sender}`)}
-              className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-full"
+              className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
               title={`مشاهده پروفایل ${msg.sender}`}
             >
               <Avatar username={msg.sender} avatarIndex={msg.avatarIndex} color={msg.avatarColor} size="sm" />

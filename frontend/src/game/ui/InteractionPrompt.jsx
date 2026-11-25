@@ -1,4 +1,5 @@
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { GameIcon } from './icons';
 
 /**
  * راهنمای تعامل پایین-مرکز: حلقه‌ی درخشان + کلید E.
@@ -59,7 +60,10 @@ export default function InteractionPrompt() {
             {key}
           </kbd>
         ) : (
-          <span className="text-[10px] font-bold">🔒 قفل</span>
+          <span className="flex items-center gap-1 text-[10px] font-bold">
+            <GameIcon name="lock" className="h-3 w-3" />
+            قفل
+          </span>
         )}
       </div>
     </div>

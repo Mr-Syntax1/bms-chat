@@ -270,10 +270,6 @@ export const SOUNDS = {
 
   // ---- بازیکن ----
   player: {
-    footstepsGrass: s(null, { synth: 'footstep_grass', note: 'فایل قدم‌صدا موجود نیست' }),
-    footstepsSand: s(null, { synth: 'footstep_sand', note: 'فایل قدم‌صدا موجود نیست' }),
-    footstepsWood: s(null, { synth: 'footstep_wood', note: 'فایل قدم‌صدا موجود نیست' }),
-    footstepsStone: s(null, { synth: 'footstep_stone', note: 'فایل قدم‌صدا موجود نیست' }),
     jump: s(null, { synth: 'jump', note: 'فایل پرش موجود نیست' }),
     landSoft: s(null, { synth: 'land_soft', note: 'فایل فرود موجود نیست' }),
     splashSmall: s(null, { synth: 'splash_small', note: 'فایل پاشش موجود نیست' }),

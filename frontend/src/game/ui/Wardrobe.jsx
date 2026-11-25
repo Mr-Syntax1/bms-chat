@@ -14,12 +14,13 @@ import {
   saveWardrobe,
 } from '../models/wardrobeConfig';
 import { CharacterPreview } from './CharacterSelector';
+import { GameIcon } from './icons';
 
 const TABS = [
-  { id: 'hat', label: 'کلاه', icon: '🎩' },
-  { id: 'face', label: 'صورت', icon: '🕶️' },
-  { id: 'shirt', label: 'پیراهن', icon: '👕' },
-  { id: 'accessory', label: 'اکسسوری', icon: '🎒' },
+  { id: 'hat', label: 'کلاه', icon: 'hat' },
+  { id: 'face', label: 'صورت', icon: 'glasses' },
+  { id: 'shirt', label: 'پیراهن', icon: 'shirt' },
+  { id: 'accessory', label: 'اکسسوری', icon: 'backpack' },
 ];
 
 function ItemCard({ item, active, locked, onClick }) {
@@ -29,20 +30,23 @@ function ItemCard({ item, active, locked, onClick }) {
       onClick={onClick}
       disabled={locked}
       title={locked ? `قفل — ${item.hint || 'با پیشرفت مأموریت باز می‌شود'}` : item.label}
-      className={`relative flex flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2.5 text-center transition-all ${
+      className={`relative flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-2.5 text-center transition-all disabled:cursor-not-allowed ${
         active
           ? 'border-[#ffc66d]/70 bg-[#ff9a4d]/20 text-[#fff4e4]'
           : locked
-            ? 'cursor-not-allowed border-white/8 bg-black/30 text-[#f5ebdd]/30'
+            ? 'border-white/8 bg-black/30 text-[#f5ebdd]/30'
             : 'border-white/10 bg-white/[0.03] text-[#f5ebdd]/75 hover:bg-white/[0.08]'
       }`}
     >
-      <span className={`text-lg leading-none ${locked ? 'opacity-40 grayscale' : ''}`} aria-hidden="true">
-        {item.icon}
+      <span className={`${locked ? 'opacity-40' : ''}`} aria-hidden="true">
+        <GameIcon name={item.icon} className="h-5 w-5" strokeWidth={1.7} />
       </span>
       <span className="text-[9.5px] font-semibold leading-tight">{item.label}</span>
       {locked && (
-        <span className="mt-0.5 text-[8px] leading-tight text-[#f5ebdd]/40">🔒 {item.hint}</span>
+        <span className="mt-0.5 flex items-center gap-0.5 text-[8px] leading-tight text-[#f5ebdd]/40">
+          <GameIcon name="lock" className="h-2.5 w-2.5" />
+          {item.hint}
+        </span>
       )}
     </button>
   );
@@ -94,11 +98,9 @@ export default function Wardrobe({ open, onClose, userId }) {
             type="button"
             onClick={onClose}
             aria-label="بستن"
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/12 text-[#f5ebdd]/70 hover:bg-white/10 hover:text-[#f5ebdd]"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-white/12 text-[#f5ebdd]/70 hover:bg-white/10 hover:text-[#f5ebdd]"
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <GameIcon name="close" className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
 
@@ -115,13 +117,13 @@ export default function Wardrobe({ open, onClose, userId }) {
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`flex flex-col items-center gap-0.5 rounded-lg border py-1.5 text-[10px] font-bold transition-colors ${
+              className={`flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border py-1.5 text-[10px] font-bold transition-colors ${
                 tab === t.id
                   ? 'border-[#ffc66d]/50 bg-[#ff9a4d]/16 text-[#ffc66d]'
                   : 'border-white/8 bg-black/25 text-[#f5ebdd]/55 hover:text-[#f5ebdd]'
               }`}
             >
-              <span aria-hidden="true">{t.icon}</span>
+              <GameIcon name={t.icon} className="h-4 w-4" strokeWidth={1.7} />
               {t.label}
             </button>
           ))}
@@ -172,7 +174,7 @@ export default function Wardrobe({ open, onClose, userId }) {
                     type="button"
                     onClick={() => pickColor(color)}
                     aria-label={color}
-                    className={`aspect-square rounded-full border-2 transition-transform ${
+                    className={`aspect-square cursor-pointer rounded-full border-2 transition-transform ${
                       items.shirt.color === color
                         ? 'scale-110 border-white'
                         : 'border-white/20 hover:scale-105'
@@ -190,7 +192,7 @@ export default function Wardrobe({ open, onClose, userId }) {
                     key={p.id}
                     type="button"
                     onClick={() => pickPattern(p.id)}
-                    className={`rounded-lg border py-1.5 text-[10.5px] font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-lg border py-1.5 text-[10.5px] font-semibold transition-colors ${
                       items.shirt.pattern === p.id
                         ? 'border-[#ffc66d]/50 bg-[#ff9a4d]/16 text-[#ffc66d]'
                         : 'border-white/10 bg-black/25 text-[#f5ebdd]/65 hover:text-[#f5ebdd]'

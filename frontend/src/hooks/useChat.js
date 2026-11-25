@@ -401,6 +401,26 @@ export function useChat() {
     }
   }, []);
 
+  // برای نوتیفیکیشن ها
+  const markSingleNotificationAsRead = useCallback(async (notifId, roomName) => {
+    // آپدیت فوری وضعیت در UI (برای تجربه کاربری روان)
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notifId ? { ...n, isRead: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+
+    // ارسال درخواست به سرور برای ثبت رسمی
+    try {
+      await apiRequest('/api/notifications/mark-read', {
+        method: 'POST',
+        body: JSON.stringify({ roomName }),
+      });
+    } catch (err) {
+      console.error('[Chat] Mark single notif read error:', err);
+    }
+  }, []);
+
+
   // -------------------------------------------------------------------------
   // هندلرهای اتاق
   // -------------------------------------------------------------------------
@@ -1121,6 +1141,7 @@ export function useChat() {
     switchRoom,
     openDM,
     leaveRoom,
+    markSingleNotificationAsRead,
     deleteRoom,
     deleteMessage,
     editMessage,

@@ -239,6 +239,21 @@ export default function Character({
       rollZ = Math.sin(t * speed * 0.5) * 0.045;
     } else if (currentAction === 'guitar') {
       rollZ = Math.sin(t * 3.4) * 0.09;
+    } else if (currentAction === 'cooking-stir') {
+      // هم زدن دیگ: چرخش ملایم تنه + بالا-پایین
+      rollZ = Math.sin(t * 4.2) * 0.11;
+      tiltX = 0.12;
+      bob = Math.abs(Math.sin(t * 4.2)) * 0.02;
+    } else if (currentAction === 'cooking-flip') {
+      // برگرداندن در ماهیتابه: تکان تندتر مچ/تنه
+      rollZ = Math.sin(t * 7.5) * 0.13;
+      tiltX = 0.08;
+      bob = Math.abs(Math.sin(t * 7.5)) * 0.03;
+    } else if (currentAction === 'fishing-hold') {
+      // ماهیگیری: خم شدن ملایم به جلو + تکان آرام چوب
+      tiltX = 0.16 + Math.sin(t * 1.8) * 0.03;
+      rollZ = Math.sin(t * 1.4) * 0.03;
+      bob = Math.sin(t * 1.6) * 0.015;
     }
 
     // ---- نگاه به دوربین وقتی ایستاده و دوربین نزدیک است ----

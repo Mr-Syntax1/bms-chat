@@ -334,6 +334,41 @@ npm run optimize:glb    # ساخت نسخه‌های opt (--all / --only X,Y / -
 
 ---
 
+## فاز ۳a — سیستم پخت‌وپز
+
+### ایستگاه‌ها (`CookingStation.jsx` + `recipes.js:STATIONS`)
+
+| ایستگاه | مدل | موقعیت | اکشن |
+|---------|-----|--------|------|
+| گریل | شبکه‌ی فلزی procedural روی پایه‌ی سنگی کنار آتش | `x≈4, z=0` | `cooking-stir` |
+| دیگ آویزان | `Pot.glb` روی سه‌پایه‌ی چوبی procedural | `x≈-5.4, z≈-5.2` | `cooking-stir` |
+| دیگ بزرگ | `Cauldron.glb` | `x≈-1.2, z≈-7.2` | `cooking-stir` |
+| ماهیتابه | `Fryingpan.glb` روی اجاق سنگی | `x≈-8, z≈2.8` | `cooking-flip` |
+
+هر ایستگاه با `registerCookingStation` در رجیستری تعامل ثبت می‌شود؛ `findNearbyCookingStation` در `PlayerController` نزدیک‌ترین ایستگاه تا ۲ متر را برمی‌گرداند و `nearInteractable` می‌شود. E → `openCooking(id)`.
+
+### مینی‌گیم (`recipes.js` + `ui/CookingUI.jsx`)
+
+* وضعیت زنده در `cooking` (module-level) — بیرون React. فقط رویدادهای گسسته (start/result/reset/flip/stir) با `subscribeCooking` باعث رندر می‌شوند.
+* نوار پیشرفت با `requestAnimationFrame` بیرون از چرخه‌ی رندر آپدیت می‌شود (`cooking.progress`).
+* زمان کل نوار = `cookTime × COOK_TAIL(1.6)`. نواحی: خام `<0.6`، معمولی، طلایی `0.88..1.12`، سوخته `>1.45`.
+* نگه‌داشتن E (یا pointerdown روی «پختن») = شروع؛ رها کردن = `finishCook` → کیفیت. پر شدن کامل نوار = سوخته‌ی خودکار.
+* `requiresFlip` (ماهیتابه): بدون برگرداندن → خام. `requiresStir` (دیگ‌ها): کمتر از ۳ هم‌زدن → سقف «معمولی».
+
+### داده و اینونتوری
+
+* `RECIPES` (۵ مورد): استیک، تخم‌مرغ سرخ‌شده، ذرت کبابی، خورش کمپ، پنکیک. هر کدام `{ id, name, emoji, station, ingredients, cookTime, requiresFlip, requiresStir, modelKey, qualityTiers }`.
+* `matchRecipe(station, ids)` ترتیب مواد را نادیده می‌گیرد.
+* store: `ingredients` (شمارش مواد)، `foods` (غذاهای پخته)، `consumeIngredients`، `addFood`، `eatFood`. غذاها در دفترچه (📜) نمایش و با کلیک خورده می‌شوند.
+
+### صدا و انیمیشن
+
+* `FRY_LOOP_SOUND` (سوس‌وسوز ماهیتابه) یا `POT_BUBBLE_SOUND` به‌صورت Positional loop حین پخت؛ `FLIP_SOUND` برای برگرداندن/هم‌زدن؛ `COOK_DONE_SOUND` یا `BURN_SOUND` در پایان.
+* اکشن‌های `cooking-stir`/`cooking-flip` هم در `Character.jsx` (رویه‌ای) و هم در `CLIP_SUFFIX` (مدل‌های ریگ‌دار) پشتیبانی می‌شوند.
+* رویداد `player-action` با `action: 'cooking-*'` و مدت تقریبی → بازیکنان دیگر حرکت پخت را می‌بینند.
+
+---
+
 ## وضعیت بیلد
 
 ```

@@ -1,6 +1,7 @@
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { LocalSpeakingIndicator } from '../components/VoiceActivityIndicator';
 import { GlassPanel } from './primitives';
+import { GameIcon } from './icons';
 
 function MicIcon({ on }) {
   return on ? (
@@ -69,15 +70,15 @@ export default function GameHUD({ user, roomId, micEnabled, toggleMic, connected
           onClick={onOpenWardrobe}
           aria-label="کمد لباس"
           title="کمد لباس"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#f5ebdd]/55 transition-colors hover:bg-white/10 hover:text-[#f5ebdd]"
+          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#f5ebdd]/55 transition-colors hover:bg-white/10 hover:text-[#f5ebdd]"
         >
-          <span aria-hidden="true" className="text-[13px]">👕</span>
+          <GameIcon name="shirt" className="h-4 w-4" strokeWidth={1.7} />
         </button>
         <button
           type="button"
           onClick={onOpenSettings}
           aria-label="تنظیمات"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#f5ebdd]/55 transition-colors hover:bg-white/10 hover:text-[#f5ebdd]"
+          className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#f5ebdd]/55 transition-colors hover:bg-white/10 hover:text-[#f5ebdd]"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -113,7 +114,7 @@ export default function GameHUD({ user, roomId, micEnabled, toggleMic, connected
           type="button"
           onClick={toggleMic}
           disabled={!connected}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+          className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 text-[11px] font-semibold transition-colors ${
             micEnabled
               ? 'border-[#65F5A0]/40 bg-[#65F5A0]/14 text-[#65F5A0]'
               : 'border-white/12 bg-white/[0.04] text-[#f5ebdd]/55'
@@ -127,10 +128,10 @@ export default function GameHUD({ user, roomId, micEnabled, toggleMic, connected
         <button
           type="button"
           onClick={onOpenLog}
-          className="flex items-center justify-center gap-1 rounded-xl border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-[#f5ebdd]/80 transition-colors hover:bg-white/10"
+          className="flex cursor-pointer items-center justify-center gap-1 rounded-xl border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-semibold text-[#f5ebdd]/80 transition-colors hover:bg-white/10"
           title="مأموریت‌ها و اینونتوری"
         >
-          <span aria-hidden="true">📜</span>
+          <GameIcon name="scroll" className="h-3.5 w-3.5" strokeWidth={1.8} />
           {questDone ? 'کامل' : `${questProgress}/4`}
         </button>
       </div>

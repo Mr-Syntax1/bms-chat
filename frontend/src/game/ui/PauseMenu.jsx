@@ -1,15 +1,19 @@
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { GlassPanel, PrimaryButton, GhostButton } from './primitives';
+import { GameIcon } from './icons';
 
 const KEYS = [
   ['WASD', 'حرکت'],
   ['Shift', 'دویدن'],
   ['موس', 'چرخش دوربین'],
-  ['E', 'تعامل / نشستن'],
+  ['E', 'تعامل / ماهیگیری / نشستن'],
+  ['Q', 'چرخ ایموت'],
   ['G', 'گیتار'],
   ['M', 'مارشمالو'],
-  ['1–5', 'ایموت'],
   ['F', 'چراغ ون'],
+  ['L', 'دفترچه'],
+  ['C', 'کمد لباس'],
+  ['1–5', 'ایموت سریع'],
   ['ESC', 'توقف'],
 ];
 
@@ -18,32 +22,36 @@ const KEYS = [
  */
 export default function PauseMenu({ onResume, onSettings, onExit, character }) {
   const quests = usePlayerStore((s) => s.quests);
+  const fishCaught = usePlayerStore((s) => s.fishCaught);
+
+  const stats = [
+    { icon: 'map', value: quests.parchments, max: 3 },
+    { icon: 'lantern', value: quests.lanterns, max: 5 },
+    { icon: 'key', value: quests.hasKey ? 1 : 0, max: 1 },
+    { icon: 'shell', value: quests.shells, max: 10 },
+    { icon: 'fish', value: fishCaught.length, max: 40 },
+  ];
 
   return (
     <div className="absolute inset-0 z-[70] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[#0d0b16]/82 backdrop-blur-md cozy-fade-in" />
 
       <GlassPanel className="relative z-10 w-full max-w-sm p-6 text-center cozy-pop-in">
-        <div className="mb-1 text-3xl" aria-hidden="true">
-          🔥
+        <div className="mb-2 flex justify-center text-[#ff9a4d]" aria-hidden="true">
+          <GameIcon name="flame" className="h-8 w-8" strokeWidth={1.5} />
         </div>
         <h2 className="mb-1 text-lg font-extrabold text-[#f5ebdd]">کمپ دنج جنگل</h2>
         <p className="mb-5 text-[11px] text-[#f5ebdd]/50">
           {character ? `کاراکتر تو: ${String(character).replace('.glb', '')}` : 'به کمپ خوش آمدی'}
         </p>
 
-        <div className="mb-5 grid grid-cols-4 gap-1.5 text-[10px]">
-          {[
-            { icon: '🗺️', value: quests.parchments, max: 3 },
-            { icon: '🏮', value: quests.lanterns, max: 5 },
-            { icon: '🗝️', value: quests.hasKey ? 1 : 0, max: 1 },
-            { icon: '🐚', value: quests.shells, max: 10 },
-          ].map((item, i) => (
-            <div key={i} className="rounded-lg border border-white/8 bg-black/25 py-1.5 text-[#f5ebdd]/60">
-              <div className="text-sm leading-none" aria-hidden="true">
-                {item.icon}
+        <div className="mb-5 grid grid-cols-5 gap-1.5 text-[10px]">
+          {stats.map((item) => (
+            <div key={item.icon} className="rounded-lg border border-white/8 bg-black/25 py-1.5 text-[#f5ebdd]/60">
+              <div className="flex justify-center leading-none" aria-hidden="true">
+                <GameIcon name={item.icon} className="h-4 w-4" strokeWidth={1.7} />
               </div>
-              <div className="mt-0.5 font-mono text-[9px]">
+              <div className="mt-1 font-mono text-[9px]">
                 {item.value}/{item.max}
               </div>
             </div>
@@ -52,9 +60,7 @@ export default function PauseMenu({ onResume, onSettings, onExit, character }) {
 
         <div className="mb-5 space-y-2">
           <PrimaryButton className="w-full" onClick={onResume}>
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 5v14l11-7z" />
-            </svg>
+            <GameIcon name="play" className="h-4 w-4" strokeWidth={0} />
             ادامه بازی
           </PrimaryButton>
           <GhostButton className="w-full" onClick={onSettings}>

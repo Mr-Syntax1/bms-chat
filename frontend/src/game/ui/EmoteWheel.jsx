@@ -3,17 +3,18 @@ import { usePlayerStore, remoteMap, uiFlags } from '../stores/usePlayerStore';
 import { publishPlayerAction } from '../hooks/useGameSync';
 import { playPositionalOneShot } from '../audio';
 import { EMOTE_POP_SOUND } from '../sounds';
+import { GameIcon } from './icons';
 
 // ۸ ایموت چرخ فلکی — شناسه‌ها با CLIP_SUFFIX و انیمیشن رویه‌ای Character یکی‌اند
 const WHEEL_EMOTES = [
-  { id: 'wave', label: 'دست تکون', icon: '👋' },
-  { id: 'dance', label: 'رقص', icon: '💃' },
-  { id: 'cheer', label: 'هورا', icon: '🎉' },
-  { id: 'laugh', label: 'خنده', icon: '😄' },
-  { id: 'sit', label: 'چهارزانو', icon: '🧘' },
-  { id: 'sleep', label: 'خواب', icon: '😴' },
-  { id: 'hug', label: 'بغل', icon: '🤗' },
-  { id: 'highfive', label: 'بزن قدش', icon: '🙌' },
+  { id: 'wave', label: 'دست تکون', icon: 'wave' },
+  { id: 'dance', label: 'رقص', icon: 'dance' },
+  { id: 'cheer', label: 'هورا', icon: 'party' },
+  { id: 'laugh', label: 'خنده', icon: 'laugh' },
+  { id: 'sit', label: 'چهارزانو', icon: 'sit' },
+  { id: 'sleep', label: 'خواب', icon: 'sleep' },
+  { id: 'hug', label: 'بغل', icon: 'hug' },
+  { id: 'highfive', label: 'بزن قدش', icon: 'highfive' },
 ];
 
 const EMOTE_DURATION = 3400;
@@ -201,7 +202,9 @@ export default function EmoteWheel({ roomId, user }) {
               }`}
               style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
             >
-              <span className="text-lg leading-none">{emote.icon}</span>
+              <span className="text-[#f5ebdd]">
+                <GameIcon name={emote.icon} className="h-5 w-5" strokeWidth={1.6} />
+              </span>
               <span className="mt-0.5 text-[9px] leading-none">{emote.label}</span>
             </div>
           );

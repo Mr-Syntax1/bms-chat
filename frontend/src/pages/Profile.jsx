@@ -52,7 +52,7 @@ const AVATAR_COLORS = [
 ];
 
 function getAvatarIndex(username) {
-  if (!username) return 5; 
+  if (!username) return 5;
   let hash = 0;
   for (let i = 0; i < username.length; i++) {
     hash = username.charCodeAt(i) + ((hash << 5) - hash);
@@ -68,7 +68,7 @@ function hexToHSL(H) {
     r = "0x" + H[1] + H[2]; g = "0x" + H[3] + H[4]; b = "0x" + H[5] + H[6];
   }
   r /= 255; g /= 255; b /= 255;
-  let cmin = Math.min(r,g,b), cmax = Math.max(r,g,b), delta = cmax - cmin;
+  let cmin = Math.min(r, g, b), cmax = Math.max(r, g, b), delta = cmax - cmin;
   let h = 0, s = 0, l = 0;
   if (delta === 0) h = 0;
   else if (cmax === r) h = ((g - b) / delta) % 6;
@@ -392,7 +392,7 @@ export default function Profile({ onClose, currentUser }) {
               <div className="rounded-full p-[5px] bg-surface-950">
                 <Avatar
                   username={profile.username}
-                    avatarIndex={profile.avatarIndex}
+                  avatarIndex={profile.avatarIndex}
                   size="xl"
                   status={isOnline ? 'online' : 'offline'}
                 />
@@ -419,7 +419,11 @@ export default function Profile({ onClose, currentUser }) {
               ) : (
                 <button
                   onClick={() =>
-                    navigate('/chat', { state: { username: profile.username } })
+                    navigate('/chat', {
+                      state: {
+                        dmTarget: { id: profile.id, username: profile.username }
+                      }
+                    })
                   }
                   className="btn-primary group relative inline-flex items-center gap-2 rounded-xl
                              px-4 sm:px-5 py-2 sm:py-2.5

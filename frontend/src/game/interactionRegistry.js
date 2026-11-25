@@ -66,3 +66,61 @@ export function findNearbyRestSpot(x, z, taken) {
 export function clearRestSpots() {
   restSpots.clear();
 }
+
+// ---------------------------------------------------------------------------
+// ایستگاه‌های پخت (گریل/دیگ آویزان/دیگ بزرگ/ماهیتابه) — نزدیکی E
+// ---------------------------------------------------------------------------
+const cookingStations = new Map();
+
+export function registerCookingStation(spot) {
+  cookingStations.set(spot.key, spot);
+  return () => {
+    if (cookingStations.get(spot.key) === spot) cookingStations.delete(spot.key);
+  };
+}
+
+export function findNearbyCookingStation(x, z) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const spot of cookingStations.values()) {
+    const dist = Math.hypot(spot.x - x, spot.z - z);
+    if (dist <= (spot.radius ?? 2) && dist < bestDist) {
+      bestDist = dist;
+      best = spot;
+    }
+  }
+  return best;
+}
+
+export function clearCookingStations() {
+  cookingStations.clear();
+}
+
+// ---------------------------------------------------------------------------
+// نقاط ماهیگیری (رودخانه/اسکله) — نزدیکی E → شروع مینی‌گیم ماهیگیری
+// ---------------------------------------------------------------------------
+const fishingSpots = new Map();
+
+export function registerFishingSpot(spot) {
+  fishingSpots.set(spot.key, spot);
+  return () => {
+    if (fishingSpots.get(spot.key) === spot) fishingSpots.delete(spot.key);
+  };
+}
+
+export function findNearbyFishingSpot(x, z) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const spot of fishingSpots.values()) {
+    const dist = Math.hypot(spot.x - x, spot.z - z);
+    if (dist <= (spot.radius ?? 2.6) && dist < bestDist) {
+      bestDist = dist;
+      best = spot;
+    }
+  }
+  return best;
+}
+
+export function clearFishingSpots() {
+  fishingSpots.clear();
+}

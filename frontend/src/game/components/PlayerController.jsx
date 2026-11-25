@@ -10,6 +10,8 @@ import {
   getInteractables,
   resolveInteractableKey,
   findNearbyRestSpot,
+  findNearbyCookingStation,
+  findNearbyFishingSpot,
 } from '../interactionRegistry';
 import { findNearbyQuestItem } from '../questRegistry';
 import { getQuestTarget } from '../questSteps';
@@ -18,6 +20,7 @@ import { publishPlayerAction } from '../hooks/useGameSync';
 import { stepPlayerPhysics, resetPlayerPhysics, slopeSlide, getPlayerPhysics } from '../hooks/usePlayerMotion';
 import { getWalkSurfaceY, isInWater } from '../terrain';
 import { applyFovKick } from '../cameraTuning';
+import { fishing } from '../fishData';
 import Character from './Character';
 import ChatBubble from './ChatBubble';
 import { GUITAR_SOUNDS, YUM_SOUND } from '../sounds';
@@ -164,6 +167,8 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       switch (event.code) {
         case 'KeyE': {
           event.preventDefault();
+          // وقتی مینی‌گیم ماهیگیری باز است، E مخصوص FishingUI است
+          if (fishing.active || fishing.phase === 'result') break;
           // آیتم قفل‌شده (ترتیب مأموریت) اجرا نمی‌شود
           if (state.nearInteractable?.locked) {
             state.pushToast('این مرحله هنوز قفل است!', 'warn');
@@ -446,7 +451,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     // ---- چرخش نرم ----
     const speed = Math.hypot(targetVelocity.x, targetVelocity.z);
     // ---- فیزیک زمین: گرانش، پرش، شنا، قدم‌صدا ----
-    const phys = stepPlayerPhysics(nextX, nextZ, delta, wantsJump, speed);
+    const phys = stepPlayerPhysics(nextX, nextZ, delta, wantsJump);
 
     // ---- squash/stretch: کشیده شدن در پرش و فشرده شدن در فرود ----
     const physics = getPlayerPhysics();
@@ -574,9 +579,13 @@ export default function PlayerController({ roomId, user, look, active = true }) 
 
       // نزدیک‌ترین آیتم تعاملی مأموریت (فاصله‌ی اقلیدسی)
       const near = findNearbyQuestItem(nextX, nextZ);
+      // اگر آیتم مأموریت نبود، ایستگاه پخت نزدیک (E → UI پخت)
+      const cookNear = !near ? findNearbyCookingStation(nextX, nextZ) : null;
+      // اگر هیچ‌کدام نبود، نقطه‌ی ماهیگیری نزدیک (E → مینی‌گیم ماهیگیری)
+      const fishNear = !near && !cookNear ? findNearbyFishingSpot(nextX, nextZ) : null;
       // اگر آیتم مأموریت نبود، نقطه‌ی استراحت نزدیک (هاموک/کیسه‌خواب/کنده/میز)
       let restNear = null;
-      if (!near) {
+      if (!near && !cookNear && !fishNear) {
         const taken = new Set();
         for (const entry of remoteMap.values()) {
           if (entry.seat !== null && entry.seat !== undefined) taken.add(entry.seat);
@@ -591,14 +600,28 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             locked: Boolean(near.isLocked?.()),
             action: near.action,
           }
-          : restNear
+          : cookNear
             ? {
-              key: restNear.key,
-              label: restNear.label,
+              key: cookNear.key,
+              label: 'برای پختن',
               locked: false,
-              action: () => usePlayerStore.getState().setSeat(restNear.seatIndex, restNear.rest),
+              action: cookNear.action,
             }
-            : null
+            : fishNear
+              ? {
+                key: fishNear.key,
+                label: 'برای ماهیگیری',
+                locked: false,
+                action: fishNear.action,
+              }
+              : restNear
+                ? {
+                  key: restNear.key,
+                  label: restNear.label,
+                  locked: false,
+                  action: () => usePlayerStore.getState().setSeat(restNear.seatIndex, restNear.rest),
+                }
+                : null
       );
 
       // راهنمای مسیر: فاصله تا هدف مرحله‌ی فعال (گردشده تا re-render کمینه شود)

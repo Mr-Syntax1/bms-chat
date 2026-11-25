@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { QUEST_STEPS, questValue, isQuestStepLocked, getActiveQuestStep } from '../questSteps';
+import { RARITY } from '../fishData';
 import { ProgressBar } from './primitives';
+import { GameIcon } from './icons';
 
 const ITEMS = [
-  { icon: '🗺️', label: 'تکه نقشه', key: 'parchments', max: 3 },
-  { icon: '🏮', label: 'فانوس', key: 'lanterns', max: 5 },
-  { icon: '🗝️', label: 'کلید', key: 'key', max: 1 },
-  { icon: '🐚', label: 'صدف', key: 'shells', max: 10 },
+  { icon: 'map', label: 'تکه نقشه', key: 'parchments', max: 3 },
+  { icon: 'lantern', label: 'فانوس', key: 'lanterns', max: 5 },
+  { icon: 'key', label: 'کلید', key: 'key', max: 1 },
+  { icon: 'shell', label: 'صدف', key: 'shells', max: 10 },
 ];
 
 /**
@@ -16,6 +18,9 @@ const ITEMS = [
  */
 export default function QuestLog({ open, onClose }) {
   const quests = usePlayerStore((s) => s.quests);
+  const foods = usePlayerStore((s) => s.foods);
+  const eatFood = usePlayerStore((s) => s.eatFood);
+  const fishCaught = usePlayerStore((s) => s.fishCaught);
   const active = getActiveQuestStep(quests);
 
   useEffect(() => {
@@ -48,11 +53,9 @@ export default function QuestLog({ open, onClose }) {
             type="button"
             onClick={onClose}
             aria-label="بستن"
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/12 text-[#f5ebdd]/70 hover:bg-white/10 hover:text-[#f5ebdd]"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl border border-white/12 text-[#f5ebdd]/70 hover:bg-white/10 hover:text-[#f5ebdd]"
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <GameIcon name="close" className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
 
@@ -80,8 +83,8 @@ export default function QuestLog({ open, onClose }) {
                   }`}
                 >
                   <div className="mb-1 flex items-center gap-1.5">
-                    <span className="text-sm" aria-hidden="true">
-                      {locked ? '🔒' : step.icon}
+                    <span className="text-[#f5ebdd]" aria-hidden="true">
+                      <GameIcon name={locked ? 'lock' : step.icon} className="h-4 w-4" strokeWidth={1.7} />
                     </span>
                     <span className="flex-1 text-[11px] font-bold text-[#f5ebdd]">{step.title}</span>
                     {isActive && (
@@ -124,8 +127,8 @@ export default function QuestLog({ open, onClose }) {
                         : 'border-white/8 bg-black/25'
                   }`}
                 >
-                  <span className="text-lg leading-none" aria-hidden="true">
-                    {item.icon}
+                  <span className="text-[#f5ebdd]" aria-hidden="true">
+                    <GameIcon name={item.icon} className="h-5 w-5" strokeWidth={1.7} />
                   </span>
                   <span className={`mt-0.5 font-mono text-[9px] ${full ? 'text-[#65F5A0]' : 'text-[#f5ebdd]/50'}`}>
                     {value}/{item.max}
@@ -138,6 +141,76 @@ export default function QuestLog({ open, onClose }) {
               );
             })}
           </div>
+        </section>
+
+        {/* ماهی‌های صیدشده */}
+        <section className="mt-5">
+          <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#ffc66d]/80">
+            ماهی‌های صیدشده ({fishCaught.length})
+          </h3>
+          {fishCaught.length === 0 ? (
+            <p className="rounded-xl border border-white/6 bg-black/20 p-2.5 text-[10px] text-[#f5ebdd]/40">
+              هنوز ماهی نگرفتی. کنار رودخانه یا اسکله با E ماهیگیری کن.
+            </p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2">
+              {fishCaught.map((fish) => {
+                const rarity = RARITY[fish.rarity] || RARITY.common;
+                return (
+                  <div
+                    key={fish.uid}
+                    title={`${fish.name}${fish.junk ? '' : ` — ${fish.weight} کیلو`} (${rarity.label})`}
+                    className="group relative flex aspect-square flex-col items-center justify-center rounded-xl border bg-black/25"
+                    style={{ borderColor: `${rarity.color}55` }}
+                  >
+                    <span style={{ color: rarity.color }} aria-hidden="true">
+                      <GameIcon name={fish.icon} className="h-5 w-5" strokeWidth={1.7} />
+                    </span>
+                    <span className="mt-0.5 line-clamp-1 px-0.5 text-[8px] text-[#f5ebdd]/65">{fish.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* غذاهای پخته‌شده */}
+        <section className="mt-5">
+          <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#ffc66d]/80">
+            غذاهای پخته‌شده ({foods.length})
+          </h3>
+          {foods.length === 0 ? (
+            <p className="rounded-xl border border-white/6 bg-black/20 p-2.5 text-[10px] text-[#f5ebdd]/40">
+              هنوز چیزی نپختی. سر یک ایستگاه پخت برو و E را نگه دار.
+            </p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2">
+              {foods.map((dish) => (
+                <button
+                  key={dish.uid}
+                  type="button"
+                  onClick={() => eatFood(dish.uid)}
+                  title={`${dish.name} (${dish.qualityLabel}) — برای خوردن کلیک کن`}
+                  className={`group relative flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border transition-colors hover:brightness-110 ${
+                    dish.quality === 'perfect'
+                      ? 'border-[#ffc66d]/50 bg-[#ffc66d]/12'
+                      : dish.quality === 'burnt'
+                        ? 'border-[#ef4444]/40 bg-[#ef4444]/10'
+                        : 'border-[#5d9b78]/35 bg-[#5d9b78]/8'
+                  }`}
+                >
+                  <span className="text-[#f5ebdd]" aria-hidden="true">
+                    <GameIcon name={dish.icon} className="h-5 w-5" strokeWidth={1.7} />
+                  </span>
+                  <span className="mt-0.5 line-clamp-1 px-0.5 text-[8px] text-[#f5ebdd]/65">{dish.name}</span>
+                  <span className="flex items-center gap-1 font-mono text-[8px] text-[#f5ebdd]/45">
+                    <GameIcon name="plate" className="h-2.5 w-2.5" strokeWidth={2} />
+                    {dish.hunger}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         <p className="mt-5 rounded-xl border border-white/6 bg-black/20 p-2.5 text-[10px] leading-relaxed text-[#f5ebdd]/40">

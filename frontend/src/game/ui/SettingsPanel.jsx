@@ -134,8 +134,9 @@ export default function SettingsPanel({ onClose }) {
         <div className="mb-4 rounded-xl border border-white/8 bg-black/20 p-3 text-[10px] leading-relaxed text-[#f5ebdd]/55">
           <div className="mb-1 font-bold text-[#f5ebdd]/75">کلیدها</div>
           <div>WASD حرکت • Shift دویدن • موس چرخش دوربین</div>
-          <div>E تعامل/نشستن • G گیتار • M مارشمالو</div>
-          <div>1–5 ایموت • F چراغ ون • ESC توقف</div>
+          <div>E تعامل/پخت/ماهیگیری/نشستن • Q چرخ ایموت</div>
+          <div>G گیتار • M مارشمالو • F چراغ ون</div>
+          <div>L دفترچه • C کمد • 1–5 ایموت • ESC توقف</div>
         </div>
 
         <PrimaryButton className="w-full" onClick={onClose}>

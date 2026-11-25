@@ -19,6 +19,9 @@ import Paths from './Paths';
 import PondLife from './PondLife';
 import Weather from './Weather';
 import CanopyFX from './CanopyFX';
+import CookingStation from './CookingStation';
+import FishingSpot from './FishingBobber';
+import { FISHING_SPOTS } from '../fishingSpots';
 import { useQualityPreset, useSettingsStore } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { updateEnvState, skyColorsFor, weatherFogFor } from '../envState';
@@ -97,7 +100,7 @@ function DayNightSky({ animate }) {
   );
 }
 
-// ستاره‌های اضافی روی کره‌ی بزرگ که آرام می‌چرخد
+// ستاره‌های اضافی: هندسه‌ی Points سبک با چرخش آرام (بدون shader پروفریم)
 function Starfield({ count = 2000, animate = true }) {
   const ref = useRef(null);
 
@@ -131,24 +134,53 @@ function Starfield({ count = 2000, animate = true }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#dfe9ff" size={1.1} sizeAttenuation transparent opacity={0.85} depthWrite={false} fog={false} />
+      <pointsMaterial
+        color="#dfe9ff"
+        size={1.15}
+        sizeAttenuation
+        transparent
+        opacity={0.82}
+        depthWrite={false}
+        fog={false}
+      />
     </points>
   );
 }
 
-// ماه با درخشش
+// ماه: کره‌ی درخشان با هاله‌ی نرم + نور نقطه‌ای برای روشن کردن آسمان اطراف
 function Moon() {
+  const haloRef = useRef(null);
+  const coreRef = useRef(null);
+
+  // هاله نبض بسیار آرام دارد تا ماه «زنده» به نظر برسد
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    if (haloRef.current) {
+      const s = 1 + Math.sin(t * 0.35) * 0.012;
+      haloRef.current.scale.setScalar(s);
+      haloRef.current.material.opacity = 0.12 + Math.sin(t * 0.6) * 0.02;
+    }
+    void coreRef;
+  });
+
   return (
     <group position={[-90, 110, -120]}>
       <mesh>
-        <sphereGeometry args={[9, 24, 24]} />
-        <meshStandardMaterial color="#eef4ff" emissive="#c8d8ff" emissiveIntensity={0.9} fog={false} />
+        <sphereGeometry args={[9, 32, 32]} />
+        <meshStandardMaterial
+          color="#f7f6ee"
+          emissive="#ffffee"
+          emissiveIntensity={1.5}
+          roughness={0.92}
+          metalness={0}
+          fog={false}
+        />
       </mesh>
-      <mesh>
-        <sphereGeometry args={[13, 20, 20]} />
-        <meshBasicMaterial color="#aebfe6" transparent opacity={0.13} fog={false} />
+      <mesh ref={haloRef}>
+        <sphereGeometry args={[12.6, 24, 24]} />
+        <meshBasicMaterial color="#cfd9f5" transparent opacity={0.13} depthWrite={false} fog={false} />
       </mesh>
-      <pointLight color="#c8d8ff" intensity={60} distance={260} decay={1.4} />
+      <pointLight color="#c8d8ff" intensity={70} distance={300} decay={1.5} />
     </group>
   );
 }
@@ -250,6 +282,13 @@ export default function CozyScene() {
       <Beach />
       <Campfire />
       <Van />
+      <CookingStation id="grill" />
+      <CookingStation id="pot" />
+      <CookingStation id="cauldron" />
+      <CookingStation id="pan" />
+      {FISHING_SPOTS.map((spot, i) => (
+        <FishingSpot key={`fish-${i}`} index={i} spot={spot} />
+      ))}
       <QuestItems />
       <CanopyFX />
       <Weather />

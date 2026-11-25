@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { modelUrl } from '../assetManifest';
 
 const GUITAR_URL = modelUrl('structures.guitar');
+const ROD_URL = modelUrl('fishing.rod');
 
 // لنگر پیش‌فرض پروپ (مدل استاندارد ۱.۷۵ واحدی) — کاراکتر مقدار خودش را می‌دهد
 const DEFAULT_ANCHOR = { x: 0.34, y: 0.95, z: 0.28, scale: 1 };
@@ -53,6 +54,21 @@ function HeldGuitar({ anchor }) {
   const { object, scale, center } = useNormalizedModel(GUITAR_URL, 1.05);
   return (
     <group position={[anchor.x, anchor.y + 0.03, anchor.z]} rotation={[-0.35, -0.45, -0.5]} scale={anchor.scale}>
+      <group scale={scale}>
+        <primitive object={object} position={[-center[0], -center[1], -center[2]]} />
+      </group>
+    </group>
+  );
+}
+
+/**
+ * چوب ماهیگیری در دست — کشیده به جلو و بالا با زاویه‌ی طبیعی پرتاب.
+ * طول ۱.۹ واحد تا فراتر از بدن دیده شود.
+ */
+function HeldRod({ anchor }) {
+  const { object, scale, center } = useNormalizedModel(ROD_URL, 1.9);
+  return (
+    <group position={[anchor.x - 0.08, anchor.y + 0.22, anchor.z + 0.1]} rotation={[0.35, 0, -0.55]} scale={anchor.scale}>
       <group scale={scale}>
         <primitive object={object} position={[-center[0], -center[1], -center[2]]} />
       </group>
@@ -126,12 +142,14 @@ function HeldMarshmallow({ stage, anchor }) {
 export default function HeldProps({ action, marshmallowStage, anchor }) {
   const guitarRef = useRef(null);
   const marshmallowRef = useRef(null);
+  const rodRef = useRef(null);
   const resolvedAnchor = anchor || DEFAULT_ANCHOR;
 
   useFrame(() => {
     const current = resolve(action);
     if (guitarRef.current) guitarRef.current.visible = current === 'guitar';
     if (marshmallowRef.current) marshmallowRef.current.visible = current === 'marshmallow';
+    if (rodRef.current) rodRef.current.visible = current === 'fishing-hold';
   });
 
   return (
@@ -142,8 +160,14 @@ export default function HeldProps({ action, marshmallowStage, anchor }) {
       <group ref={marshmallowRef} visible={false}>
         <HeldMarshmallow stage={marshmallowStage} anchor={resolvedAnchor} />
       </group>
+      {ROD_URL && (
+        <group ref={rodRef} visible={false}>
+          <HeldRod anchor={resolvedAnchor} />
+        </group>
+      )}
     </group>
   );
 }
 
 if (GUITAR_URL) useGLTF.preload(GUITAR_URL);
+if (ROD_URL) useGLTF.preload(ROD_URL);
