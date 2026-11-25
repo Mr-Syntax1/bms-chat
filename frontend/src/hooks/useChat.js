@@ -91,6 +91,8 @@ export function useChat() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [dmPartnerName, setDmPartnerName] = useState(null);
+  // شناسه‌ی کاربر جاری به‌صورت state تا effectها بعد از پر شدن ref دوباره اجرا شوند
+  const [sessionUserId, setSessionUserId] = useState(null);
 
   const currentRoomRef = useRef(null);
   const currentUserRef = useRef(null);
@@ -104,6 +106,7 @@ export function useChat() {
   const wasConnectedRef = useRef(false);
   const resyncRef = useRef(null);
   const disconnectRef = useRef(null);
+  const closeTimerRef = useRef(null);
 
   // کمک‌کننده: آیا اتصال Ably سالم است؟
   const isAblyConnected = () =>
@@ -130,6 +133,7 @@ export function useChat() {
     const onState = (stateChange) => {
       if (stateChange.current === 'connected') {
         setConnected(true);
+        // در reconnect، اتاق‌ها و اعلان‌ها را دوباره همگام کن (بار اول connectSocket خودش می‌گیرد)
         if (wasConnectedRef.current) resyncRef.current?.();
         wasConnectedRef.current = true;
       } else if (
@@ -151,7 +155,7 @@ export function useChat() {
   // حضور سراسری - نسخه‌ی مقاوم در برابر Race Condition و TypeError
   // -------------------------------------------------------------------------
   useEffect(() => {
-    const userId = currentUserRef.current?.id;
+    const userId = sessionUserId || currentUserRef.current?.id;
     if (!connected || !userId) return undefined;
 
     const channel = subscribeToPresence();
@@ -343,7 +347,7 @@ export function useChat() {
         console.warn('[Chat] unsubscribeFromPresence error:', err?.message || err);
       }
     };
-  }, [connected]);
+  }, [connected, sessionUserId]);
 
   // -------------------------------------------------------------------------
   // Typing (سمت گیرنده)
@@ -476,8 +480,9 @@ export function useChat() {
           // (مقایسه بر اساس متن، فرستنده و نزدیکی زمان ارسال)
           const optimisticIndex = prev.findIndex(
             (m) =>
+              typeof m.id === 'string' &&
               m.id.startsWith('temp-') &&
-              m.senderId === msg.senderId &&
+              String(m.senderId) === String(msg.senderId ?? msg.userId) &&
               m.text === msg.text &&
               Math.abs(new Date(m.createdAt).getTime() - new Date(msg.createdAt).getTime()) < 5000
           );
@@ -718,6 +723,11 @@ export function useChat() {
   }, [fetchNotifications, refreshRooms]);
 
   const connectSocket = useCallback(async () => {
+    // اگر teardown قبلی هنوز در حال بستن است، لغو کن (StrictMode double-mount / ناوبری سریع)
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
     const seq = ++connectSeqRef.current;
     const isStale = () => seq !== connectSeqRef.current;
 
@@ -727,6 +737,8 @@ export function useChat() {
       if (isStale()) return { success: false, stale: true };
       if (!me.user) throw new Error('احراز هویت انجام نشد');
       currentUserRef.current = me.user;
+      // قبل از هر subscribe/presence، ref را در state هم منعکس کن
+      setSessionUserId(me.user.id);
 
       ably.connect();
       if (ably.connection.state === 'connected') setConnected(true);
@@ -771,10 +783,12 @@ export function useChat() {
     setError(null);
     setConnected(false);
     currentUserRef.current = null;
+    setSessionUserId(null);
     wasConnectedRef.current = false;
 
     //  ably.close را به تعویق بینداز تا effect‌ها cleanup شوند
-    setTimeout(() => {
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
       try { ably.close(); } catch { /* ignore */ }
     }, 100);
   }, [cleanupNotificationHandlers, teardownRoom, resetTyping]);

@@ -20,11 +20,20 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const chat = useChat();
   const [uiPrefs, setUiPrefs] = useState(loadUiPrefs);
+  const { connectSocket, disconnectSocket } = chat;
 
   useEffect(() => {
     applyUiPrefs(uiPrefs);
     return subscribeUiPrefs(setUiPrefs);
   }, []);
+
+  // اتصال Ably یک‌بار در سطح App (نه در Chat) تا با تغییر مسیر قطع نشود.
+  // فقط بعد از مشخص شدن کاربر اجرا می‌شود؛ پس currentUserRef پیش از presence پر است.
+  useEffect(() => {
+    if (!authUser?.id) return undefined;
+    connectSocket();
+    return () => disconnectSocket();
+  }, [authUser?.id, connectSocket, disconnectSocket]);
 
   // بررسی احراز هویت هنگام بارگذاری صفحه
   useEffect(() => {
