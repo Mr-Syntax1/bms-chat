@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useTransition } from 'react';
+import { useState, useEffect, useCallback, useRef, useTransition } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
@@ -55,6 +55,7 @@ export default function Chat({ chat, user, onLogout }) {
   const closeSidebar = useCallback(() => setSidebar(null), []);
 
   const location = useLocation();
+  const handledNavRef = useRef(null);
 
   const rtc = useWebRTC({
     currentUser: user,
@@ -140,14 +141,22 @@ export default function Chat({ chat, user, onLogout }) {
   }, [messages, currentRoom, user?.id, markMessagesAsRead]);
 
   useEffect(() => {
-    if (location.state?.dmTarget) {
-      const { id, username } = location.state.dmTarget;
-      openDM(id, username);
+    const state = location.state;
+    if (!state) return;
+    const navKey = `${state.ts ?? ''}|${state.dmTarget?.id ?? state.roomToJoin ?? ''}`;
+    if (handledNavRef.current === navKey) return;
+    handledNavRef.current = navKey;
 
-      // پاک کردن state از تاریخچه مرورگر تا با رفرش کردن صفحه دوباره اجرا نشود
-      window.history.replaceState({}, document.title);
+    if (state.dmTarget) {
+      const { id, username } = state.dmTarget;
+      openDM(id, username);
+    } else if (state.roomToJoin) {
+      switchRoom(state.roomToJoin);
     }
-  }, [location.state, openDM]);
+
+    // پاک کردن state از تاریخچه مرورگر تا با رفرش کردن صفحه دوباره اجرا نشود
+    window.history.replaceState({}, document.title);
+  }, [location.state, openDM, switchRoom]);
   
   const handleOpenNotifications = useCallback(() => {
     setShowNotifications((prev) => {

@@ -1,19 +1,28 @@
 import { setAblyAuthToken } from './lib/ably';
 import { setApiToken } from './hooks/useChat';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Register from './components/Register';
 import Chat from './components/Chat';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
-import { useChat } from './hooks/useChat';
+import { useChat, setChatNavigator } from './hooks/useChat';
 import ToastProvider from './providers/ToastProvider';
 import HalloweenBackground from './components/HalloweenBackground';
 import LoadingSpinner from './components/LoadingSpinner';
 import { loadUiPrefs, applyUiPrefs, subscribeUiPrefs } from './lib/uiPrefs';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+function NavigationBridge() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    setChatNavigator((to, options) => navigate(to, options));
+    return () => setChatNavigator(null);
+  }, [navigate]);
+  return null;
+}
 
 function App() {
   const [authUser, setAuthUser] = useState(null);
@@ -113,6 +122,7 @@ function App() {
 
       <ToastProvider>
         <BrowserRouter>
+          <NavigationBridge />
           <Routes>
             <Route
               path="/login"

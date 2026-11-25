@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, createElement } from 'react';
 import { sileo } from 'sileo';
 import {
   ably,
@@ -32,6 +32,11 @@ const isDmRoom = (name) => typeof name === 'string' && name.startsWith('dm_');
 // ---------------------------------------------------------------------------
 let authToken = null;
 let unauthorizedHandler = null;
+let chatNavigator = null;
+
+export function setChatNavigator(fn) {
+  chatNavigator = fn;
+}
 
 export function setApiToken(token) {
   authToken = token;
@@ -668,13 +673,30 @@ export function useChat() {
       setNotifications((prev) => (prev.some((n) => n.id === notif.id) ? prev : [notif, ...prev]));
       setUnreadCount((prev) => prev + 1);
       const isDm = isDmRoom(notif.roomName);
+      const goToRoom = () => {
+        if (isDm) {
+          chatNavigator?.('/chat', {
+            state: { dmTarget: { id: notif.senderId, username: notif.senderName }, ts: Date.now() },
+          });
+        } else {
+          chatNavigator?.('/chat', {
+            state: { roomToJoin: notif.roomName, ts: Date.now() },
+          });
+        }
+      };
+      const previewText = isDm
+        ? `پیام خصوصی: ${notif.messagePreview}`
+        : `در اتاق ${notif.roomName}: ${notif.messagePreview}`;
       sileo.info({
         title: `پیام جدید از ${notif.senderName}`,
-        description: isDm
-          ? `پیام خصوصی: ${notif.messagePreview}`
-          : `در اتاق ${notif.roomName}: ${notif.messagePreview}`,
+        description: createElement(
+          'span',
+          { onClick: goToRoom, style: { cursor: 'pointer' } },
+          previewText
+        ),
         position: 'top-center',
         duration: 5000,
+        button: { title: 'مشاهده', onClick: goToRoom },
       });
     };
 
