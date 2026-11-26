@@ -1,16 +1,17 @@
 # AI_HANDOFF — BMS Cozy Forest
 
-آخرین به‌روزرسانی: 2026-11-25
-فاز فعلی: PHASE 3b — DONE ✅ (ماهیگیری) · PHASE 3a — DONE ✅ (پخت‌وپز) · **PHASE 2: 100% COMPLETE** 🎉
+آخرین به‌روزرسانی: 2026-11-26
+فاز فعلی: PHASE 3c — DONE ✅ (حشرات و حیات وحش) · PHASE 3b — DONE ✅ (ماهیگیری) · PHASE 3a — DONE ✅ (پخت‌وپز) · **PHASE 2: 100% COMPLETE** 🎉
 
 ## 1) خلاصه
 بازی هم‌اکنون: زمین ناهموار + جنگل بلند + آبشار/رودخانه + کمپ/ساحل (Phase 1)،
 حس زنده‌بودن کاراکتر + نقاط استراحت (Phase 2a)، چرخ ایموت Q + نام‌شناور + حباب چت (Phase 2b)،
 انتخاب کاراکتر پیش از بازی + کمد لباس کامل (Phase 2c)، محیط واکنشی به اندازه‌ی گروه،
 تعامل هدفمند با بازیکن نزدیک و مرورگر کمپ‌های فعال (Phase 2d)، سیستم پخت‌وپز با ۴ ایستگاه و
-۴ سطح کیفیت (Phase 3a)، و از این دور:
-**سیستم ماهیگیری** با ۶ نقطه (رودخانه/ساحل/اسکله)، مینی‌گیم ۴ مرحله‌ای (شارژ/انتظار/گزش/کشش)،
-۷ گونه + آشغال با کمیابی وزن‌دار، و پولیش عمومی (بدون ایموجی، آیکون SVG، صدای قدم حذف، آسمان واقعی‌تر) (Phase 3b).
+۴ سطح کیفیت (Phase 3a)، سیستم ماهیگیری (Phase 3b)، و از این دور:
+**حیات وحش و حشرات** — ۵ گونه‌ی حیوان (خرگوش/گوزن/اردک/جغد/تشی) با AI پرسه/فرار ۱۰Hz،
+حشرات رویه‌ای InstancedMesh (پروانه/سوسک/کرم شب‌تاب) با گرفتن با F و تور دستی،
+اینونتوری حشرات در دفترچه، و رفع باگ کلید C کمد.
 
 ## 2) DONE ✅
 | مورد | فایل‌ها | چطور تأیید شد |
@@ -73,15 +74,22 @@
 | پولیش عمومی ۳b: حذف کامل صدای قدم (بدون فایل/سازنده) | `hooks/usePlayerMotion.js`, `synth.js`, `assetManifest.js` | eslint + build |
 | پولیش عمومی ۳b: آسمان واقعی‌تر — ستاره‌ها با opacity/size بهتر + ماه درخشان با هاله‌ی نبضی و نور نقطه‌ای قوی‌تر | `components/CozyScene.jsx` | eslint + build |
 | پولیش عمومی ۳b: راهنمای کلیدها هم‌راستا در ControlsHint/PauseMenu/SettingsPanel (+Q/L/C/ماهیگیری/پخت) | `GameOverlay.jsx`, `ui/PauseMenu.jsx`, `ui/SettingsPanel.jsx` | eslint + build |
+| ۳c: حیات وحش — ۵ گونه (خرگوش/گوزن/اردک/جغد/تشی) با مدل‌های موجود، پرسه‌زدن تصادفی + فرار ۳ واحدی، AI ۱۰Hz، ارتفاع زمین، اردک روی برکه | `components/Wildlife.jsx` (جدید), `components/CozyScene.jsx` | eslint + build |
+| ۳c: نوازش خرگوش — ایستادن بی‌حرکت ۳ ثانیه نزدیک خرگوش → قلب‌های شناور | `components/Wildlife.jsx` | eslint + build |
+| ۳c: حشرات رویه‌ای InstancedMesh — پروانه (بال مثلثی + بدن)، سوسک (کره + ۶ پا)، کرم شب‌تاب (کره درخشان)؛ wander با sine، AI ۱۲Hz | `components/Bugs.jsx` (جدید), `bugData.js` (جدید) | eslint + build |
+| ۳c: گرفتن حشره با F (نزدیکی ۲.۴ واحد) + تور دستی رویه‌ای + ژست `bug-catch` + صداهای bug_net/bug_catch | `components/PlayerController.jsx`, `components/HeldProps.jsx`, `components/Character.jsx`, `models/characterConfig.js`, `sounds.js` | eslint + build |
+| ۳c: اینونتوری حشرات (`bugsCaught`) + بخش «حشرات گرفته‌شده» در دفترچه + آیکون‌های SVG (butterfly/beetle/firefly/net) | `stores/usePlayerStore.js`, `ui/QuestLog.jsx`, `ui/icons.jsx` | eslint + build |
+| ۳c: پرامپت «گرفتن حشره» با آیکون SVG (بدون ایموجی) + `nearBug` در store | `ui/InteractionPrompt.jsx`, `stores/usePlayerStore.js` | eslint + build |
+| 🐞 رفع باگ: کلید C کمد اصلاً هندلر نداشت — افزودن toggle کامل (باز=unlock موس، بسته=lock، ESC هم می‌بندد) | `GameOverlay.jsx` | eslint + build |
+| ۳c: پیش‌بارگذاری گروه animals بعد از ورود (idle) | `GameOverlay.jsx`, `preload.js` (موجود) | eslint + build |
 
 دستورهای تأیید: `npx eslint src/game` (exit 0) و `npm run build` (exit 0).
 
 ## 3) IN PROGRESS 🔄
-هیچ‌چیز نیمه‌کاره در 3b. Phase 3b کامل شد.
+هیچ‌چیز نیمه‌کاره در 3c. Phase 3c کامل شد.
 
 ## 4) NOT DONE ⬜ (به‌ترتیب)
-- Phase 3c — حشرات و حیات وحش (منتظر دستور «next»).
-- Phase 3d — چیدن گیاه؛ Phase 3e — ساحل/تفریح؛ Phase 3f — دکور کمپ.
+- Phase 3d — چیدن گیاه؛ Phase 3e — ساحل/تفریح؛ Phase 3f — دکور کمپ (منتظر دستور «next»).
 - گسترش دستورهای پخت از ۵ به ۵۰+ و Recipe Book با دستورهای کشف‌نشده (طبق MASTER_PROMPT).
 - خوردن با انیمیشن لقمه/پف گونه + ذرات خرده و صداهای eat_crunch/eat_gulp (فعلاً فقط حذف از لیست + توست).
 - یخ‌دان اشتراکی (Icebox) و ظرف‌های Mug/Thermos.
@@ -99,6 +107,9 @@
 - 3b: ماهی صیدشده با `FISH_MODEL_KEY` (animals.goldfish) نمایش داده می‌شود؛ سطل/چوب از GLB موجود، بابِر procedural است.
 - 3b: صدای گزش از synth (`fish_bite`) می‌آید؛ cast/reel/catch فایل mp3 واقعی دارند.
 - 3b: آیکون‌ها همه SVG درون‌خطی (`ui/icons.jsx` → `GameIcon`) هستند؛ هیچ ایموجی در UI بازی نمانده.
+- 3c: حشرات کاملاً رویه‌ای‌اند (بدون GLB): پروانه از دو مثلث بال + استوانه‌ی بدن، سوسک از کره‌ی کشیده + ۶ استوانه‌ی پا، کرم شب‌تاب از کره‌ی emissive. همه با `InstancedMesh`.
+- 3c: تور حشره (`HeldNet`) رویه‌ای است: استوانه‌ی دسته + torus حلقه + مخروط شفاف توری.
+- 3c: حیوانات از `useModelParts` استفاده می‌کنند (همان الگوی PondLife) تا بدون SkeletonUtils سبک بمانند؛ مدل‌ها ریگ‌دار نیستند و انیمیشن رویه‌ای (bob/tilt) دارند.
 
 ## 6) تصمیم‌ها و انحراف‌ها
 - چرخ ایموت DOM روی Canvas است (z-70) تا با pointer lock هم کار کند؛ انتخاب با movementX/Y و رها کردن Q.
@@ -127,6 +138,11 @@
 - 3b: UI ماهیگیری هنگام mount قفل موس را آزاد و هنگام reset دوباره قفل می‌کند (همان الگوی پخت).
 - 3b: صفر ایموجی — همه‌ی آیکون‌ها از `GameIcon` با خروجی SVG؛ `CLIP_SUFFIX['fishing-hold']='Weapon'` برای مدل‌های ریگ‌دار.
 - 3b: صدای قدم کاملاً حذف شد (بدون فایل، بدون سازنده‌ی synth) تا محیط ساکت/دنج بماند.
+- 3c: داده‌ی زنده‌ی حشرات در `bugWorld` (module-level در `bugData.js`) است — `pos` یک Float32Array و `caught` یک Uint8Array؛ گرفتن بدون re-render هر فریم ممکن است و فقط گرفتن یک‌بار state را آپدیت می‌کند.
+- 3c: AI حشرات ۱۲Hz (sine wander) و حیوانات ۱۰Hz (wander/flee) آپدیت می‌شود؛ موقعیت‌ها در ref هستند.
+- 3c: F دو کار دارد: اگر حشره‌ای در ۲.۴ واحد باشد تور می‌زند، وگرنه چراغ ون را toggle می‌کند (سازگاری با رفتار قبلی).
+- 3c: نوازش خرگوش فقط وقتی `local.moving === false` است شمارش می‌شود (۳ ثانیه)، سپس ۲.۵ ثانیه قلب نشان داده می‌شود.
+- 3c: باگ کلید C — هیچ‌جا هندلر `KeyC` وجود نداشت (فقط دکمه‌ی HUD کار می‌کرد). حالا در `GameOverlay` toggle می‌شود؛ هنگام باز شدن موس unlock و هنگام بسته شدن دوباره lock می‌شود و ESC هم کمد را می‌بندد.
 
 ## 7) مشکلات شناخته‌شده / تست دستی
 - 🚨 (2026-11-26) رگرسیون سوکت رفع شد: اگر دوباره «آنلاین/اتاق‌ها/تیک پیام» خالی شد، اول مطمئن شوید افکت اتصال در `App.jsx` (وابسته به `authUser?.id`) هست و `connectSocket` هیچ‌جای دیگری هم صدا زده نمی‌شود (دو بار connect = رفتار عجیب).
@@ -146,6 +162,11 @@
 - 3b: چوب در دست با `HeldProps` حول لنگر پروپ رندر می‌شود؛ اگر روی مدل chibi بزرگ بود، `anchor.scale` را کم کنید.
 - 3b: اگر کارت گزش لرزش نداشت، کلاس `.fishing-shake` در `index.css` را بررسی کنید.
 - 3b: صیدها در store هستند و با رفرش پاک می‌شوند (ذخیره‌سازی دائمی در فازهای بعد).
+- 3c: نقاط spawn حیوانات/حشرات دستی‌چین با seed ثابت‌اند؛ اگر خرگوش/گوزن داخل درخت یا روی شیب افتاد، بازه‌های `buildSpawns`/`buildList` را تنظیم کنید.
+- 3c: خرگوش/گوزن/تشی با فاصله‌ی ۳ واحد فرار می‌کنند؛ اگر می‌خواهید راحت‌تر نزدیک شوید، `FLEE_RANGE` را در `Wildlife.jsx` کم کنید.
+- 3c: گرفتن حشره شعاع ۱.۹ واحدی تور دارد (پرامپت در ۲.۴ ظاهر می‌شود)؛ اگر احساس کردید حشره گرفته نمی‌شود، شعاع `tryCatchBug` را افزایش دهید.
+- 3c: اردک‌ها داخل برکه شنا می‌کنند؛ اگر روی خشکی/زیر آب دیده شدند، `POND` در `terrain.js` را بررسی کنید.
+- 3c: اگر کلید C کمد باز نشد، مطمئن شوید موس قفل است (دکمه‌ی ورود زده شده) و پنل دیگری (پخت/ماهیگیری/دفترچه/تنظیمات) باز نیست.
 
 ## 8) اجرا و تأیید
 ```
@@ -154,15 +175,16 @@ npx eslint src/game
 npm run build
 npm run dev
 ```
-کلیدها: نگه‌داشتن Q = چرخ ایموت · 1..5 میان‌بر · E تعامل/نشستن/بغل بازیکن نزدیک · **E نزدیک ایستگاه پخت = نگه‌داشتن برای پختن** · **E نزدیک نقطه‌ی ماهیگیری = مینی‌گیم ماهیگیری** · G گیتار · M مارشمالو · L دفترچه · C کمد.
-کمد از دکمه‌ی کمد (آیکون SVG) در HUD و مرور کمپ‌ها از دکمه‌ی چادر در هدر چت باز می‌شود. غذاهای پخته‌شده و ماهی‌های صیدشده در دفترچه (آیکون طومار) دیده می‌شوند.
+کلیدها: نگه‌داشتن Q = چرخ ایموت · 1..5 میان‌بر · E تعامل/نشستن/بغل بازیکن نزدیک · **E نزدیک ایستگاه پخت = نگه‌داشتن برای پختن** · **E نزدیک نقطه‌ی ماهیگیری = مینی‌گیم ماهیگیری** · G گیتار · M مارشمالو · L دفترچه · C کمد · **F نزدیک حشره = گرفتن با تور / وگرنه چراغ ون**.
+کمد از دکمه‌ی کمد (آیکون SVG) در HUD **یا کلید C** و مرور کمپ‌ها از دکمه‌ی چادر در هدر چت باز می‌شود. غذاهای پخته‌شده، ماهی‌های صیدشده و حشرات گرفته‌شده در دفترچه (آیکون طومار) دیده می‌شوند.
 
 ## 9) env / endpoint / store / localStorage جدید
-- store: `chatLog` + `pushChatLog`؛ `uiFlags`؛ `chatBubbleMap`؛ `wardrobe` + `setWardrobe`؛ `campMood` (module-level)؛ `ingredients` + `addIngredient` + `consumeIngredients`؛ `foods` + `addFood` + `eatFood`؛ `cookingStation` + `openCooking` + `closeCooking`؛ **`fishCaught` + `addFish`؛ `fishingState` + `setFishingState`**.
+- store: `chatLog` + `pushChatLog`؛ `uiFlags`؛ `chatBubbleMap`؛ `wardrobe` + `setWardrobe`؛ `campMood` (module-level)؛ `ingredients` + `addIngredient` + `consumeIngredients`؛ `foods` + `addFood` + `eatFood`؛ `cookingStation` + `openCooking` + `closeCooking`؛ `fishCaught` + `addFish`؛ `fishingState` + `setFishingState`؛ **`bugsCaught` + `addBug`؛ `nearBug` + `setNearBug`**.
 - endpoint جدید: `GET /api/calls/game/campsites`؛ `POST /api/calls/game/claim-character` اکنون `{ preferred?, roomId? }` می‌پذیرد.
-- localStorage: `preferred-character` و `wardrobe-<userId>` (بدون کلید جدید در 3b؛ ماهی/غذا هنوز ذخیره نمی‌شوند).
+- localStorage: `preferred-character` و `wardrobe-<userId>` (بدون کلید جدید در 3c؛ حشرات/حیوانات هنوز ذخیره نمی‌شوند).
 
 ## 10) Changelog (جدیدترین اول)
+- 2026-11-26 — Phase 3c: حشرات و حیات وحش — ۵ گونه حیوان با AI پرسه/فرار ۱۰Hz و ارتفاع زمین (خرگوش/گوزن جنگل، اردک برکه، جغد/تشی لبه‌ی جنگل)، نوازش خرگوش با قلب شناور، حشرات رویه‌ای InstancedMesh (پروانه/سوسک/کرم شب‌تاب) با wander ۱۲Hz، گرفتن با F + تور دستی + ژست `bug-catch` + صداهای bug_net/bug_catch، اینونتوری حشرات در دفترچه، آیکون‌های SVG جدید. **رفع باگ کلید C کمد** (هندلر گم‌شده + ESC). eslint ✅ build ✅
 - 2026-11-26 — 🐞 **رفع باگ کلیک روی توست Sileo (عدم ناوبری به DM):** توست `sileo` هیچ `onClick` روی خودِ توست ندارد (فقط `button: { title, onClick }` طبق `dist/index.d.ts`). `useChat.js`: افزودن پل ناوبری `setChatNavigator` + دکمه‌ی «مشاهده» و description کلیک‌پذیر که برای DM به `/chat` با `state.dmTarget` و برای گروه به `state.roomToJoin` (+ `ts` یکتا) ناوبری می‌کند. `App.jsx`: کامپوننت `NavigationBridge` داخل `BrowserRouter` که `useNavigate` را به هوک تزریق می‌کند (تا کلیک از `/profile` یا `/settings` هم کار کند). `Chat.jsx`: افکت `location.state` هم در mount اجرا می‌شود، `roomToJoin` را هم پشتیبانی می‌کند و با `handledNavRef` از اجرای دوباره (StrictMode) جلوگیری می‌کند. eslint ✅ build ✅
 - 2026-11-26 — 🚨 **رفع رگرسیون سوکت (اتصال گم‌شده بعد از انتقال `useChat` به App):** در commit `92cd31f` افکت `connectSocket()/disconnectSocket()` از `Chat.jsx` حذف شد ولی در `App.jsx` دوباره اضافه نشد؛ نتیجه: Ably هرگز وصل نمی‌شد و `connected` هیچ‌وقت `true` نمی‌شد (کاربران آنلاین خالی، اتاق‌ها خالی، آیکون پیام در حالت ساعت می‌ماند). `useChat.js`: افزودن `sessionUserId` به‌عنوان state تا effect حضور بعد از پر شدن `currentUserRef` دوباره اجرا شود؛ وابستگی effect حضور به `[connected, sessionUserId]`؛ گارد StrictMode روی تایمر `ably.close` (`closeTimerRef`) تا remount سریع اتصال جدید را نکشد؛ `disconnectSocket` حالا `sessionUserId` را هم null می‌کند؛ match کردن optimistic در هندلر `new-message` با `String(senderId)` مقاوم شد. `App.jsx`: افکت اتصال سطح App با گارد `authUser?.id` (اتصال فقط بعد از مشخص شدن کاربر). eslint ✅ build ✅
 - 2026-11-25 — Phase 3b: ماهیگیری کامل — ۶ نقطه روی رودخانه/ساحل/اسکله (سطل + بابِر + نخ + موج)، مینی‌گیم ۴ مرحله‌ای (شارژ پرتاب → انتظار → گزش → کشش)، ۷ گونه + ۲ آشغال با کمیابی وزن‌دار، صدا (cast/reel/catch/bite-synth)، ژست و چوب در دست، اینونتوری صید در دفترچه، پخش اکشن شبکه‌ای. پولیش: صفر ایموجی (مجموعه‌ی SVG `GameIcon`)، `cursor-pointer`، حذف صدای قدم، آسمان با ستاره/ماه واقعی‌تر، راهنمای کلیدها. eslint ✅ build ✅

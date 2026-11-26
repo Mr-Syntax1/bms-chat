@@ -185,4 +185,5 @@ export const CLIP_SUFFIX = {
   'cooking-stir': 'Weapon',
   'cooking-flip': 'Punch',
   'fishing-hold': 'Weapon',
+  'bug-catch': 'Punch',
 };

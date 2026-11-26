@@ -76,6 +76,32 @@ function HeldRod({ anchor }) {
   );
 }
 
+// تور حشره: دسته + حلقه + توری شفاف (رویه‌ای)
+function HeldNet({ anchor }) {
+  return (
+    <group position={[anchor.x, anchor.y + 0.05, anchor.z]} rotation={[0.2, 0, -0.5]} scale={anchor.scale}>
+      <mesh position={[0, 0.3, 0]} castShadow>
+        <cylinderGeometry args={[0.018, 0.022, 0.7, 6]} />
+        <meshStandardMaterial color="#8a5a34" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.68, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.2, 0.016, 6, 18]} />
+        <meshStandardMaterial color="#c9b48d" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 0.68, 0]}>
+        <coneGeometry args={[0.2, 0.34, 12, 1, true]} />
+        <meshStandardMaterial
+          color="#eef3f6"
+          transparent
+          opacity={0.28}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 const STAGE_COLORS = {
   raw: '#fdf6ec',
   roasting: '#f3dcae',
@@ -143,6 +169,7 @@ export default function HeldProps({ action, marshmallowStage, anchor }) {
   const guitarRef = useRef(null);
   const marshmallowRef = useRef(null);
   const rodRef = useRef(null);
+  const netRef = useRef(null);
   const resolvedAnchor = anchor || DEFAULT_ANCHOR;
 
   useFrame(() => {
@@ -150,6 +177,7 @@ export default function HeldProps({ action, marshmallowStage, anchor }) {
     if (guitarRef.current) guitarRef.current.visible = current === 'guitar';
     if (marshmallowRef.current) marshmallowRef.current.visible = current === 'marshmallow';
     if (rodRef.current) rodRef.current.visible = current === 'fishing-hold';
+    if (netRef.current) netRef.current.visible = current === 'bug-catch';
   });
 
   return (
@@ -165,6 +193,9 @@ export default function HeldProps({ action, marshmallowStage, anchor }) {
           <HeldRod anchor={resolvedAnchor} />
         </group>
       )}
+      <group ref={netRef} visible={false}>
+        <HeldNet anchor={resolvedAnchor} />
+      </group>
     </group>
   );
 }

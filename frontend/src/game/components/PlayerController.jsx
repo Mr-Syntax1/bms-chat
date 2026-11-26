@@ -21,9 +21,10 @@ import { stepPlayerPhysics, resetPlayerPhysics, slopeSlide, getPlayerPhysics } f
 import { getWalkSurfaceY, isInWater } from '../terrain';
 import { applyFovKick } from '../cameraTuning';
 import { fishing } from '../fishData';
+import { nearestBugDistance, tryCatchBug } from '../bugData';
 import Character from './Character';
 import ChatBubble from './ChatBubble';
-import { GUITAR_SOUNDS, YUM_SOUND } from '../sounds';
+import { GUITAR_SOUNDS, YUM_SOUND, BUG_NET_SOUND, BUG_CATCH_SOUND } from '../sounds';
 
 const WALK_SPEED = 3.6;
 const RUN_SPEED = 6.8;
@@ -89,6 +90,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
   const guitarTimer = useRef(null);
   const marshmallowTimer = useRef(null);
   const emoteTimer = useRef(null);
+  const bugTimer = useRef(null);
 
   // ---- حالت دیباگ جهت کاراکتر (Ctrl+Shift+F) ----
   const debugRef = useRef({ enabled: false, lastPrint: 0 });
@@ -138,9 +140,11 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       if (guitarTimer.current) clearTimeout(guitarTimer.current);
       if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
       if (emoteTimer.current) clearTimeout(emoteTimer.current);
+      if (bugTimer.current) clearTimeout(bugTimer.current);
       guitarTimer.current = null;
       marshmallowTimer.current = null;
       emoteTimer.current = null;
+      bugTimer.current = null;
     };
 
     // تایمرهای اکشن قبلی را می‌بندد تا با شروع اکشن جدید،
@@ -149,8 +153,10 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       const hadAction = Boolean(state.action);
       if (guitarTimer.current) clearTimeout(guitarTimer.current);
       if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
+      if (bugTimer.current) clearTimeout(bugTimer.current);
       guitarTimer.current = null;
       marshmallowTimer.current = null;
+      bugTimer.current = null;
       if (hadAction) {
         state.endAction();
         publishPlayerAction(roomId, user, 'action-end');
@@ -210,9 +216,32 @@ export default function PlayerController({ roomId, user, look, active = true }) 
           state.sitAuto();
           break;
         }
-        case 'KeyF':
+        case 'KeyF': {
+          // اگر حشره نزدیک است، F = گرفتن با تور؛ وگرنه چراغ ون
+          const bugDist = nearestBugDistance(x, z);
+          if (bugDist <= 2.4 && !state.action) {
+            event.preventDefault();
+            playPositionalOneShot(BUG_NET_SOUND, [x, 1.2, z], { volume: 0.8 });
+            state.startAction('bug-catch');
+            publishPlayerAction(roomId, user, 'action', { action: 'bug-catch', duration: 700 });
+            if (bugTimer.current) clearTimeout(bugTimer.current);
+            bugTimer.current = setTimeout(() => {
+              const s = usePlayerStore.getState();
+              if (s.action === 'bug-catch') s.endAction();
+              publishPlayerAction(roomId, user, 'action-end');
+              bugTimer.current = null;
+            }, 700);
+            // گرفتن در همان لحظه با شعاع تور
+            const caught = tryCatchBug(x, z, 1.9);
+            if (caught) {
+              playPositionalOneShot(BUG_CATCH_SOUND, [x, 1.2, z], { volume: 0.9 });
+              usePlayerStore.getState().addBug(caught);
+            }
+            break;
+          }
           state.setHeadlights(!state.headlights);
           break;
+        }
         case 'KeyG': {
           // گیتار از هر جای نقشه (نه فقط کنار آتش)
           if (state.action === 'guitar') {
@@ -627,6 +656,9 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       // راهنمای مسیر: فاصله تا هدف مرحله‌ی فعال (گردشده تا re-render کمینه شود)
       const target = getQuestTarget(state.quests, state.collected);
       setQuestDistance(target ? Math.round(Math.hypot(target.x - nextX, target.z - nextZ)) : null);
+
+      // نشانگر نزدیکی حشره برای HUD (فقط تغییر boolean رندر می‌شود)
+      usePlayerStore.getState().setNearBug(nearestBugDistance(nextX, nextZ) <= 2.4);
     }
   });
 

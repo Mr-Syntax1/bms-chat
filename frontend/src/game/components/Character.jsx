@@ -254,6 +254,11 @@ export default function Character({
       tiltX = 0.16 + Math.sin(t * 1.8) * 0.03;
       rollZ = Math.sin(t * 1.4) * 0.03;
       bob = Math.sin(t * 1.6) * 0.015;
+    } else if (currentAction === 'bug-catch') {
+      // گرفتن حشره: تاب دادن تور
+      tiltX = 0.14 + Math.sin(t * 9) * 0.12;
+      rollZ = Math.sin(t * 9) * 0.1;
+      bob = Math.abs(Math.sin(t * 9)) * 0.03;
     }
 
     // ---- نگاه به دوربین وقتی ایستاده و دوربین نزدیک است ----

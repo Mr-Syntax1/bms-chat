@@ -9,6 +9,7 @@ export default function InteractionPrompt() {
   const nearInteractable = usePlayerStore((s) => s.nearInteractable);
   const seated = usePlayerStore((s) => s.seated);
   const hovered = usePlayerStore((s) => s.hovered);
+  const nearBug = usePlayerStore((s) => s.nearBug);
 
   let label = null;
   let locked = false;
@@ -20,6 +21,9 @@ export default function InteractionPrompt() {
   } else if (nearInteractable) {
     label = nearInteractable.label;
     locked = Boolean(nearInteractable.locked);
+  } else if (nearBug) {
+    label = 'گرفتن حشره';
+    key = 'F';
   } else if (hovered === 'van') {
     label = 'روشن/خاموش کردن چراغ ون';
     key = 'F';

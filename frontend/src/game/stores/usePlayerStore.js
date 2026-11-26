@@ -164,6 +164,9 @@ export const usePlayerStore = create((set, get) => ({
   // اینونتوری ماهی صیدشده + وضعیت گسسته‌ی ماهیگیری (Phase 3b)
   fishCaught: [],
   fishingState: { isCasting: false, isWaiting: false, isReeling: false, spotIndex: -1 },
+  // اینونتوری حشرات گرفته‌شده (Phase 3c)
+  bugsCaught: [],
+  nearBug: false,
   toasts: [],
   nearInteractable: null, // { key, label }
   // لاگ کوچک چت گوشه‌ی صفحه (آخرین ۳ پیام)
@@ -366,6 +369,19 @@ export const usePlayerStore = create((set, get) => ({
     set((s) => ({ fishCaught: [...s.fishCaught.slice(-39), fish] }));
     const label = fish.junk ? fish.name : `${fish.name} (${fish.weight} کیلو)`;
     get().pushToast(`صید شد: ${label}`, fish.junk ? 'warn' : 'success');
+  },
+
+  // -------------------------------------------------------------------------
+  // حشرات (Phase 3c)
+  // -------------------------------------------------------------------------
+  setNearBug: (near) => {
+    if (get().nearBug !== near) set({ nearBug: near });
+  },
+
+  addBug: (bug) => {
+    if (!bug?.id) return;
+    set((s) => ({ bugsCaught: [...s.bugsCaught.slice(-39), bug] }));
+    get().pushToast(`گرفتی: ${bug.name}`, 'success');
   },
 
   // -------------------------------------------------------------------------

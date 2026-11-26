@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Stars, Sparkles } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
@@ -21,6 +21,8 @@ import Weather from './Weather';
 import CanopyFX from './CanopyFX';
 import CookingStation from './CookingStation';
 import FishingSpot from './FishingBobber';
+import Wildlife from './Wildlife';
+import Bugs from './Bugs';
 import { FISHING_SPOTS } from '../fishingSpots';
 import { useQualityPreset, useSettingsStore } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
@@ -291,6 +293,10 @@ export default function CozyScene() {
       ))}
       <QuestItems />
       <CanopyFX />
+      <Suspense fallback={null}>
+        <Wildlife />
+      </Suspense>
+      <Bugs />
       <Weather />
       <Fireflies count={fireflyCount} />
       <Butterflies count={preset.butterflies} />

@@ -194,10 +194,11 @@ export default function GameOverlay({ roomId, user, onClose }) {
     if (preloadStarted.current) return;
     preloadStarted.current = true;
     preloadAllModels();
-    // مدل‌های پخت/غذا بعد از ورود (idle) warm می‌شوند
+    // مدل‌های پخت/غذا و حیات وحش بعد از ورود (idle) warm می‌شوند
     const id = setTimeout(() => {
       preloadGroup('cooking');
       preloadGroup('food');
+      preloadGroup('animals');
     }, 1200);
     return () => clearTimeout(id);
   }, []);
@@ -246,6 +247,11 @@ export default function GameOverlay({ roomId, user, onClose }) {
       if (fishingActive) return;
       if (logOpen) return;
       if (settingsOpen) return;
+      if (wardrobeOpen) {
+        setWardrobeOpen(false);
+        if (entered) look.lock();
+        return;
+      }
       if (document.pointerLockElement === document.body) {
         document.exitPointerLock?.();
         return;
@@ -254,7 +260,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose, logOpen, settingsOpen, cookingStation, fishingActive]);
+  }, [onClose, logOpen, settingsOpen, cookingStation, fishingActive, wardrobeOpen, entered, look]);
 
   // باز شدن ایستگاه پخت: قفل موس آزاد تا دکمه‌ها قابل کلیک باشند
   const prevCooking = useRef(null);
@@ -291,6 +297,29 @@ export default function GameOverlay({ roomId, user, onClose }) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  // کلید C برای کمد (باز/بسته)
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.code !== 'KeyC' || event.repeat) return;
+      const tag = event.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target?.isContentEditable) return;
+      if (!entered) return;
+      if (logOpen || settingsOpen || cookingStation || fishingActive) return;
+      // وقتی بسته است فقط در حالت قفل موس باز می‌شود (یعنی در بازی)
+      if (!wardrobeOpen && document.pointerLockElement !== document.body) return;
+      event.preventDefault();
+      if (wardrobeOpen) {
+        setWardrobeOpen(false);
+        look.lock();
+      } else {
+        look.unlock();
+        setWardrobeOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [entered, logOpen, settingsOpen, cookingStation, fishingActive, wardrobeOpen, look]);
 
   // قفل اسکرول + پاک‌سازی هنگام بستن
   useEffect(() => {

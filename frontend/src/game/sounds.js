@@ -50,6 +50,10 @@ export const TENT_ZIP_SOUND = soundUrl('ui.tentZip');
 export const QUEST_ACCEPT_SOUND = soundUrl('quest.accept');
 export const QUEST_COMPLETE_SOUND = soundUrl('quest.complete');
 
+// گرفتن حشره (Phase 3c)
+export const BUG_NET_SOUND = soundUrl('activity.bugNet');
+export const BUG_CATCH_SOUND = soundUrl('activity.bugCatch');
+
 export const NPC_BLIPS = [1, 2, 3, 4]
   .map((i) => soundUrl(`npc.blip${i}`))
   .filter(Boolean);

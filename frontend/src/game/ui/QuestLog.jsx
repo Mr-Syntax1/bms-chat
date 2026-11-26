@@ -21,6 +21,7 @@ export default function QuestLog({ open, onClose }) {
   const foods = usePlayerStore((s) => s.foods);
   const eatFood = usePlayerStore((s) => s.eatFood);
   const fishCaught = usePlayerStore((s) => s.fishCaught);
+  const bugsCaught = usePlayerStore((s) => s.bugsCaught);
   const active = getActiveQuestStep(quests);
 
   useEffect(() => {
@@ -170,6 +171,34 @@ export default function QuestLog({ open, onClose }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </section>
+
+        {/* حشرات گرفته‌شده */}
+        <section className="mt-5">
+          <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#ffc66d]/80">
+            حشرات گرفته‌شده ({bugsCaught.length})
+          </h3>
+          {bugsCaught.length === 0 ? (
+            <p className="rounded-xl border border-white/6 bg-black/20 p-2.5 text-[10px] text-[#f5ebdd]/40">
+              هنوز حشره‌ای نگرفتی. نزدیک پروانه/سوسک/کرم شب‌تاب با F تور بزن.
+            </p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2">
+              {bugsCaught.map((bug) => (
+                <div
+                  key={bug.uid}
+                  title={`${bug.name}`}
+                  className="group relative flex aspect-square flex-col items-center justify-center rounded-xl border bg-black/25"
+                  style={{ borderColor: `${bug.rarityColor || '#9fd6b0'}55` }}
+                >
+                  <span style={{ color: bug.rarityColor || '#9fd6b0' }} aria-hidden="true">
+                    <GameIcon name={bug.icon} className="h-5 w-5" strokeWidth={1.7} />
+                  </span>
+                  <span className="mt-0.5 line-clamp-1 px-0.5 text-[8px] text-[#f5ebdd]/65">{bug.name}</span>
+                </div>
+              ))}
             </div>
           )}
         </section>
