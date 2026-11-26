@@ -189,6 +189,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   const deafenedRef = useRef(false);
 
   const busyRef = useRef(false);
+  const preparingCallIdRef = useRef(null);
 
   const userRef = useRef(currentUser);
   const roomRef = useRef(currentRoom);
@@ -324,6 +325,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     const videoTransceiver = findTransceiver(pc, 'video');
 
     if (audioTransceiver) {
+      audioTransceiver.direction = 'sendrecv';
       audioTransceiver.sender.replaceTrack(audio).catch(() => {});
     } else if (audio) {
       try {
@@ -334,6 +336,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     }
 
     if (videoTransceiver) {
+      if (video) videoTransceiver.direction = 'sendrecv';
       videoTransceiver.sender.replaceTrack(video).catch(() => {});
       if (video) setVideoSenderParameters(videoTransceiver.sender, screenSharingRef.current ? 'screen' : 'camera');
     } else if (video) {
@@ -550,6 +553,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
 
   function cleanup(reason) {
     const call = callRef.current;
+    preparingCallIdRef.current = null;
     if (call) {
       for (const [event, handler] of call.handlers) {
         try {
@@ -621,8 +625,9 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   }
 
   async function prepareLocalMedia(callId, type) {
+    preparingCallIdRef.current = callId;
     const stream = await getMedia(type);
-    if (callRef.current?.callId !== callId) {
+    if (preparingCallIdRef.current !== callId) {
       stopStream(stream);
       throw new Error('تماس گروهی دیگر فعال نیست');
     }
@@ -803,8 +808,8 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
       if (!session?.callId) throw new Error(response.error || 'جلسه‌ی تماس ساخته نشد');
       createdCallId = session.callId;
 
-      await openChannel(session.callId, session.roomName);
       await prepareLocalMedia(session.callId, effectiveType);
+      await openChannel(session.callId, session.roomName);
       setRoomName(session.roomTitle || session.roomName);
       addRemoteProfiles(session.participants);
       setState('connected');
@@ -835,7 +840,11 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     setEndReason(null);
 
     try {
+      const effectiveType = mediaType === 'audio' ? 'audio' : (invite.callType === 'video' ? 'video' : 'audio');
+
+      await prepareLocalMedia(invite.callId, effectiveType);
       await openChannel(invite.callId, invite.roomName);
+
       const response = await apiRequest('/api/calls/group/join', {
         method: 'POST',
         body: JSON.stringify({ callId: invite.callId, roomName: invite.roomName }),
@@ -845,8 +854,6 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
         throw new Error(response.error || 'در حال حاضر امکان پیوستن نیست');
       }
 
-      const effectiveType = mediaType === 'audio' ? 'audio' : (session.callType === 'video' ? 'video' : 'audio');
-      await prepareLocalMedia(session.callId, effectiveType);
       setRoomName(session.roomTitle || session.roomName);
       addRemoteProfiles(session.participants);
       setState('connecting');
