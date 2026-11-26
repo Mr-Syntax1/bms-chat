@@ -18,6 +18,9 @@ function colorForId(id) {
 
 const LERP_FACTOR = 0.16;
 const ROT_LERP = 0.2;
+// فاصله‌ی قطع رندر بازیکنان ریموت (واحد) — فراتر از مه صحنه (۱۵۰)
+const LOD_FAR = 70;
+const LOD_FAR_SQ = LOD_FAR * LOD_FAR;
 
 function RemoteAvatar({ id }) {
   const groupRef = useRef(null);
@@ -26,19 +29,31 @@ function RemoteAvatar({ id }) {
   const runningRef = useRef(false);
   const seatedRef = useRef(false);
   const restRef = useRef(null);
-  const wardrobeKeyRef = useRef('');
+  const wardrobeRef = useRef(null);
   // کمد ریموت فقط وقتی عوض شود re-render می‌دهد (نه هر فریم)
   const [wardrobe, setWardrobe] = useState(() => remoteMap.get(id)?.wardrobe || null);
 
-  useFrame((_, rawDelta) => {
+  useFrame(({ camera }, rawDelta) => {
     const entry = remoteMap.get(id);
     const group = groupRef.current;
     if (!entry || !group) return;
 
-    const nextKey = entry.wardrobe ? JSON.stringify(entry.wardrobe) : '';
-    if (nextKey !== wardrobeKeyRef.current) {
-      wardrobeKeyRef.current = nextKey;
-      setWardrobe(entry.wardrobe || null);
+    // LOD: بازیکنان دورتر از ۷۰ واحد هیچ محاسبه‌ای نمی‌گیرند (نه لرپ، نه
+    // سرچ و نه آپدیت اسکلت). با ۲+ نفر این بخش بزرگ‌ترین هزینه‌ی فریم بود.
+    const dxCam = camera.position.x - entry.current.x;
+    const dzCam = camera.position.z - entry.current.z;
+    if (dxCam * dxCam + dzCam * dzCam > LOD_FAR_SQ) {
+      if (group.visible) group.visible = false;
+      return;
+    }
+    if (!group.visible) group.visible = true;
+
+    // مقایسه با مرجع شیء (نه JSON.stringify هر فریم) — ارسال موقعیت ۱۵ بار در
+    // ثانیه شیء تازه نمی‌سازد، پس این بررسی تقریباً همیشه false است.
+    const nextWardrobe = entry.wardrobe || null;
+    if (nextWardrobe !== wardrobeRef.current) {
+      wardrobeRef.current = nextWardrobe;
+      setWardrobe(nextWardrobe);
     }
 
     const delta = Math.min(rawDelta, 0.05);

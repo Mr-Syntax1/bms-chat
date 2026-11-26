@@ -18,6 +18,10 @@ export const SPLASH_SOUND = soundUrl('player.splashSmall');
 
 export const YUM_SOUND = soundUrl('eat.yum');
 
+// خوردن غذا (Phase 3e)
+export const EAT_CRUNCH_SOUND = soundUrl('eat.crunch');
+export const EAT_GULP_SOUND = soundUrl('eat.gulp');
+
 export const GUITAR_SOUNDS = [
   soundUrl('music.guitar1'),
   soundUrl('music.guitar2'),

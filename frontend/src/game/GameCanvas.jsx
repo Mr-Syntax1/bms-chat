@@ -56,11 +56,18 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
       >
         {/* AudioListener باید قبل از افکت‌های صدای محیطی ساخته شود */}
         <AudioRoot />
+        {/* مرز Suspense مشترک فقط برای صحنه + Preload: کامپایل شیدرها یک‌بار
+            انجام می‌شود و با لود شدن یک مدل جدید (غذا/ریموت) تکرار نمی‌شود.
+            قبلاً همه‌چیز در یک مرز بود و هر تعامل کل صحنه را remount می‌کرد
+            و gl.compile مجدد ۳-۴ ثانیه فریز می‌ساخت. */}
         <Suspense fallback={null}>
           <CozyScene />
-          <PlayerController roomId={roomId} user={user} look={look} active={active} />
-          <RemotePlayers />
           <Preload all />
+        </Suspense>
+        {/* کنترلر و بازیکنان ریموت بیرون از آن مرز تا هرگز unmount نشوند */}
+        <PlayerController roomId={roomId} user={user} look={look} active={active} />
+        <Suspense fallback={null}>
+          <RemotePlayers />
         </Suspense>
         <AdaptiveDpr pixelated />
         {/* نظارت بر فریم‌تایم برای پیشنهاد کاهش کیفیت (هیسترزیس داخلی) */}

@@ -285,20 +285,33 @@ export default function CozyScene() {
       <Beach />
       <Campfire />
       <Van />
-      <CookingStation id="grill" />
-      <CookingStation id="pot" />
-      <CookingStation id="cauldron" />
-      <CookingStation id="pan" />
-      {FISHING_SPOTS.map((spot, i) => (
-        <FishingSpot key={`fish-${i}`} index={i} spot={spot} />
-      ))}
-      <QuestItems />
+      {/* هر ایستگاه/آیتم مرز Suspense مستقل دارد؛ وگرنه لود شدن یک مدل
+          (مثلاً غذای روی ایستگاه) کل صحنه را unmount و دوباره می‌ساخت
+          و بازی چند ثانیه فریز می‌شد. */}
+      <Suspense fallback={null}>
+        <CookingStation id="grill" />
+        <CookingStation id="pot" />
+        <CookingStation id="cauldron" />
+        <CookingStation id="pan" />
+      </Suspense>
+      <Suspense fallback={null}>
+        {FISHING_SPOTS.map((spot, i) => (
+          <FishingSpot key={`fish-${i}`} index={i} spot={spot} />
+        ))}
+      </Suspense>
+      <Suspense fallback={null}>
+        <QuestItems />
+      </Suspense>
       <CanopyFX />
       <Suspense fallback={null}>
         <Wildlife />
       </Suspense>
-      <Bugs />
-      <ForageItems />
+      <Suspense fallback={null}>
+        <Bugs />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ForageItems />
+      </Suspense>
       <Weather />
       <Fireflies count={fireflyCount} />
       <Butterflies count={preset.butterflies} />

@@ -42,10 +42,12 @@ export function useGameSync({ roomId, user, enabled = true }) {
     let intervalId = null;
     let ready = false;
     let onConnectionReady = null;
+    // مرجع آخرین کمد ارسال‌شده — مقایسه‌ی شیء (نه JSON در هر بسته)
+    let lastWardrobeRef = null;
 
-    const selfPayload = () => {
+    const selfPayload = (includeWardrobe = false) => {
       const { local, character, marshmallow, wardrobe } = usePlayerStore.getState();
-      return {
+      const payload = {
         x: round2(local.x),
         z: round2(local.z),
         rot: round2(local.rot),
@@ -56,12 +58,19 @@ export function useGameSync({ roomId, user, enabled = true }) {
         userId: user.id,
         username: user.username,
         character,
-        wardrobe,
       };
+      // کمد فقط هنگام تغییر فرستاده می‌شود؛ فرستادن آن با هر بسته‌ی موقعیت
+      // (۱۵ بار در ثانیه) در سمت گیرنده آبجکت تازه می‌ساخت و Character
+      // بازیکنان ریموت ۱۵ بار در ثانیه re-render می‌شد (افت شدید FPS با ۲+ نفر).
+      if (includeWardrobe || wardrobe !== lastWardrobeRef) {
+        lastWardrobeRef = wardrobe;
+        payload.wardrobe = wardrobe;
+      }
+      return payload;
     };
 
     const publishPosition = (force = false) => {
-      const payload = selfPayload();
+      const payload = selfPayload(false);
       const last = lastSentRef.current;
       if (
         !force &&
@@ -71,8 +80,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
         last.seat === payload.seat &&
         last.emote === payload.emote &&
         last.action === payload.action &&
-        last.marshmallowStage === payload.marshmallowStage &&
-        last.wardrobe === payload.wardrobe
+        last.marshmallowStage === payload.marshmallowStage
       ) {
         return;
       }
@@ -203,7 +211,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
           if (Array.isArray(members)) usePlayerStore.getState().setPeerCount(members.length);
         })
         .catch(() => {});
-      channel.publish('player-move', selfPayload()).catch(() => {});
+      channel.publish('player-move', selfPayload(true)).catch(() => {});
     };
 
     const onPresenceLeave = (member) => {

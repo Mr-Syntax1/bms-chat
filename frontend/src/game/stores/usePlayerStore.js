@@ -3,6 +3,7 @@ import { SPAWN, SEAT_SPOTS, CAMP_RADIUS, BOUNDS } from '../sceneLayout';
 import { DEFAULT_CHARACTER } from '../models/characterConfig';
 import { DEFAULT_WARDROBE, normalizeWardrobe } from '../models/wardrobeConfig';
 import { findNearbyRestSpot } from '../interactionRegistry';
+import { beginEating, EAT_DURATION } from '../eatData';
 
 // ---------------------------------------------------------------------------
 // state های mutable: در هر فریم آپدیت می‌شوند و باعث re-render نمی‌شوند
@@ -357,6 +358,13 @@ export const usePlayerStore = create((set, get) => ({
     const dish = foods.find((f) => f.uid === uid);
     if (!dish) return null;
     set({ foods: foods.filter((f) => f.uid !== uid) });
+    // انیمیشن خوردن + صداها (داده‌ی زنده بیرون React است)
+    if (beginEating(local)) {
+      get().startAction('eating');
+      setTimeout(() => {
+        if (get().action === 'eating') get().endAction();
+      }, EAT_DURATION);
+    }
     if (dish.hunger > 0) get().pushToast(`${dish.name} خورده شد (+${dish.hunger} سیری)`, 'success');
     else get().pushToast(`${dish.name} خوردنی نبود…`, 'warn');
     return dish;

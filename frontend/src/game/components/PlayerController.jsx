@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -23,6 +23,7 @@ import { applyFovKick } from '../cameraTuning';
 import { fishing } from '../fishData';
 import { nearestBugDistance, tryCatchBug } from '../bugData';
 import { findNearestForage, tryPickForage } from '../forageData';
+import { setEatPublisher, EAT_DURATION } from '../eatData';
 import Character from './Character';
 import ChatBubble from './ChatBubble';
 import {
@@ -141,6 +142,19 @@ export default function PlayerController({ roomId, user, look, active = true }) 
   const character = usePlayerStore((s) => s.character);
   const wardrobe = usePlayerStore((s) => s.wardrobe);
   const local = usePlayerStore((s) => s.local);
+
+  // خوردن غذا از منوی دفترچه: انتشار اکشن برای ریموت‌ها (roomId/user اینجاست)
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+  useEffect(() => {
+    setEatPublisher(() => {
+      publishPlayerAction(roomId, userRef.current, 'action', { action: 'eating', duration: EAT_DURATION });
+      setTimeout(() => publishPlayerAction(roomId, userRef.current, 'action-end'), EAT_DURATION);
+    });
+    return () => setEatPublisher(null);
+  }, [roomId]);
 
   // کلیدهای تعاملی: E تعامل، F چراغ ون، G گیتار، M مارشمالو، 1..5 ایموت
   useEffect(() => {
@@ -703,20 +717,25 @@ export default function PlayerController({ roomId, user, look, active = true }) 
 
   return (
     <group ref={groupRef} position={[local.x, getWalkSurfaceY(local.x, local.z), local.z]}>
-      <Character
-        model={character}
-        moving={movingRef}
-        running={runningRef}
-        emote={emote}
-        action={action}
-        marshmallowStage={() => usePlayerStore.getState().marshmallow}
-        seated={seated}
-        rest={rest}
-        squashRef={squashRef}
-        questProgress={() => totalQuestProgress(usePlayerStore.getState().quests)}
-        wardrobe={wardrobe}
-        castShadow
-      />
+      {/* مدل کاراکتر ممکن است هنوز لود نشده باشد؛ مرز Suspense اختصاصی
+          مانع می‌شود لود مدل، کل کنترلر/صحنه را unmount کند. */}
+      <Suspense fallback={null}>
+        <Character
+          model={character}
+          moving={movingRef}
+          running={runningRef}
+          emote={emote}
+          action={action}
+          marshmallowStage={() => usePlayerStore.getState().marshmallow}
+          seated={seated}
+          rest={rest}
+          squashRef={squashRef}
+          questProgress={() => totalQuestProgress(usePlayerStore.getState().quests)}
+          wardrobe={wardrobe}
+          castShadow
+          crumbs
+        />
+      </Suspense>
 
       <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.5, 0.62, 26]} />

@@ -1,6 +1,7 @@
 import '../models/setupDraco';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { useGLTF, Html } from '@react-three/drei';
 import { modelUrl } from '../assetManifest';
 import { registerInteractable, registerCookingStation } from '../interactionRegistry';
@@ -42,6 +43,58 @@ function Tripod({ children }) {
   );
 }
 
+// بخار ملایم بالای ظرف در حین پخت: چند کره‌ی شفاف که بالا می‌روند و محو
+// می‌شوند. فقط یک InstancedMesh؛ هیچ تخصیصی در هر فریم ندارد.
+const STEAM_COUNT = 7;
+
+function Steam({ active }) {
+  const meshRef = useRef(null);
+  const geo = useMemo(() => new THREE.SphereGeometry(0.075, 6, 5), []);
+  const mat = useMemo(
+    () => new THREE.MeshBasicMaterial({ color: '#f4f7fb', transparent: true, opacity: 0.22, depthWrite: false }),
+    []
+  );
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const seeds = useMemo(
+    () =>
+      Array.from({ length: STEAM_COUNT }, (_, i) => ({
+        a: (i / STEAM_COUNT) * Math.PI * 2,
+        r: 0.05 + (i % 3) * 0.05,
+        speed: 0.42 + (i % 4) * 0.07,
+        offset: i / STEAM_COUNT,
+      })),
+    []
+  );
+
+  useFrame(({ clock }) => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    if (!active) {
+      mesh.visible = false;
+      return;
+    }
+    mesh.visible = true;
+    const t = clock.elapsedTime;
+    for (let i = 0; i < STEAM_COUNT; i += 1) {
+      const s = seeds[i];
+      const life = (t * s.speed + s.offset) % 1;
+      const rise = life * 0.85;
+      const wobble = Math.sin(t * 1.6 + i) * 0.05;
+      dummy.position.set(
+        Math.sin(s.a) * s.r + wobble,
+        0.06 + rise,
+        Math.cos(s.a) * s.r + wobble * 0.7
+      );
+      dummy.scale.setScalar(0.5 + life * 1.5);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
+  return <instancedMesh ref={meshRef} args={[geo, mat, STEAM_COUNT]} visible={false} frustumCulled={false} />;
+}
+
 // غذایی که روی ایستگاه دیده می‌شود: در حین پخت + نتیجه‌ی آخر (فقط ایستگاه خودش)
 function StationDish({ stationId, height = 0.22 }) {
   const [dish, setDish] = useState(null);
@@ -71,7 +124,9 @@ function StationDish({ stationId, height = 0.22 }) {
 
   return (
     <group ref={spinRef} position={[0, height + (dish.done ? 0.12 : 0), 0]}>
-      <Fitted url={url} height={dish.done ? 0.22 : 0.16} />
+      <Suspense fallback={null}>
+        <Fitted url={url} height={dish.done ? 0.22 : 0.16} />
+      </Suspense>
       {dish.done && <pointLight color="#ffc66d" intensity={1.6} distance={2.4} decay={2} position={[0, 0.2, 0]} />}
     </group>
   );
@@ -84,6 +139,15 @@ export default function CookingStation({ id }) {
   const swingRef = useRef(null);
   const nearStation = usePlayerStore((s) => s.cookingStation === id);
   const nearInteractable = usePlayerStore((s) => s.nearInteractable);
+  // فقط ایستگاهی که واقعاً در حال پخت است بخار می‌دهد
+  const [cookingHere, setCookingHere] = useState(false);
+
+  useEffect(() => {
+    return subscribeCooking((type) => {
+      if (type === 'start') setCookingHere(cooking.stationId === id);
+      else if (type === 'result' || type === 'reset') setCookingHere(false);
+    });
+  }, [id]);
 
   useEffect(() => {
     if (!def) return undefined;
@@ -137,6 +201,7 @@ export default function CookingStation({ id }) {
           ))}
         </group>
         <pointLight position={[0, 0.3, 0]} color="#ff7a2c" intensity={4} distance={3.4} decay={2} />
+        <Steam active={cookingHere} />
         <StationDish stationId={id} height={0.4} />
         {hint && <StationHint label="برای پختن" y={1.3} />}
       </group>
@@ -156,6 +221,9 @@ export default function CookingStation({ id }) {
           <meshStandardMaterial color="#2a221c" roughness={1} />
         </mesh>
         <StationDish stationId={id} height={1.15} />
+        <group position={[0, 1.2, 0]}>
+          <Steam active={cookingHere} />
+        </group>
         {hint && <StationHint label="برای پختن" y={2.1} />}
       </group>
     );
@@ -176,6 +244,9 @@ export default function CookingStation({ id }) {
           <meshBasicMaterial color="#ff6b2c" transparent opacity={0.35} depthWrite={false} />
         </mesh>
         <StationDish stationId={id} height={0.85} />
+        <group position={[0, 0.95, 0]}>
+          <Steam active={cookingHere} />
+        </group>
         {hint && <StationHint label="برای پختن" y={1.6} />}
       </group>
     );
@@ -193,6 +264,9 @@ export default function CookingStation({ id }) {
         <Fitted url={PAN_URL} height={0.12} />
       </group>
       <pointLight position={[0, 0.3, 0]} color="#ff8a3d" intensity={5} distance={4} decay={2} />
+      <group position={[0, 0.55, 0]}>
+        <Steam active={cookingHere} />
+      </group>
       <StationDish stationId={id} height={0.52} />
       {hint && <StationHint label="برای پختن" y={1.3} />}
     </group>

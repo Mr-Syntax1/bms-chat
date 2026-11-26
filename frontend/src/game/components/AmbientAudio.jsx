@@ -1,9 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { createPositionalLoop, setVolumeGains } from '../audio';
-import { FIRE_SOUND, CRICKETS_SOUND, WATERFALL_SOUND, STREAM_SOUND } from '../sounds';
+import {
+  FIRE_SOUND,
+  CRICKETS_SOUND,
+  WATERFALL_SOUND,
+  STREAM_SOUND,
+  OCEAN_SOUND,
+} from '../sounds';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
-import { WATERFALL, RIVER, WATER_LEVEL } from '../terrain';
+import { WATERFALL, RIVER, WATER_LEVEL, OCEAN_START_X } from '../terrain';
 
 // چند نقطه در لبه‌ی جنگل برای جیرجیرک‌ها (صدای مکانی)
 const CRICKET_SPOTS = [
@@ -23,11 +29,22 @@ const STREAM_SPOTS = (() => {
   return spots;
 })();
 
+// موج اقیانوس: چند منبع در امتداد خط ساحلی (x = OCEAN_START_X)
+// تا با حرکت در ساحل صدا از جهت درست بیاید و در خشکی محو شود.
+const OCEAN_SPOTS = (() => {
+  const spots = [];
+  for (let z = -80; z <= 80; z += 32) {
+    spots.push([OCEAN_START_X + 6, WATER_LEVEL + 1.1, z]);
+  }
+  return spots;
+})();
+
 // صدای محیطی:
 //   • آتش (مکانی، دامنه‌ی کوتاه)
 //   • جیرجیرک (چند منبع مکانی در جنگل)
 //   • آبشار (مکانی، دامنه‌ی وسیع — از دور هم شنیده می‌شود)
 //   • رودخانه (چند منبع در امتداد مسیر آب)
+//   • اقیانوس (مکانی روی خط ساحلی؛ فقط نزدیک ساحل شنیده می‌شود)
 // توجه: هیچ صدای بادی در بازی وجود ندارد و نباید اضافه شود.
 export default function AmbientAudio() {
   const audio = useSettingsStore((s) => s.audio);
@@ -87,12 +104,26 @@ export default function AmbientAudio() {
       })
     );
 
+    // اقیانوس: منابع مکانی در امتداد ساحل؛ rolloff ملایم تا از فاصله‌ی
+    // متوسط هم شنیده شود ولی در عمق جنگل کاملاً محو شود.
+    const ocean = OCEAN_SPOTS.map((pos, i) =>
+      createPositionalLoop(OCEAN_SOUND, pos, {
+        volume: 0.3 - i * 0.02,
+        refDistance: 16,
+        maxDistance: 58,
+        rolloff: 1.25,
+        channel: 'ambient',
+        synth: 'ocean',
+      })
+    );
+
     return () => {
       cricketsRef.current = [];
       fire.dispose();
       crickets.forEach((c) => c.dispose());
       waterfall.dispose();
       streams.forEach((s) => s.dispose());
+      ocean.forEach((o) => o.dispose());
     };
   }, []);
 

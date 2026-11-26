@@ -187,4 +187,5 @@ export const CLIP_SUFFIX = {
   'fishing-hold': 'Weapon',
   'bug-catch': 'Punch',
   'forage-pick': 'Duck',
+  eating: 'Yes',
 };

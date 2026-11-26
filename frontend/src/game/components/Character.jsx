@@ -16,6 +16,7 @@ import {
 } from '../models/characterConfig';
 import { applyShirtTint, normalizeWardrobe } from '../models/wardrobeConfig';
 import { useSettingsStore } from '../stores/useSettingsStore';
+import { eatWorld, EAT_DURATION } from '../eatData';
 import HeldProps from './HeldProps';
 import Hat, { Accessory } from './Hat';
 import Glasses from './Glasses';
@@ -28,6 +29,11 @@ function resolve(value) {
 }
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+// خرده‌های نان/درخشش هنگام خوردن: ۸ ذره‌ی کوچک که با یک موج کوتاه بیرون
+// می‌پرند. هندسه/متریال یک‌بار ساخته می‌شود و فقط موقعیت/اپسیتی آپدیت می‌شود.
+const CRUMB_COUNT = 8;
+const CRUMB_LIFE = 0.75;
 
 // بدون کمد: هیچ آیتم و هیچ تینتی اعمال نمی‌شود (بازیکن ریموت قدیمی)
 const NO_WARDROBE = {
@@ -55,6 +61,7 @@ export default function Character({
   questProgress = null,
   wardrobe = null,
   castShadow = false,
+  crumbs = false,
   ...props
 }) {
   const config = CHARACTERS[model] || CHARACTERS[DEFAULT_CHARACTER];
@@ -124,6 +131,8 @@ export default function Character({
   const blinkAt = useRef(0);
   const idleMode = useRef({ kind: '', until: 0 });
   const lastQuest = useRef(null);
+  // زمان شروع انیمیشن خوردن — per-character، پس برای ریموت‌ها هم درست کار می‌کند
+  const eatStartRef = useRef(0);
   useEffect(() => {
     phase.current = Math.random() * Math.PI * 2;
     blinkAt.current = performance.now() + 1500 + Math.random() * 2500;
@@ -173,8 +182,17 @@ export default function Character({
       // تکان سر ملایم هنگام راه رفتن برای مدل‌های ریگ‌دار
       const tRig = clock.elapsedTime + phase.current;
       const rigBob = isMoving ? Math.abs(Math.sin(tRig * (isRunning ? 11 : 7))) * 0.05 : 0;
+      // خوردن روی مدل‌های ریگ‌دار: تکان فک/تنه‌ی کوتاه
+      let eatTilt = 0;
+      if (currentAction === 'eating') {
+        if (!eatStartRef.current) eatStartRef.current = now;
+        const pRig = Math.min(1, (now - eatStartRef.current) / EAT_DURATION);
+        eatTilt = Math.abs(Math.sin(pRig * Math.PI * 3)) * 0.07;
+      } else if (eatStartRef.current) {
+        eatStartRef.current = 0;
+      }
       inner.position.y = baseY.current + rigBob + hop.current * 0.4;
-      inner.rotation.x = 0;
+      inner.rotation.x = eatTilt;
       inner.rotation.z = 0;
       inner.rotation.y = 0;
       return;
@@ -240,15 +258,17 @@ export default function Character({
     } else if (currentAction === 'guitar') {
       rollZ = Math.sin(t * 3.4) * 0.09;
     } else if (currentAction === 'cooking-stir') {
-      // هم زدن دیگ: چرخش ملایم تنه + بالا-پایین
-      rollZ = Math.sin(t * 4.2) * 0.11;
-      tiltX = 0.12;
-      bob = Math.abs(Math.sin(t * 4.2)) * 0.02;
+      // هم زدن دیگ: چرخش ملایم تنه + بالا-پایین + حرکت دایره‌ای دست
+      const stir = t * 4.2;
+      rollZ = Math.sin(stir) * 0.11;
+      tiltX = 0.12 + Math.cos(stir) * 0.02;
+      bob = Math.abs(Math.sin(stir)) * 0.02;
     } else if (currentAction === 'cooking-flip') {
-      // برگرداندن در ماهیتابه: تکان تندتر مچ/تنه
-      rollZ = Math.sin(t * 7.5) * 0.13;
-      tiltX = 0.08;
-      bob = Math.abs(Math.sin(t * 7.5)) * 0.03;
+      // برگرداندن در ماهیتابه: تکان تندتر مچ/تنه + جهش کوچک هم‌گام
+      const flip = t * 7.5;
+      rollZ = Math.sin(flip) * 0.13;
+      tiltX = 0.08 + Math.abs(Math.sin(flip)) * 0.04;
+      bob = Math.abs(Math.sin(flip)) * 0.035;
     } else if (currentAction === 'fishing-hold') {
       // ماهیگیری: خم شدن ملایم به جلو + تکان آرام چوب
       tiltX = 0.16 + Math.sin(t * 1.8) * 0.03;
@@ -265,6 +285,28 @@ export default function Character({
       tiltX = 0.34 + e * 0.12;
       bob = -0.1 - e * 0.05;
       rollZ = Math.sin(t * 4) * 0.05;
+    }
+
+    // ---- خوردن: لقمه گرفتن، جویدن، سر خوشحال بالا ----
+    // از روی اکشن خوانده می‌شود (نه وضعیت سراسری) تا فقط همان کاراکتری که
+    // واقعاً می‌خورد این pose را بگیرد — چه local چه remote.
+    if (currentAction === 'eating') {
+      // شروع تازه‌ی انیمیشن را با تغییر اکشن تشخیص بده
+      if (!eatStartRef.current) eatStartRef.current = now;
+      const p = Math.min(1, (now - eatStartRef.current) / EAT_DURATION);
+      // ۳ لقمه در طول انیمیشن؛ هر لقمه یک موج سریع فک
+      const biteWave = Math.abs(Math.sin(p * Math.PI * 3));
+      tiltX = 0.12 + biteWave * 0.07;
+      bob += Math.sin(p * Math.PI * 3) * 0.02;
+      // در نیمه‌ی دوم، سر شاد بالا می‌رود
+      if (p > 0.55) {
+        const happy = (p - 0.55) / 0.45;
+        bob += Math.sin(happy * Math.PI) * 0.05;
+        tiltX -= Math.sin(happy * Math.PI) * 0.1;
+      }
+      rollZ += Math.sin(p * Math.PI * 2) * 0.03;
+    } else if (eatStartRef.current) {
+      eatStartRef.current = 0;
     }
 
     // ---- نگاه به دوربین وقتی ایستاده و دوربین نزدیک است ----
@@ -364,6 +406,60 @@ export default function Character({
     head.position.set(headWorld.x, headWorld.y + 0.18, headWorld.z + headAnchor.z);
   });
 
+  // ---- ذرات خرده‌ی خوردن: یک InstancedMesh کوچک، صفر تخصیص در هر فریم ----
+  const crumbsRef = useRef(null);
+  const crumbState = useRef({ burst: 0, seeds: null });
+  const crumbGeo = useMemo(() => new THREE.BoxGeometry(0.045, 0.045, 0.045), []);
+  const crumbMat = useMemo(
+    () => new THREE.MeshBasicMaterial({ color: '#f0c987', transparent: true, opacity: 0.85, depthWrite: false }),
+    []
+  );
+  const crumbDummy = useMemo(() => new THREE.Object3D(), []);
+  useFrame(({ clock }) => {
+    const mesh = crumbsRef.current;
+    if (!mesh) return;
+    // خرده‌ها فقط برای کاراکتر محلی (eatWorld سراسری است)
+    if (!crumbs) {
+      mesh.visible = false;
+      return;
+    }
+    const st = crumbState.current;
+    // موج جدید؟ بذرهای تصادفی تازه بساز
+    if (eatWorld.crumbBurst !== st.burst) {
+      st.burst = eatWorld.crumbBurst;
+      st.seeds = Array.from({ length: CRUMB_COUNT }, () => ({
+        a: Math.random() * Math.PI * 2,
+        r: 0.06 + Math.random() * 0.1,
+        vy: 0.7 + Math.random() * 0.7,
+        spin: (Math.random() - 0.5) * 8,
+        size: 0.6 + Math.random() * 0.8,
+      }));
+      st.t0 = clock.elapsedTime;
+    }
+    const age = st.seeds ? clock.elapsedTime - (st.t0 ?? 0) : Infinity;
+    if (!st.seeds || age > CRUMB_LIFE) {
+      mesh.visible = false;
+      return;
+    }
+    mesh.visible = true;
+    const k = age / CRUMB_LIFE;
+    const lift = 1.15;
+    for (let i = 0; i < CRUMB_COUNT; i += 1) {
+      const s = st.seeds[i];
+      const spread = 0.12 + k * 0.34;
+      crumbDummy.position.set(
+        Math.sin(s.a) * spread * (1 + i * 0.02),
+        lift + s.vy * age - 2.2 * age * age,
+        Math.cos(s.a) * spread * (1 + i * 0.02)
+      );
+      crumbDummy.rotation.set(s.spin * age, s.spin * age * 0.7, s.spin * age * 0.4);
+      crumbDummy.scale.setScalar(Math.max(0.0001, s.size * (1 - k)));
+      crumbDummy.updateMatrix();
+      mesh.setMatrixAt(i, crumbDummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
   return (
     <group ref={groupRef} {...props}>
       <group ref={innerRef} position={[0, lift, 0]}>
@@ -380,6 +476,13 @@ export default function Character({
           <Accessory value={wardrobeItems.accessory} />
           {/* پروپ‌های در دست: گیتار / سیخ مارشمالو */}
           <HeldProps action={action} marshmallowStage={marshmallowStage} anchor={propAnchor} />
+          {/* خرده‌های خوردن (فقط هنگام خوردن دیده می‌شود) */}
+          <instancedMesh
+            ref={crumbsRef}
+            args={[crumbGeo, crumbMat, CRUMB_COUNT]}
+            visible={false}
+            frustumCulled={false}
+          />
         </group>
       </group>
     </group>

@@ -42,7 +42,7 @@ export default function ChatBubble({ id }) {
   if (!text) return null;
 
   return (
-    <Html center position={[0, 2.6, 0]} distanceFactor={12} occlude zIndexRange={[25, 0]}>
+    <Html center position={[0, 2.6, 0]} distanceFactor={12} zIndexRange={[25, 0]}>
       <div className="relative max-w-[180px] rounded-2xl border border-white/15 bg-[#171426]/85 px-3 py-1.5 text-[11px] leading-snug text-[#f5ebdd] shadow-lg backdrop-blur-md transition-opacity duration-200">
         {text}
         <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-white/15 bg-[#171426]/85" />
