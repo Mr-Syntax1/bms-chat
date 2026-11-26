@@ -1,7 +1,7 @@
 # AI_HANDOFF — BMS Cozy Forest
 
-آخرین به‌روزرسانی: 2026-11-26
-فاز فعلی: **PHASE 4 — NPCها و مأموریت‌ها — DONE ✅** · PHASE 3f — DONE ✅ (دکوراسیون کمپ) · PERFORMANCE & ANIMATION FIXES — DONE ✅ (FPS چندنفره / فریز تعامل / انیمیشن خوردن و پخت / صدای اقیانوس) · PHASE 3d — DONE ✅ (چیدن گیاه) · PHASE 3c — DONE ✅ (حشرات و حیات وحش) · PHASE 3b — DONE ✅ (ماهیگیری) · PHASE 3a — DONE ✅ (پخت‌وپز) · **PHASE 2: 100% COMPLETE** 🎉
+آخرین به‌روزرسانی: 2026-11-27
+فاز فعلی: **PHASE 4.5 — باقی‌مانده‌ی فاز ۴ — DONE ✅** · PHASE 4 — NPCها و مأموریت‌ها — DONE ✅ · PHASE 3f — DONE ✅ (دکوراسیون کمپ) · PERFORMANCE & ANIMATION FIXES — DONE ✅ (FPS چندنفره / فریز تعامل / انیمیشن خوردن و پخت / صدای اقیانوس) · PHASE 3d — DONE ✅ (چیدن گیاه) · PHASE 3c — DONE ✅ (حشرات و حیات وحش) · PHASE 3b — DONE ✅ (ماهیگیری) · PHASE 3a — DONE ✅ (پخت‌وپز) · **PHASE 2: 100% COMPLETE** 🎉
 
 ## 1) خلاصه
 بازی هم‌اکنون: زمین ناهموار + جنگل بلند + آبشار/رودخانه + کمپ/ساحل (Phase 1)،
@@ -135,17 +135,24 @@
 | Phase 4 — پرامپت تعامل NPC با آیکون speech و حاشیه‌ی آبی | `ui/InteractionPrompt.jsx` | eslint + build |
 | Phase 4 — پیش‌بارگذاری گروه `npc` بعد از ورود (idle) + preload مدل‌ها در خود `NPC.jsx` | `GameOverlay.jsx`, `components/NPC.jsx` | eslint + build |
 | Phase 4 — آیکون‌های SVG جدید heart/acorn/speech/star | `ui/icons.jsx` | eslint + build |
+| Phase 4.5 — چالش روزانه: استخر ۱۴ چالشی + انتخاب قطعی ۲ چالش بر اساس تاریخ + ذخیره در `daily-challenge-YYYY-MM-DD` و آینه‌ی `daily-YYYY-MM-DD` | `dailyChallenges.js` (جدید) | eslint + build |
+| Phase 4.5 — شمارنده‌ی روزانه در store (`trackDaily`) با هوک روی پخت/صید/چیدن/قارچ/نوازش/حشره/بلوط/کرم‌شب‌تاب/گفتگو + ارزیابی و پاداش XP یک‌باره + ریست خودکار با تغییر تاریخ | `stores/usePlayerStore.js`, `components/Wildlife.jsx` | eslint + build |
+| Phase 4.5 — تب «چالش روزانه» در دفترچه (نوار پیشرفت، XP، وضعیت کامل/در جریان) | `ui/QuestLog.jsx` (۵ تب) | eslint + build |
+| Phase 4.5 — فلش‌های مسیر چندهدفه: ردیف فلش جهت‌دار + فاصله‌ی متری برای هر کوئست فعال/تحویل با `location`، throttle ۱۰Hz روی DOM (بدون setState در فریم)، مخفی در ≤۳ واحد | `components/QuestTracker.jsx` (جدید), `GameOverlay.jsx`, `questSteps.js` (`location` در ۶ کوئست NPC) | eslint + build |
+| Phase 4.5 — `location` برای هر ۶ کوئست NPC (هم‌راستا با `NPC_LIST`) | `questSteps.js` | eslint + build |
+| Phase 4.5 — barks محیطی: ۴ bark فارسی برای هر ۶ NPC + تایمر ماژول‌سطح (۳۰..۹۰s، حداقل ۳۰s بین هر NPC، فقط ۵..۸ واحد) + بلیپ با pitch تصادفی | `npcData.js`, `components/NPC.jsx` | eslint + build |
+| Phase 4.5 — حباب گفتار bark با تایپ‌رایتر سبک بالای سر NPC (بدون گزینه/قفل موس) | `components/NpcBarkBubble.jsx` (جدید), `components/NPC.jsx`, `stores/usePlayerStore.js` (`npcBark`/`showNpcBark`/`clearNpcBark`) | eslint + build |
+| Phase 4.5 — پایداری localStorage: `npc-progress-{userId}` + `acorns-{userId}`، بازیابی در شروع (`hydrateProgress`)، ذخیره‌ی فوری روی تغییر (throttle ۱.۵s) + autosave ۳۰ ثانیه‌ای ماژول‌سطح + ذخیره در unmount | `persistence.js` (جدید), `GameOverlay.jsx`, `stores/usePlayerStore.js` | eslint + build |
 
 دستورهای تأیید: `npx eslint src/game` (exit 0) و `npm run build` (exit 0).
 
 ## 3) IN PROGRESS 🔄
-هیچ‌چیز نیمه‌کاره. Phase 4 (NPC، دیالوگ، کوئست، دوستی، گنج پنهان) کامل شد.
+هیچ‌چیز نیمه‌کاره. Phase 4 و Phase 4.5 (چالش روزانه، فلش مسیر، barks محیطی، پایداری localStorage) کامل شدند.
 
 ## 4) NOT DONE ⬜ (به‌ترتیب)
 - Phase 5 — پولیش/جوهر/کارایی (منتظر دستور «next»).
-- Phase 4 باقی‌مانده (خارج از اسکوپ حداقلی، برای فازهای بعد): چالش‌های روزانه/چرخشی کمپ (generators)،
-  مسیر چندهدفه‌ی QuestTracker برای کوئست‌های موازی NPC، و barks محیطی NPC.
-- ذخیره‌سازی دائمی وضعیت NPC/دوستی/بلوط‌ها (فعلاً در حافظه‌ی صفحه و با رفرش پاک می‌شود).
+- پاداش چالش روزانه فعلاً فقط XP است (کازمتیک آنلاک در فاز بعد).
+- ذخیره‌سازی دائمی فقط محلی است؛ همگام‌سازی سرور پیشرفت NPC/دوستی/بلوط‌ها در اسکوپ نیست.
 - دکور: محدودیت مالکیت یعنی آیتم‌های بازیکنان قبلی فقط با صاحبشان جابه‌جا/حذف می‌شوند (طراحی‌شده)؛ «اشتراکی کردن» آیتم و دکور پیش‌فرض کمپ هنوز نیست.
 - چیدن گیاه: ذخیره‌سازی دائمی ری‌اسپاون/اینونتوری (فعلاً در حافظه‌ی صفحه) و همگام‌سازی چیدن بین بازیکنان (فعلاً هر کلاینت مستقل می‌چیند).
 - گسترش دستورهای پخت از ۹ به ۵۰+ و Recipe Book با دستورهای کشف‌نشده (طبق MASTER_PROMPT).
@@ -270,7 +277,11 @@
 - 4: بلوط‌های طلایی با «برق‌های کوچک» (`Sparkles`) و نور نقطه‌ای راهنمایی می‌شوند؛ اگر پیدا نشدند مختصات `HIDDEN_ACORNS` را بررسی کنید.
 - 4: کوئست آشپز با تحویل مواد از `ingredients` کم می‌کند (`consume` در `NPC_QUESTS.cow`).
 - 4: کوئست‌های find (جنگلبان/گنوم) از وضعیت سیستم موجود (`quests.chestOpened`) و `goldenAcorns` خوانده می‌شوند — نه شمارنده‌ی جدید.
-- 4: پیشرفت NPC/دوستی/بلوط‌ها در حافظه‌ی صفحه است و با رفرش صفر می‌شود (ذخیره‌سازی دائمی در فاز بعد).
+- 4: پیشرفت NPC/دوستی/بلوط‌ها حالا در `localStorage` ذخیره می‌شود (Phase 4.5)؛ با رفرش دیگر صفر نمی‌شود.
+- 4.5: چالش‌های روزانه از تاریخ **محلی** دستگاه انتخاب می‌شوند؛ اگر تاریخ دستگاه عوض شود، چالش‌ها هم عوض می‌شوند.
+- 4.5: `trackDaily` شمارنده را افزایش می‌دهد و XP پاداش یک‌بار ثبت می‌شود؛ XP فعلاً فقط نمایشی است (سیستم سطح کلی هنوز نیست).
+- 4.5: فلش QuestTracker بیرون Canvas است، پس با rAF ۱۰Hz و نوشتن مستقیم روی DOM کار می‌کند (`useFrame` فقط داخل Canvas معتبر است).
+- 4.5: barks فقط وقتی یک bark دیگر فعال نیست اجرا می‌شوند (بدون صف/همپوشانی)؛ تایمرها در `barkTimers` ماژول‌سطح `NPC.jsx` هستند و به React وابسته نیستند.
 
 ## 8) اجرا و تأیید
 ```
@@ -279,16 +290,17 @@ npx eslint src/game
 npm run build
 npm run dev
 ```
-کلیدها: نگه‌داشتن Q = چرخ ایموت · 1..5 میان‌بر · E تعامل/نشستن/بغل بازیکن نزدیک · **E نزدیک NPC = گفتگو (بعد از آیتم کوئست، قبل از پخت)** · **E نزدیک ایستگاه پخت = نگه‌داشتن برای پختن** · **E نزدیک نقطه‌ی ماهیگیری = مینی‌گیم ماهیگیری** · G گیتار · M مارشمالو · L دفترچه (۴ تب) · C کمد · **F = چیدن گیاه (اولویت) / گرفتن حشره با تور / چراغ ون**.
+کلیدها: نگه‌داشتن Q = چرخ ایموت · 1..5 میان‌بر · E تعامل/نشستن/بغل بازیکن نزدیک · **E نزدیک NPC = گفتگو (بعد از آیتم کوئست، قبل از پخت)** · **E نزدیک ایستگاه پخت = نگه‌داشتن برای پختن** · **E نزدیک نقطه‌ی ماهیگیری = مینی‌گیم ماهیگیری** · G گیتار · M مارشمالو · L دفترچه (۵ تب) · C کمد · **F = چیدن گیاه (اولویت) / گرفتن حشره با تور / چراغ ون**.
 کمد از دکمه‌ی کمد (آیکون SVG) در HUD **یا کلید C** و مرور کمپ‌ها از دکمه‌ی چادر در هدر چت باز می‌شود. غذاهای پخته‌شده، ماهی‌های صیدشده، حشرات گرفته‌شده و گیاهان چیده‌شده در دفترچه (آیکون طومار) دیده می‌شوند. **کلیک روی غذای پخته‌شده در دفترچه = خوردن با انیمیشن و صدا.**
 
 ## 9) env / endpoint / store / localStorage جدید
-- store: `chatLog` + `pushChatLog`؛ `uiFlags`؛ `chatBubbleMap`؛ `wardrobe` + `setWardrobe`؛ `campMood` (module-level)؛ `ingredients` + `addIngredient` + `consumeIngredients`؛ `foods` + `addFood` + `eatFood` (اکنون `beginEating` + اکشن `eating` را هم راه می‌اندازد)؛ `cookingStation` + `openCooking` + `closeCooking`؛ `fishCaught` + `addFish`؛ `fishingState` + `setFishingState`؛ `bugsCaught` + `addBug`؛ `nearBug` + `setNearBug`؛ `forageItems` + `addForageItem`؛ `nearForage` + `setNearForage`؛ **`decorations` + `setDecorations` + `addDecoration` + `updateDecoration` + `removeDecoration` + `mergeDecorations`؛ `decorMode` + `setDecorMode`؛ `selectedDecor` + `setSelectedDecor` (3f)**؛ **`npcInteractions` + `activeDialogue` + `dialogueNode` + `friendshipLevels` + `goldenAcorns` + `nightFireflies` + `unlockedItems` و اکشن‌های `setActiveDialogue`/`setDialogueNode`/`acceptNpcQuest`/`completeNpcQuest`/`addFriendshipXp`/`markGiftGiven`/`markStoryHeard`/`collectGoldenAcorn`/`addNightFirefly`/`unlockWardrobeItem` (4)**.
-- ماژول‌های داده‌ی زنده (بیرون React): `forageWorld` (3d)؛ `eatWorld` + `beginEating` + `EAT_DURATION` + `setEatPublisher` (3e)؛ `cooking` (3a)؛ `fishing` (3b)؛ `bugWorld` (3c)؛ **`decorWorld` (3f: mode/rotation/scale/ghost)**؛ **`decorSync` (3f: context/publisher/actions)**؛ **رجیستری NPC در `interactionRegistry.js` (`registerNpc`/`updateNpcPosition`/`setNpcHidden`/`findNearbyNpc`) + داده‌ی NPC/دیالوگ/بلوط‌ها در `npcData.js` (4)**.
+- store: `chatLog` + `pushChatLog`؛ `uiFlags`؛ `chatBubbleMap`؛ `wardrobe` + `setWardrobe`؛ `campMood` (module-level)؛ `ingredients` + `addIngredient` + `consumeIngredients`؛ `foods` + `addFood` + `eatFood` (اکنون `beginEating` + اکشن `eating` را هم راه می‌اندازد)؛ `cookingStation` + `openCooking` + `closeCooking`؛ `fishCaught` + `addFish`؛ `fishingState` + `setFishingState`؛ `bugsCaught` + `addBug`؛ `nearBug` + `setNearBug`؛ `forageItems` + `addForageItem`؛ `nearForage` + `setNearForage`؛ **`decorations` + `setDecorations` + `addDecoration` + `updateDecoration` + `removeDecoration` + `mergeDecorations`؛ `decorMode` + `setDecorMode`؛ `selectedDecor` + `setSelectedDecor` (3f)**؛ **`npcInteractions` + `activeDialogue` + `dialogueNode` + `friendshipLevels` + `goldenAcorns` + `nightFireflies` + `unlockedItems` و اکشن‌های `setActiveDialogue`/`setDialogueNode`/`acceptNpcQuest`/`completeNpcQuest`/`addFriendshipXp`/`markGiftGiven`/`markStoryHeard`/`collectGoldenAcorn`/`addNightFirefly`/`unlockWardrobeItem` (4)**؛ **`dailyDate` + `dailyChallenges` + `dailyProgress` + `dailyCompleted` + `dailyXp` + `initDailyChallenges`/`trackDaily`/`evaluateDailyChallenges`/`saveDailyChallenges`؛ `npcBark` + `showNpcBark`/`clearNpcBark`؛ `hydrateProgress` (4.5)**.
+- ماژول‌های داده‌ی زنده (بیرون React): `forageWorld` (3d)؛ `eatWorld` + `beginEating` + `EAT_DURATION` + `setEatPublisher` (3e)؛ `cooking` (3a)؛ `fishing` (3b)؛ `bugWorld` (3c)؛ **`decorWorld` (3f: mode/rotation/scale/ghost)**؛ **`decorSync` (3f: context/publisher/actions)**؛ **رجیستری NPC در `interactionRegistry.js` (`registerNpc`/`updateNpcPosition`/`setNpcHidden`/`findNearbyNpc`) + داده‌ی NPC/دیالوگ/بلوط‌ها در `npcData.js` (4)**؛ **`dailyChallenges.js` (استخر/انتخاب قطعی/load/save روزانه) + `persistence.js` (load/save/autosave ۳۰s پیشرفت) + `barkTimers` ماژول‌سطح در `NPC.jsx` (4.5)**.
 - endpoint جدید: `GET /api/calls/game/campsites`؛ `POST /api/calls/game/claim-character` اکنون `{ preferred?, roomId? }` می‌پذیرد.
-- localStorage: `preferred-character` و `wardrobe-<userId>` و **`camp-decor-<roomId>` (3f)**.
+- localStorage: `preferred-character` و `wardrobe-<userId>` و **`camp-decor-<roomId>` (3f)** و **`npc-progress-<userId>` / `acorns-<userId>` / `daily-challenge-YYYY-MM-DD` (و آینه‌ی `daily-YYYY-MM-DD`) (4.5)**.
 
 ## 10) Changelog (جدیدترین اول)
+- 2026-11-27 — **Phase 4.5: باقی‌مانده‌ی فاز ۴** — (۱) چالش‌های روزانه: استخر ۱۴ چالشی و انتخاب قطعی ۲ چالش بر اساس تاریخ، تب «چالش روزانه» در دفترچه، شمارنده‌ی `trackDaily` روی پخت/صید/چیدن/قارچ/نوازش خرگوش/حشره/بلوط/کرم‌شب‌تاب/گفتگوی NPC، پاداش XP یک‌باره و ریست خودکار نیمه‌شب با `daily-challenge-YYYY-MM-DD`. (۲) فلش‌های مسیر چندهدفه‌ی QuestTracker برای کوئست‌های فعال/تحویل با `location` (زاویه + فاصله‌ی متری، throttle ۱۰Hz روی DOM، مخفی در ≤۳ واحد). (۳) barks محیطی NPC: ۴ جمله برای هر ۶ NPC با تایمر ماژول‌سطح ۳۰..۹۰s، حباب تایپ‌رایتر بالای سر و بلیپ با pitch تصادفی. (۴) پایداری localStorage: `npc-progress-{userId}` + `acorns-{userId}` با بازیابی در شروع، ذخیره‌ی فوری روی اکشن (throttle ۱.۵s)، autosave ۳۰s و ذخیره در خروج. eslint ✅ build ✅
 - 2026-11-26 — **Phase 4: NPCها و مأموریت‌ها** — ۶ NPC داده‌محور (پدربزرگ ماهیگیر، آشپز کمپ، جنگلبان، دخترک حشره‌شناس، جادوگر مهتاب شبانه، گنوم جنگل) از مدل‌های موجود manifest با AI ۵Hz (پرسه + نگاه به بازیکن)، نیم‌پلیت و نشانگر «!»/«?»؛ درخت دیالوگ فارسی داده‌محور با تایپ‌رایتر، بلیپ مخصوص هر NPC (pitch با `playbackRate`) و انتخاب‌های شاخه‌ای؛ ۶ کوئست در `questSteps.js` (منبع واحد) با انواع catch/deliver/find/collect؛ دوستی ۱..۵ با هدیه در سطح ۳ و داستان شخصی در سطح ۵؛ پاداش واقعی (کلاه در کمد، دستور پخت جدید در ایستگاه پن، دکور جدید در کاتالوگ)؛ ۶ بلوط طلایی پنهان؛ دفترچه‌ی ۴ تبی (داستان/NPC/دوستی/گنج)؛ جادوگر فقط شب (مش + رجیستری). eslint ✅ build ✅
 - 2026-11-26 — Phase 3f: دکوراسیون کمپ — حالت چیدمان با B (قفل موس آزاد، پنل کاتالوگ، حلقه‌ی محدوده ۲۶ واحدی)، ۲۳ آیتم در ۵ دسته از مدل‌های موجود manifest، شبح پیش‌نمایش نیمه‌شفاف سبز/قرمز (داده بیرون React در `decorWorld`)، پرتاب پرتو روی زمین ناهموار با ray-march + بایسکشن (بدون raycast مش)، اعتبارسنجی شیب/آب/تنه‌ی درخت/ون/آتش/تداخل و سقف ۱۵ آیتم هر بازیکن، چرخش Q/E و مقیاس +/−، Shift+کلیک برداشتن، راست‌کلیک حذف، مالکیت (فقط صاحب آیتم)، همگام‌سازی Ably با ۴ رویداد روی `player-action` (قبل از گارد remoteMap) و `decor-sync` برای تازه‌واردها، ذخیره‌سازی `localStorage` با کلید `camp-decor-<roomId>`، صداهای place_item/tent_zip، گروه preload `decor` و آیکون‌های SVG جدید. گاردهای Q/E و ESC و PauseMenu اضافه شد. eslint ✅ build ✅
 - 2026-11-26 — 🚨 **کارایی/انیمیشن**: (۱) افت FPS با ۲+ نفر رفع شد — علت: `occlude` در `Html` نام‌شناور و حباب چت باعث raycast بازگشتی روی کل صحنه در هر فریم می‌شد؛ به‌علاوه `wardrobe` با هر بسته‌ی موقعیت ارسال می‌شد و `JSON.stringify` در حلقه‌ی فریم بازیکن ریموت را re-render می‌کرد. راه‌حل: حذف occlude، LOD ۷۰ واحدی برای ریموت‌ها، مقایسه‌ی مرجع شیء برای کمد، ارسال کمد فقط هنگام تغییر. (۲) فریز ۳-۴ ثانیه‌ای E/F رفع شد — علت: یک مرز `Suspense` مشترک برای صحنه + کنترلر + ریموت + `Preload`؛ مونت هر GLB (غذای روی ایستگاه، کاراکتر ریموت) کل صحنه را remount و شیدرها را دوباره کامپایل می‌کرد. راه‌حل: مرزهای Suspense مستقل برای هر گروه دارایی. (۳) انیمیشن خوردن: لقمه/جویدن سه‌موجی + سر خوشحال + ذرات خرده‌نان `InstancedMesh` + eat_crunch/gulp/yum هم‌گام (`eatData.js`). (۴) پولیش پخت: هم‌زدن دایره‌ای، جهش برگرداندن، بخار `InstancedMesh` روی ایستگاه. (۵) صدای اقیانوس مکانی در امتداد ساحل با rolloff. eslint ✅ build ✅

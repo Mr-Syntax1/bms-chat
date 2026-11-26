@@ -12,11 +12,51 @@ import { isNight } from '../envState';
 import { registerNpc, updateNpcPosition, setNpcHidden } from '../interactionRegistry';
 import { getDialogueNode, NPC_BY_ID } from '../npcData';
 import { npcMarker } from '../questSteps';
+import { playPositionalOneShot } from '../audio';
+import { NPC_BLIPS } from '../sounds';
+import NpcBarkBubble from './NpcBarkBubble';
 
 // AI فقط ۵ بار در ثانیه اجرا می‌شود (نه هر فریم) — طبق قواعد ضد Overthink
 const AI_HZ = 0.2;
 const LOOK_RANGE = 5;
 const BOB_SPEED = 1.5;
+
+// ---- barks محیطی: زمان‌بندی بیرون React (ماژول‌سطح) ----
+const BARK_MIN_GAP = 30; // حداقل ۳۰ ثانیه بین دو bark هر NPC
+const BARK_MIN_DELAY = 30;
+const BARK_MAX_DELAY = 90;
+const BARK_MIN_DIST = 5;
+const BARK_MAX_DIST = 8;
+const barkTimers = new Map(); // npcId → { nextAt, lastAt }
+
+function nextBarkDelay() {
+  return BARK_MIN_DELAY + Math.random() * (BARK_MAX_DELAY - BARK_MIN_DELAY);
+}
+
+function tryNpcBark(npc, dist, now) {
+  if (!npc.barks?.length) return;
+  const state = usePlayerStore.getState();
+  if (state.activeDialogue || state.npcBark) return;
+  if (dist < BARK_MIN_DIST || dist > BARK_MAX_DIST) return;
+  const timer = barkTimers.get(npc.id) || { nextAt: now + nextBarkDelay(), lastAt: 0 };
+  barkTimers.set(npc.id, timer);
+  if (now < timer.nextAt) return;
+  if (timer.lastAt && now - timer.lastAt < BARK_MIN_GAP) return;
+  timer.lastAt = now;
+  timer.nextAt = now + nextBarkDelay();
+  const text = npc.barks[Math.floor(Math.random() * npc.barks.length)];
+  state.showNpcBark(npc.id, text);
+  if (NPC_BLIPS.length) {
+    const url = NPC_BLIPS[(npc.blip || 1) % NPC_BLIPS.length];
+    playPositionalOneShot(url, [npc.x, 1.3, npc.z], {
+      volume: 0.26,
+      channel: 'effects',
+      refDistance: 2,
+      maxDistance: 14,
+      playbackRate: (npc.pitch || 1) * (0.94 + Math.random() * 0.12),
+    });
+  }
+}
 
 // مدل NPC را با ارتفاع دلخواه نرمال می‌کند (مثل Fitted، اما کلون اسکلتی امن)
 function useNpcModel(modelKey, height) {
@@ -40,10 +80,11 @@ function useNpcModel(modelKey, height) {
   return { url, ...data };
 }
 
-function NpcNamePlate({ name, accent, marker }) {
+function NpcNamePlate({ name, accent, marker, bark }) {
   return (
     <Html center position={[0, 2.2, 0]} distanceFactor={14} zIndexRange={[20, 0]}>
       <div className="pointer-events-none flex select-none flex-col items-center gap-1">
+        {bark && <NpcBarkBubble text={bark.text} accent={accent} until={bark.until} />}
         <div className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[#171426]/75 px-2.5 py-1 text-[11px] text-[#f5ebdd] backdrop-blur-md">
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
           <span>{name}</span>
@@ -101,6 +142,7 @@ export default function NPC({ data }) {
   const [visible, setVisible] = useState(!data.nightOnly);
   const level = usePlayerStore((s) => s.friendshipLevels[data.id] || 1);
   const completed = usePlayerStore((s) => Boolean(s.npcInteractions[data.id]?.completed));
+  const bark = usePlayerStore((s) => (s.npcBark?.npcId === data.id ? s.npcBark : null));
 
   // ثبت در رجیستری تعامل (NPC شبانه تا وقتی شب نشده قابل تعامل نیست)
   useEffect(() => {
@@ -166,6 +208,9 @@ export default function NPC({ data }) {
           st.targetZ = homeZ + Math.sin(angle) * r;
         }
       }
+
+      // bark محیطی: فقط وقتی بازیکن در بازه‌ی ۵..۸ واحد است و NPC شبانه نمایان است
+      if (!data.nightOnly || isNight()) tryNpcBark(data, dist, now);
     }
 
     // ---- حرکت نرم به سمت هدف ----
@@ -203,7 +248,7 @@ export default function NPC({ data }) {
           <primitive object={object} />
         </group>
       </group>
-      <NpcNamePlate name={data.name} accent={data.accent} marker={marker} />
+      <NpcNamePlate name={data.name} accent={data.accent} marker={marker} bark={bark} />
     </group>
   );
 }

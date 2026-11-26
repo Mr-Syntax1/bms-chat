@@ -207,6 +207,7 @@ function Animal({ spawn, spec, geometryInfo }) {
           if (s.petTime >= 3 && !s.petted) {
             s.petted = true;
             s.petUntil = t + 2.5;
+            usePlayerStore.getState().trackDaily('pet');
           }
         } else {
           s.petTime = 0;

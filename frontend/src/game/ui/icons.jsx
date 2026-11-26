@@ -526,6 +526,12 @@ const PATHS = {
   star: (
     <path d="M12 3.4 14.7 9l6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.9 9.3 9 12 3.4Z" />
   ),
+  arrowUp: (
+    <>
+      <path d="M12 20V4" />
+      <path d="M6 10l6-6 6 6" />
+    </>
+  ),
 };
 
 export function GameIcon({ name, className = 'h-4 w-4', strokeWidth = 1.7, fill = 'none', ...rest }) {

@@ -24,8 +24,10 @@ import CookingUI from './ui/CookingUI';
 import FishingUI from './ui/FishingUI';
 import DecorPanel from './ui/DecorPanel';
 import DialogueBox from './components/DialogueBox';
+import QuestTrackerArrows from './components/QuestTracker';
 import { useChatBubbles } from './hooks/useChatBubbles';
 import { loadWardrobe } from './models/wardrobeConfig';
+import { loadProgress, saveProgressFromState, startProgressAutosave, stopProgressAutosave } from './persistence';
 
 const GameCanvas = lazy(() => import('./GameCanvas'));
 
@@ -193,6 +195,22 @@ export default function GameOverlay({ roomId, user, onClose }) {
     if (!user?.id) return;
     setWardrobe(loadWardrobe(user.id));
   }, [user?.id, setWardrobe]);
+
+  // پیشرفت NPC/دوستی/بلوط‌ها: بازیابی در شروع + autosave ۳۰ ثانیه‌ای + ذخیره در بستن
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    usePlayerStore.getState().hydrateProgress(loadProgress(user.id));
+    startProgressAutosave(user.id);
+    return () => {
+      saveProgressFromState(user.id);
+      stopProgressAutosave();
+    };
+  }, [user?.id]);
+
+  // چالش‌های روزانه: مقداردهی اولیه در شروع بازی (بر اساس تاریخ امروز)
+  useEffect(() => {
+    usePlayerStore.getState().initDailyChallenges();
+  }, []);
 
   // شروع پیش‌بارگذاری واقعی مدل‌ها (بعد از mount شدن صفحه‌ی لودینگ)
   useEffect(() => {
@@ -544,6 +562,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
       {entered && locked && <ControlsHint />}
       <FacingDebug />
       {entered && <EmoteWheel roomId={roomId} user={user} />}
+      {entered && <QuestTrackerArrows />}
       {entered && <ChatLogCorner />}
 
       {entered && decorMode && (

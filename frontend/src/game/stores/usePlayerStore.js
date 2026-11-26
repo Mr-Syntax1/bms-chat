@@ -5,6 +5,14 @@ import { DEFAULT_WARDROBE, normalizeWardrobe } from '../models/wardrobeConfig';
 import { findNearbyRestSpot } from '../interactionRegistry';
 import { beginEating, EAT_DURATION } from '../eatData';
 import { NPC_QUESTS, npcQuestValue } from '../questSteps';
+import {
+  dayKey,
+  loadDailyState,
+  saveDailyState,
+  emptyDailyProgress,
+  challengeProgress,
+  DAILY_BY_ID,
+} from '../dailyChallenges';
 
 // ---------------------------------------------------------------------------
 // state های mutable: در هر فریم آپدیت می‌شوند و باعث re-render نمی‌شوند
@@ -179,7 +187,14 @@ export const usePlayerStore = create((set, get) => ({
   // NPC و دیالوگ (Phase 4) — وضعیت هر NPC جداگانه ذخیره می‌شود
   npcInteractions: {}, // { [npcId]: { accepted, completed, giftGiven, storyHeard, xp } }
   activeDialogue: null, // { npcId, nodeKey, text, choices } | null
+  npcBark: null, // { npcId, text, until } | null — حباب گفتار محیطی NPC
   friendshipLevels: {}, // { [npcId]: 1..5 }
+  // چالش‌های روزانه (Phase 4.5) — ۲ چالش قطعی بر اساس تاریخ
+  dailyDate: null,
+  dailyChallenges: [], // [id, id]
+  dailyProgress: emptyDailyProgress(),
+  dailyCompleted: [], // idهای کامل‌شده‌ی امروز
+  dailyXp: 0,
   // کلکسیون‌های پنهان (Phase 4)
   goldenAcorns: [], // ایندکس بلوط‌های طلایی جمع‌شده
   nightFireflies: 0, // کرم شب‌تاب جمع‌شده در شب (برای کوئست جادوگر)
@@ -365,6 +380,7 @@ export const usePlayerStore = create((set, get) => ({
   addFood: (dish) => {
     if (!dish?.id) return;
     set((s) => ({ foods: [...s.foods.slice(-29), dish] }));
+    get().trackDaily('cook');
   },
 
   eatFood: (uid) => {
@@ -394,6 +410,7 @@ export const usePlayerStore = create((set, get) => ({
     set((s) => ({ fishCaught: [...s.fishCaught.slice(-39), fish] }));
     const label = fish.junk ? fish.name : `${fish.name} (${fish.weight} کیلو)`;
     get().pushToast(`صید شد: ${label}`, fish.junk ? 'warn' : 'success');
+    if (!fish.junk) get().trackDaily('fish');
   },
 
   // -------------------------------------------------------------------------
@@ -407,6 +424,7 @@ export const usePlayerStore = create((set, get) => ({
     if (!bug?.id) return;
     set((s) => ({ bugsCaught: [...s.bugsCaught.slice(-39), bug] }));
     get().pushToast(`گرفتی: ${bug.name}`, 'success');
+    get().trackDaily('bug');
   },
 
   // -------------------------------------------------------------------------
@@ -425,6 +443,8 @@ export const usePlayerStore = create((set, get) => ({
       ingredients: { ...s.ingredients, [item.id]: (s.ingredients[item.id] || 0) + 1 },
     }));
     get().pushToast(`چیدی: ${item.name}`, 'success');
+    get().trackDaily('forage');
+    if (item.id === 'mushroom' || item.id === 'laetiporus') get().trackDaily('mushroom');
   },
 
   // -------------------------------------------------------------------------
@@ -468,9 +488,103 @@ export const usePlayerStore = create((set, get) => ({
   },
 
   // -------------------------------------------------------------------------
+  // چالش‌های روزانه (Phase 4.5)
+  // -------------------------------------------------------------------------
+  initDailyChallenges: () => {
+    const key = dayKey();
+    if (get().dailyDate === key) return;
+    const daily = loadDailyState(key);
+    set({
+      dailyDate: key,
+      dailyChallenges: daily.challenges,
+      dailyProgress: daily.progress,
+      dailyCompleted: daily.completed,
+      dailyXp: 0,
+    });
+  },
+
+  // شمارنده‌ی روزانه: type یکی از cook/fish/forage/mushroom/pet/bug/acorn/firefly/talk
+  trackDaily: (type, amount = 1, extra = null) => {
+    const state = get();
+    if (state.dailyDate !== dayKey()) state.initDailyChallenges();
+    const current = get();
+    const progress = { ...current.dailyProgress };
+    if (type === 'talk') {
+      if (!extra) return;
+      progress.talk = Array.from(new Set([...(progress.talk || []), String(extra)]));
+    } else {
+      progress[type] = (Number(progress[type]) || 0) + amount;
+    }
+    set({ dailyProgress: progress });
+    get().evaluateDailyChallenges();
+    get().saveDailyChallenges();
+  },
+
+  // بررسی تکمیل چالش‌ها و ثبت پاداش XP (فقط یک‌بار)
+  evaluateDailyChallenges: () => {
+    const { dailyChallenges, dailyCompleted, dailyProgress, dailyXp } = get();
+    const completed = [...dailyCompleted];
+    let xp = dailyXp;
+    for (const id of dailyChallenges) {
+      if (completed.includes(id)) continue;
+      const challenge = DAILY_BY_ID[id];
+      if (!challenge) continue;
+      if (challengeProgress(challenge, dailyProgress) >= challenge.target) {
+        completed.push(id);
+        xp += challenge.reward?.xp || 0;
+        get().pushToast(`چالش روزانه کامل شد: ${challenge.description}`, 'success');
+      }
+    }
+    if (completed.length !== dailyCompleted.length) {
+      set({ dailyCompleted: completed, dailyXp: xp });
+    }
+  },
+
+  saveDailyChallenges: () => {
+    const { dailyDate, dailyChallenges, dailyProgress, dailyCompleted } = get();
+    if (!dailyDate) return;
+    saveDailyState({ date: dailyDate, challenges: dailyChallenges, completed: dailyCompleted, progress: dailyProgress });
+  },
+
+  // -------------------------------------------------------------------------
+  // ذخیره/بازیابی پیشرفت محلی (Phase 4.5)
+  // -------------------------------------------------------------------------
+  hydrateProgress: (saved) => {
+    if (!saved) return;
+    const npcInteractions = {};
+    for (const npcId of Object.keys(saved.friendship || {})) {
+      const completed = (saved.completedQuests || []).includes(npcId);
+      npcInteractions[npcId] = {
+        xp: Number(saved.npcXp?.[npcId]) || 0,
+        accepted: completed || Number(saved.npcXp?.[npcId]) > 0,
+        completed,
+      };
+    }
+    set({
+      npcInteractions,
+      friendshipLevels: { ...(saved.friendship || {}) },
+      goldenAcorns: Array.isArray(saved.acorns) ? saved.acorns : [],
+      nightFireflies: Number(saved.nightFireflies) || 0,
+      unlockedItems: saved.unlockedItems || get().unlockedItems,
+    });
+  },
+
+  // -------------------------------------------------------------------------
   // NPC / دوستی / دیالوگ (Phase 4)
   // -------------------------------------------------------------------------
-  setActiveDialogue: (dialogue) => set({ activeDialogue: dialogue }),
+  setActiveDialogue: (dialogue) => {
+    set({ activeDialogue: dialogue });
+    if (dialogue?.npcId) get().trackDaily('talk', 1, dialogue.npcId);
+  },
+
+  // حباب گفتار محیطی NPC (bark) — فقط یک bark فعال در هر لحظه
+  showNpcBark: (npcId, text, ms = 4500) => {
+    if (!npcId || !text) return;
+    set({ npcBark: { npcId, text, until: Date.now() + ms } });
+  },
+  clearNpcBark: () => {
+    if (get().npcBark) set({ npcBark: null });
+  },
   setDialogueNode: (node) => set({ dialogueNode: node }),
 
   // پذیرفتن کوئست NPC (از دیالوگ)
@@ -527,11 +641,13 @@ export const usePlayerStore = create((set, get) => ({
     const next = [...goldenAcorns, index];
     set({ goldenAcorns: next });
     get().pushToast(`بلوط طلایی: ${next.length} از ۶`, 'success');
+    get().trackDaily('acorn');
     return true;
   },
 
   addNightFirefly: () => {
     set((s) => ({ nightFireflies: (s.nightFireflies || 0) + 1 }));
+    get().trackDaily('firefly');
   },
 
   // تحویل کوئست NPC: مصرف مواد (در صورت وجود) + ثبت تکمیل + پاداش + XP دوستی

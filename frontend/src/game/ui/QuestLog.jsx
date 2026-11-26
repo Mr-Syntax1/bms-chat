@@ -11,6 +11,7 @@ import {
 } from '../questSteps';
 import { NPC_BY_ID } from '../npcData';
 import { RARITY } from '../fishData';
+import { DAILY_BY_ID, challengeProgress } from '../dailyChallenges';
 import { ProgressBar } from './primitives';
 import { GameIcon } from './icons';
 
@@ -23,6 +24,7 @@ const ITEMS = [
 
 const TABS = [
   { id: 'story', label: 'داستان', icon: 'scroll' },
+  { id: 'daily', label: 'چالش روزانه', icon: 'star' },
   { id: 'npc', label: 'NPCها', icon: 'users' },
   { id: 'friends', label: 'دوستی', icon: 'heart' },
   { id: 'treasure', label: 'گنج‌ها', icon: 'acorn' },
@@ -148,7 +150,7 @@ export default function QuestLog({ open, onClose }) {
         </div>
 
         {/* تب‌ها */}
-        <div className="mb-3 grid grid-cols-4 gap-1">
+        <div className="mb-3 grid grid-cols-5 gap-1">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -233,6 +235,9 @@ export default function QuestLog({ open, onClose }) {
             <FoodSection foods={foods} eatFood={eatFood} />
           </>
         )}
+
+        {/* ---- تب چالش روزانه ---- */}
+        {tab === 'daily' && <DailySection />}
 
         {/* ---- تب NPCها ---- */}
         {tab === 'npc' && (
@@ -378,6 +383,64 @@ export default function QuestLog({ open, onClose }) {
         </p>
       </aside>
     </>
+  );
+}
+
+function DailySection() {
+  const dailyChallenges = usePlayerStore((s) => s.dailyChallenges);
+  const dailyProgress = usePlayerStore((s) => s.dailyProgress);
+  const dailyCompleted = usePlayerStore((s) => s.dailyCompleted);
+  const dailyXp = usePlayerStore((s) => s.dailyXp);
+
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#ffc66d]/80">
+          چالش‌های امروز
+        </h3>
+        <span className="flex items-center gap-1 font-mono text-[10px] text-[#ffc66d]/80">
+          <GameIcon name="star" className="h-3 w-3" strokeWidth={1.8} />
+          {dailyXp} XP
+        </span>
+      </div>
+      {dailyChallenges.length === 0 && (
+        <p className="rounded-xl border border-white/6 bg-black/20 p-2.5 text-[10px] text-[#f5ebdd]/40">
+          در حال بارگذاری چالش‌های امروز…
+        </p>
+      )}
+      {dailyChallenges.map((id) => {
+        const challenge = DAILY_BY_ID[id];
+        if (!challenge) return null;
+        const value = Math.min(challengeProgress(challenge, dailyProgress), challenge.target);
+        const done = dailyCompleted.includes(id) || value >= challenge.target;
+        return (
+          <div
+            key={id}
+            className={`rounded-xl border p-2.5 ${
+              done ? 'border-[#5d9b78]/40 bg-[#5d9b78]/10' : 'border-[#ffc66d]/35 bg-[#ffc66d]/8'
+            }`}
+          >
+            <div className="mb-1 flex items-center gap-1.5">
+              <span className="text-[#f5ebdd]" aria-hidden="true">
+                <GameIcon name={done ? 'check' : 'star'} className="h-4 w-4" strokeWidth={1.7} />
+              </span>
+              <span className="flex-1 text-[11px] font-bold text-[#f5ebdd]">{challenge.description}</span>
+              <span className={`font-mono text-[10px] ${done ? 'text-[#65F5A0]' : 'text-[#f5ebdd]/55'}`}>
+                {value}/{challenge.target}
+              </span>
+            </div>
+            <ProgressBar value={value} max={challenge.target} />
+            <div className="mt-1 flex items-center justify-between text-[8.5px] text-[#ffc66d]/60">
+              <span>پاداش: {challenge.reward?.xp || 0} XP</span>
+              <span>{done ? 'کامل شد' : 'در جریان'}</span>
+            </div>
+          </div>
+        );
+      })}
+      <p className="rounded-xl border border-white/6 bg-black/20 p-2.5 text-[10px] leading-relaxed text-[#f5ebdd]/40">
+        چالش‌ها هر روز نیمه‌شب عوض می‌شوند؛ هر روز سر بزن.
+      </p>
+    </section>
   );
 }
 

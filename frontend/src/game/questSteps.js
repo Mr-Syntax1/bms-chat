@@ -126,6 +126,7 @@ export function describeQuestStep(active) {
 // مأموریت‌های NPC (Phase 4) — منبع واحد حقیقت برای دفترچه، نشانگر و دیالوگ.
 // value(state) شمارنده‌ی زنده از استور است؛ max آستانه‌ی تکمیل.
 // reward: { kind: 'hat'|'recipe'|'decor', id, label } + friendshipXp
+// location: مختصات هدف برای فلش QuestTracker — باید با NPC_LIST در npcData یکی بماند.
 // ---------------------------------------------------------------------------
 export const NPC_QUESTS = {
   grandpa: {
@@ -136,6 +137,7 @@ export const NPC_QUESTS = {
     desc: 'سه ماهی سالم صید کن (آشغال حساب نمی‌شود).',
     icon: 'rod',
     max: 3,
+    location: { x: 58, z: -3.5 },
     value: (s) => (s.fishCaught || []).filter((f) => !f.junk).length,
     reward: { kind: 'hat', id: 'straw', label: 'کلاه ماهیگیری' },
     friendshipXp: 45,
@@ -148,6 +150,7 @@ export const NPC_QUESTS = {
     desc: 'سه توت و یک قارچ به آشپز برسان.',
     icon: 'berry',
     max: 4,
+    location: { x: -9.8, z: 5.2 },
     value: (s) =>
       Math.min(s.ingredients?.berries || 0, 3) + Math.min(s.ingredients?.mushroom || 0, 1),
     consume: { berries: 3, mushroom: 1 },
@@ -162,6 +165,7 @@ export const NPC_QUESTS = {
     desc: 'زنجیره‌ی نقشه → فانوس → کلید → صندوقچه را کامل کن.',
     icon: 'map',
     max: 1,
+    location: { x: -28, z: -26 },
     value: (s) => (s.quests?.chestOpened ? 1 : 0),
     reward: { kind: 'decor', id: 'adventurer-quest', label: 'سنگ بلوط طلایی' },
     friendshipXp: 50,
@@ -174,6 +178,7 @@ export const NPC_QUESTS = {
     desc: 'سه نوع مختلف حشره بگیر (پروانه/سوسک/کرم شب‌تاب).',
     icon: 'butterfly',
     max: 3,
+    location: { x: 9.5, z: 15.5 },
     value: (s) => new Set((s.bugsCaught || []).map((b) => b.id)).size,
     reward: { kind: 'hat', id: 'catEars', label: 'کلاه گوش‌گربه‌ی حشره‌شناس' },
     friendshipXp: 40,
@@ -186,6 +191,7 @@ export const NPC_QUESTS = {
     desc: 'در شب ده کرم شب‌تاب جمع کن.',
     icon: 'firefly',
     max: 10,
+    location: { x: -3.5, z: 5.5 },
     value: (s) => s.nightFireflies || 0,
     reward: { kind: 'hat', id: 'wizard', label: 'کلاه مهتاب' },
     friendshipXp: 55,
@@ -198,6 +204,7 @@ export const NPC_QUESTS = {
     desc: 'سه بلوط طلایی پنهان را پیدا کن.',
     icon: 'acorn',
     max: 3,
+    location: { x: -58, z: -50 },
     value: (s) => (s.goldenAcorns || []).length,
     reward: { kind: 'decor', id: 'gnome-quest', label: 'سنگ گنوم جنگل' },
     friendshipXp: 60,
