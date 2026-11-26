@@ -40,13 +40,35 @@ const CHUNKABLE = {
   'group-ice-candidates': 'handleIce',
 };
 
+// در mesh هر فرستنده به هر peer جداگانه آپلود می‌کند؛ پس سقف کل = bitrate × تعداد peer
 const BITRATE = { camera: 1_500_000, screen: 2_500_000 };
+const MIN_BITRATE = { camera: 300_000, screen: 600_000 };
 
-const VIDEO_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } };
+const MAX_FPS = 30;
+
+const VIDEO_CONSTRAINTS = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: MAX_FPS, max: MAX_FPS } };
+
+const SCREEN_CONSTRAINTS = {
+  cursor: 'always',
+  frameRate: { ideal: MAX_FPS, max: MAX_FPS },
+  // در mesh، کپچر 1080p و انکود به چند peer باعث افت شدید فریم می‌شود؛ سقف 720p تعادل خوبی است
+  width: { max: 1280 },
+  height: { max: 720 },
+};
 
 const encoder = new TextEncoder();
 
-async function setVideoSenderParameters(sender, profile = 'camera') {
+// بودجه‌ی آپلود تقریبی (bps)؛ بین peerها تقسیم می‌شود تا آپلود اشباع نشود
+const UPLOAD_BUDGET = { camera: 2_600_000, screen: 4_500_000 };
+
+function perPeerBitrate(profile, peerCount) {
+  const count = Math.max(1, peerCount);
+  const budget = UPLOAD_BUDGET[profile];
+  const share = Math.floor(budget / count);
+  return Math.max(MIN_BITRATE[profile], Math.min(BITRATE[profile], share));
+}
+
+async function setVideoSenderParameters(sender, profile = 'camera', peerCount = 1) {
   if (!sender?.track || sender.track.kind !== 'video') return;
   try {
     if ('contentHint' in sender.track) {
@@ -54,10 +76,10 @@ async function setVideoSenderParameters(sender, profile = 'camera') {
     }
     const params = sender.getParameters();
     if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-    params.encodings[0].maxBitrate = BITRATE[profile];
-    if (profile === 'screen') params.encodings[0].maxFramerate = 15;
-    else delete params.encodings[0].maxFramerate;
-    params.degradationPreference = profile === 'screen' ? 'maintain-resolution' : 'balanced';
+    params.encodings[0].maxBitrate = perPeerBitrate(profile, peerCount);
+    params.encodings[0].maxFramerate = MAX_FPS;
+    // maintain-framerate: اولویت نرخ فریم تا ویدیو/اسکرین‌شیر به ۲fps سقوط نکند
+    params.degradationPreference = 'maintain-framerate';
     await sender.setParameters(params);
   } catch (err) {
     console.debug('[GroupWebRTC] setParameters skipped:', err?.message);
@@ -317,14 +339,16 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
   }
 
   function applyLocalTracks(pc) {
-    if (!pc) return;
+    if (!pc) return false;
     const audio = cameraRef.current?.getAudioTracks()[0] || null;
     const video = sendingVideoTrack();
+    let needsRenegotiation = false;
 
     const audioTransceiver = findTransceiver(pc, 'audio');
     const videoTransceiver = findTransceiver(pc, 'video');
 
     if (audioTransceiver) {
+      if (audioTransceiver.direction !== 'sendrecv') needsRenegotiation = true;
       audioTransceiver.direction = 'sendrecv';
       audioTransceiver.sender.replaceTrack(audio).catch(() => {});
     } else if (audio) {
@@ -336,21 +360,41 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     }
 
     if (videoTransceiver) {
-      if (video) videoTransceiver.direction = 'sendrecv';
+      // اگر ترنسیور از offer به‌صورت recvonly ساخته شده، برای ارسال دوربین باید sendrecv شود (نیازمند renegotiation)
+      if (video && videoTransceiver.direction !== 'sendrecv') needsRenegotiation = true;
+      videoTransceiver.direction = 'sendrecv';
       videoTransceiver.sender.replaceTrack(video).catch(() => {});
-      if (video) setVideoSenderParameters(videoTransceiver.sender, screenSharingRef.current ? 'screen' : 'camera');
+      if (video) setVideoSenderParameters(videoTransceiver.sender, screenSharingRef.current ? 'screen' : 'camera', peersRef.current.size);
     } else if (video) {
       try {
         const sender = pc.addTrack(video, new MediaStream([video]));
-        setVideoSenderParameters(sender, screenSharingRef.current ? 'screen' : 'camera');
+        setVideoSenderParameters(sender, screenSharingRef.current ? 'screen' : 'camera', peersRef.current.size);
+        needsRenegotiation = true;
       } catch {
         /* ignore */
       }
     }
+
+    return needsRenegotiation;
+  }
+
+  function applyVideoSenderProfile() {
+    const profile = screenSharingRef.current ? 'screen' : 'camera';
+    peersRef.current.forEach((entry) => {
+      entry.pc.getSenders().forEach((sender) => {
+        if (sender.track?.kind === 'video') setVideoSenderParameters(sender, profile, peersRef.current.size);
+      });
+    });
   }
 
   function syncTracksToPeers() {
-    peersRef.current.forEach((entry) => applyLocalTracks(entry.pc));
+    peersRef.current.forEach((entry, id) => {
+      const needsRenegotiation = applyLocalTracks(entry.pc);
+      // هر طرفی که تغییر ترک/جهت دارد و اتصالش stable است می‌تواند offer تازه بفرستد
+      if (needsRenegotiation && entry.pc.signalingState === 'stable') {
+        sendOffer(id, { renegotiate: true }).catch(() => {});
+      }
+    });
   }
 
   function refreshLocalPreview() {
@@ -1004,6 +1048,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     setCallType(videoOnRef.current ? 'video' : 'audio');
     refreshLocalPreview();
     syncTracksToPeers();
+    applyVideoSenderProfile();
     publishMediaState();
   }
 
@@ -1020,7 +1065,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
 
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always', frameRate: { ideal: 15, max: 30 } },
+        video: SCREEN_CONSTRAINTS,
         audio: false,
       });
       const screenTrack = screenStream.getVideoTracks()[0];
@@ -1034,6 +1079,7 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
       setCallType('screen');
       refreshLocalPreview();
       syncTracksToPeers();
+      applyVideoSenderProfile();
       publishMediaState();
 
       screenTrack.onended = () => {
@@ -1083,6 +1129,11 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
 
     const entry = createPeer(peerId, 'answerer');
     if (!entry) return;
+
+    // جلوگیری از glare در renegotiation: طرف با شناسه‌ی کوچک‌تر (impolite) offer خودش را نگه می‌دارد
+    if (entry.pc.signalingState === 'have-local-offer' && me.localeCompare(peerId) < 0) {
+      return;
+    }
 
     try {
       if (entry.pc.signalingState === 'have-local-offer') {
