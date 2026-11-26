@@ -4,6 +4,7 @@ import { DEFAULT_CHARACTER } from '../models/characterConfig';
 import { DEFAULT_WARDROBE, normalizeWardrobe } from '../models/wardrobeConfig';
 import { findNearbyRestSpot } from '../interactionRegistry';
 import { beginEating, EAT_DURATION } from '../eatData';
+import { NPC_QUESTS, npcQuestValue } from '../questSteps';
 
 // ---------------------------------------------------------------------------
 // state های mutable: در هر فریم آپدیت می‌شوند و باعث re-render نمی‌شوند
@@ -175,6 +176,15 @@ export const usePlayerStore = create((set, get) => ({
   decorations: [],
   decorMode: false,
   selectedDecor: null,
+  // NPC و دیالوگ (Phase 4) — وضعیت هر NPC جداگانه ذخیره می‌شود
+  npcInteractions: {}, // { [npcId]: { accepted, completed, giftGiven, storyHeard, xp } }
+  activeDialogue: null, // { npcId, nodeKey, text, choices } | null
+  friendshipLevels: {}, // { [npcId]: 1..5 }
+  // کلکسیون‌های پنهان (Phase 4)
+  goldenAcorns: [], // ایندکس بلوط‌های طلایی جمع‌شده
+  nightFireflies: 0, // کرم شب‌تاب جمع‌شده در شب (برای کوئست جادوگر)
+  dialogueNode: null, // گره‌ی جاری دیالوگ (برای ادامه‌ی شاخه‌ها)
+  unlockedItems: { hat: [], face: [], accessory: [], recipe: [], decor: [] }, // آیتم‌های بازشده با کوئست NPC
   toasts: [],
   nearInteractable: null, // { key, label }
   // لاگ کوچک چت گوشه‌ی صفحه (آخرین ۳ پیام)
@@ -455,6 +465,123 @@ export const usePlayerStore = create((set, get) => ({
       }
       return { decorations: Array.from(byUid.values()) };
     });
+  },
+
+  // -------------------------------------------------------------------------
+  // NPC / دوستی / دیالوگ (Phase 4)
+  // -------------------------------------------------------------------------
+  setActiveDialogue: (dialogue) => set({ activeDialogue: dialogue }),
+  setDialogueNode: (node) => set({ dialogueNode: node }),
+
+  // پذیرفتن کوئست NPC (از دیالوگ)
+  acceptNpcQuest: (npcId) => {
+    if (!npcId) return;
+    set((s) => ({
+      npcInteractions: {
+        ...s.npcInteractions,
+        [npcId]: { ...(s.npcInteractions[npcId] || {}), accepted: true },
+      },
+    }));
+  },
+
+  // افزایش XP دوستی؛ سطح = ۱ + floor(xp/40)، حداکثر ۵
+  addFriendshipXp: (npcId, xp = 0) => {
+    if (!npcId || xp <= 0) return;
+    set((s) => {
+      const prev = s.npcInteractions[npcId] || {};
+      const totalXp = (prev.xp || 0) + xp;
+      const level = Math.min(5, 1 + Math.floor(totalXp / 40));
+      return {
+        npcInteractions: { ...s.npcInteractions, [npcId]: { ...prev, xp: totalXp } },
+        friendshipLevels: { ...s.friendshipLevels, [npcId]: level },
+      };
+    });
+  },
+
+  markGiftGiven: (npcId) => {
+    if (!npcId) return;
+    set((s) => ({
+      npcInteractions: {
+        ...s.npcInteractions,
+        [npcId]: { ...(s.npcInteractions[npcId] || {}), giftGiven: true },
+      },
+    }));
+  },
+
+  markStoryHeard: (npcId) => {
+    if (!npcId) return;
+    set((s) => ({
+      npcInteractions: {
+        ...s.npcInteractions,
+        [npcId]: { ...(s.npcInteractions[npcId] || {}), storyHeard: true },
+      },
+    }));
+  },
+
+  // -------------------------------------------------------------------------
+  // کلکسیون پنهان (Phase 4)
+  // -------------------------------------------------------------------------
+  collectGoldenAcorn: (index) => {
+    const { goldenAcorns } = get();
+    if (goldenAcorns.includes(index)) return false;
+    const next = [...goldenAcorns, index];
+    set({ goldenAcorns: next });
+    get().pushToast(`بلوط طلایی: ${next.length} از ۶`, 'success');
+    return true;
+  },
+
+  addNightFirefly: () => {
+    set((s) => ({ nightFireflies: (s.nightFireflies || 0) + 1 }));
+  },
+
+  // تحویل کوئست NPC: مصرف مواد (در صورت وجود) + ثبت تکمیل + پاداش + XP دوستی
+  completeNpcQuest: (npcId) => {
+    const quest = NPC_QUESTS[npcId];
+    if (!quest) return false;
+    const state = get();
+    if (state.npcInteractions[npcId]?.completed) return false;
+    if (npcQuestValue(npcId, state) < quest.max) return false;
+
+    // کسر مواد برای کوئست‌های تحویل‌دادنی
+    if (quest.consume) {
+      const ingredients = { ...state.ingredients };
+      for (const [id, need] of Object.entries(quest.consume)) {
+        ingredients[id] = Math.max(0, (ingredients[id] || 0) - need);
+      }
+      set({ ingredients });
+    }
+
+    const prev = get().npcInteractions[npcId] || {};
+    const totalXp = (prev.xp || 0) + (quest.friendshipXp || 0);
+    const level = Math.min(5, 1 + Math.floor(totalXp / 40));
+
+    set((s) => ({
+      npcInteractions: {
+        ...s.npcInteractions,
+        [npcId]: { ...prev, accepted: true, completed: true, xp: totalXp },
+      },
+      friendshipLevels: { ...s.friendshipLevels, [npcId]: level },
+    }));
+
+    if (quest.reward) {
+      const r = quest.reward;
+      if (r.kind === 'hat') get().unlockWardrobeItem('hat', r.id);
+      else if (r.kind === 'recipe') get().unlockWardrobeItem('recipe', r.id);
+      else if (r.kind === 'decor') get().unlockWardrobeItem('decor', r.id);
+      get().pushToast(`مأموریت ${quest.title} کامل شد — ${r.label} باز شد!`, 'success');
+    }
+    return true;
+  },
+
+  // باز کردن آیتم کمد بدون تغییر انتخاب فعلی (unlock واقعی از quests خوانده می‌شود)
+  unlockWardrobeItem: (slot, id) => {
+    if (!slot || !id) return;
+    set((s) => ({
+      unlockedItems: {
+        ...(s.unlockedItems || {}),
+        [slot]: Array.from(new Set([...(s.unlockedItems?.[slot] || []), id])),
+      },
+    }));
   },
 
   // -------------------------------------------------------------------------

@@ -28,21 +28,21 @@ export const DEFAULT_WARDROBE = {
 };
 
 export const HAT_ITEMS = [
-  { id: 'none', label: 'بدون کلاه', icon: 'ban' },
-  { id: 'party', label: 'کلاه جشن', icon: 'party' },
-  { id: 'wizard', label: 'کلاه جادوگر', icon: 'crown', unlock: { key: 'parchments', count: 3 }, hint: 'هر ۳ تکه نقشه' },
-  { id: 'chef', label: 'کلاه آشپز', icon: 'hat' },
-  { id: 'beanie', label: 'کلاه بافت', icon: 'hat' },
-  { id: 'straw', label: 'کلاه حصیری', icon: 'hat' },
-  { id: 'baseball', label: 'کلاه نقاب‌دار', icon: 'hat' },
-  { id: 'flowerCrown', label: 'تاج گل', icon: 'crown', unlock: { key: 'chestOpened' }, hint: 'باز کردن صندوقچه' },
-  { id: 'catEars', label: 'گوش گربه', icon: 'cat', unlock: { key: 'shells', count: 5 }, hint: '۵ صدف یا ستاره' },
+  { id: 'none', label: 'بدون کلاه', icon: 'ban', slot: 'hat' },
+  { id: 'party', label: 'کلاه جشن', icon: 'party', slot: 'hat' },
+  { id: 'wizard', label: 'کلاه جادوگر', icon: 'crown', slot: 'hat', unlock: { key: 'parchments', count: 3 }, hint: 'هر ۳ تکه نقشه یا کوئست جادوگر' },
+  { id: 'chef', label: 'کلاه آشپز', icon: 'hat', slot: 'hat' },
+  { id: 'beanie', label: 'کلاه بافت', icon: 'hat', slot: 'hat' },
+  { id: 'straw', label: 'کلاه حصیری', icon: 'hat', slot: 'hat', unlock: { key: 'npcGrandpa' }, hint: 'کوئست پدربزرگ ماهیگیر' },
+  { id: 'baseball', label: 'کلاه نقاب‌دار', icon: 'hat', slot: 'hat' },
+  { id: 'flowerCrown', label: 'تاج گل', icon: 'crown', slot: 'hat', unlock: { key: 'chestOpened' }, hint: 'باز کردن صندوقچه' },
+  { id: 'catEars', label: 'گوش گربه', icon: 'cat', slot: 'hat', unlock: { key: 'shells', count: 5 }, hint: '۵ صدف یا ستاره یا کوئست دخترک' },
 ];
 
 export const FACE_ITEMS = [
-  { id: 'none', label: 'بدون عینک', icon: 'ban' },
-  { id: 'round', label: 'عینک گرد', icon: 'glassesRound' },
-  { id: 'sun', label: 'عینک آفتابی', icon: 'sunglasses', unlock: { key: 'lanterns', count: 5 }, hint: '۵ فانوس روشن' },
+  { id: 'none', label: 'بدون عینک', icon: 'ban', slot: 'face' },
+  { id: 'round', label: 'عینک گرد', icon: 'glassesRound', slot: 'face' },
+  { id: 'sun', label: 'عینک آفتابی', icon: 'sunglasses', slot: 'face', unlock: { key: 'lanterns', count: 5 }, hint: '۵ فانوس روشن' },
 ];
 
 export const SHIRT_COLORS = ['#8ab4f8', '#f28b82', '#fdd663', '#81c995', '#c58af9', '#78d9ec'];
@@ -53,14 +53,19 @@ export const SHIRT_PATTERNS = [
 ];
 
 export const ACCESSORY_ITEMS = [
-  { id: 'none', label: 'بدون اکسسوری', icon: 'ban' },
-  { id: 'backpack', label: 'کوله‌پشتی', icon: 'backpack' },
-  { id: 'scarf', label: 'شال گردن', icon: 'scarf', unlock: { key: 'hasKey' }, hint: 'پیدا کردن کلید' },
+  { id: 'none', label: 'بدون اکسسوری', icon: 'ban', slot: 'accessory' },
+  { id: 'backpack', label: 'کوله‌پشتی', icon: 'backpack', slot: 'accessory' },
+  { id: 'scarf', label: 'شال گردن', icon: 'scarf', slot: 'accessory', unlock: { key: 'hasKey' }, hint: 'پیدا کردن کلید' },
 ];
 
-export function isUnlocked(item, quests) {
-  if (!item?.unlock) return true;
+export function isUnlocked(item, quests, unlockedItems) {
+  if (!item) return false;
+  // آیتم‌های بازشده با کوئست NPC (Phase 4) بدون شرط quests آزادند
+  if (!item.unlock) return true;
   const q = quests || {};
+  const unlocked = unlockedItems || {};
+  const slot = item.slot || null;
+  if (slot && Array.isArray(unlocked[slot]) && unlocked[slot].includes(item.id)) return true;
   if (item.unlock.key === 'chestOpened') return Boolean(q.chestOpened);
   if (item.unlock.key === 'hasKey') return Boolean(q.hasKey);
   return (Number(q[item.unlock.key]) || 0) >= (item.unlock.count || 1);

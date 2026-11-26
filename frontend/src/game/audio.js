@@ -259,6 +259,10 @@ export async function playPositionalOneShot(url, position, options = {}) {
   const opts = { ...DEFAULTS, ...options };
   const sound = buildPositional(buffer, position, opts);
   sound.setLoop(false);
+  // پیچ صدا (Phase 4: بلیپ هر NPC pitch متفاوت دارد)
+  if (Number.isFinite(options.playbackRate) && options.playbackRate > 0) {
+    sound.setPlaybackRate(options.playbackRate);
+  }
   sound.userData = { channel: opts.channel || 'effects', baseVolume: opts.volume };
   applyGain(sound, sound.userData.channel, opts.volume);
   container.add(sound);

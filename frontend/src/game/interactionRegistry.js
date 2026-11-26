@@ -124,3 +124,49 @@ export function findNearbyFishingSpot(x, z) {
 export function clearFishingSpots() {
   fishingSpots.clear();
 }
+
+// ---------------------------------------------------------------------------
+// NPCها (Phase 4) — نزدیکی E → باز شدن دیالوگ. موقعیت هر NPC با AI به‌روز می‌شود.
+// ---------------------------------------------------------------------------
+const npcs = new Map();
+
+export function registerNpc(entry) {
+  if (!entry?.id) return () => {};
+  npcs.set(entry.id, entry);
+  return () => {
+    if (npcs.get(entry.id) === entry) npcs.delete(entry.id);
+  };
+}
+
+// به‌روزرسانی موقعیت زنده‌ی NPC برای تشخیص نزدیکی (بدون re-render)
+export function updateNpcPosition(id, x, z) {
+  const entry = npcs.get(id);
+  if (!entry) return;
+  entry.x = x;
+  entry.z = z;
+}
+
+// پنهان/نمایان کردن NPC برای تعامل (مثلاً جادوگر فقط شب)
+export function setNpcHidden(id, hidden) {
+  const entry = npcs.get(id);
+  if (!entry) return;
+  entry.hidden = Boolean(hidden);
+}
+
+export function findNearbyNpc(x, z) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const npc of npcs.values()) {
+    if (npc.hidden) continue;
+    const dist = Math.hypot(npc.x - x, npc.z - z);
+    if (dist <= (npc.radius ?? 2.8) && dist < bestDist) {
+      bestDist = dist;
+      best = npc;
+    }
+  }
+  return best;
+}
+
+export function clearNpcs() {
+  npcs.clear();
+}

@@ -61,6 +61,7 @@ export default function Wardrobe({ open, onClose, userId }) {
   const setWardrobe = usePlayerStore((s) => s.setWardrobe);
   const character = usePlayerStore((s) => s.character);
   const quests = usePlayerStore((s) => s.quests);
+  const unlockedItems = usePlayerStore((s) => s.unlockedItems);
   const [tab, setTab] = useState('hat');
 
   const items = useMemo(() => normalizeWardrobe(wardrobe), [wardrobe]);
@@ -132,7 +133,7 @@ export default function Wardrobe({ open, onClose, userId }) {
         {tab === 'hat' && (
           <div className="grid grid-cols-3 gap-2">
             {HAT_ITEMS.map((item) => {
-              const locked = !isUnlocked(item, quests);
+              const locked = !isUnlocked(item, quests, unlockedItems);
               return (
                 <ItemCard
                   key={item.id}
@@ -149,7 +150,7 @@ export default function Wardrobe({ open, onClose, userId }) {
         {tab === 'face' && (
           <div className="grid grid-cols-3 gap-2">
             {FACE_ITEMS.map((item) => {
-              const locked = !isUnlocked(item, quests);
+              const locked = !isUnlocked(item, quests, unlockedItems);
               return (
                 <ItemCard
                   key={item.id}
@@ -209,7 +210,7 @@ export default function Wardrobe({ open, onClose, userId }) {
         {tab === 'accessory' && (
           <div className="grid grid-cols-3 gap-2">
             {ACCESSORY_ITEMS.map((item) => {
-              const locked = !isUnlocked(item, quests);
+              const locked = !isUnlocked(item, quests, unlockedItems);
               return (
                 <ItemCard
                   key={item.id}

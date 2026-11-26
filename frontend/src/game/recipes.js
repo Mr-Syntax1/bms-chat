@@ -214,19 +214,44 @@ export const RECIPES = [
     modelKey: 'food.plate',
     qualityTiers: tiers(18, 11),
   },
+  // پاداش کوئست آشپز کمپ (Phase 4) — تا تحویل مأموریت قفل است
+  {
+    id: 'cow-quest',
+    name: 'کیک توت و قارچ',
+    icon: 'pie',
+    station: 'pan',
+    ingredients: ['berries', 'mushroom', 'flour'],
+    cookTime: 5,
+    requiresFlip: true,
+    requiresStir: false,
+    modelKey: 'food.pie',
+    unlock: 'cow-quest',
+    qualityTiers: tiers(42, 25),
+  },
 ];
 
 const keyOf = (ids) => [...ids].sort().join('+');
 
 // دستور منطبق با ایستگاه + مواد انتخاب‌شده (ترتیب مواد مهم نیست)
-export function matchRecipe(stationId, ids) {
+export function matchRecipe(stationId, ids, unlockedRecipes) {
   if (!stationId || !Array.isArray(ids) || ids.length === 0) return null;
+  const unlocked = Array.isArray(unlockedRecipes) ? unlockedRecipes : [];
   const target = keyOf(ids);
-  return RECIPES.find((r) => r.station === stationId && keyOf(r.ingredients) === target) || null;
+  return (
+    RECIPES.find(
+      (r) =>
+        r.station === stationId &&
+        keyOf(r.ingredients) === target &&
+        (!r.unlock || unlocked.includes(r.unlock))
+    ) || null
+  );
 }
 
-export function recipesForStation(stationId) {
-  return RECIPES.filter((r) => r.station === stationId);
+export function recipesForStation(stationId, unlockedRecipes) {
+  const unlocked = Array.isArray(unlockedRecipes) ? unlockedRecipes : [];
+  return RECIPES.filter(
+    (r) => r.station === stationId && (!r.unlock || unlocked.includes(r.unlock))
+  );
 }
 
 // ---------------------------------------------------------------------------

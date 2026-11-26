@@ -13,6 +13,7 @@ export default function DecorPanel({ onClose }) {
   const selectedDecor = usePlayerStore((s) => s.selectedDecor);
   const setSelectedDecor = usePlayerStore((s) => s.setSelectedDecor);
   const decorations = usePlayerStore((s) => s.decorations);
+  const unlockedDecor = usePlayerStore((s) => s.unlockedItems?.decor);
 
   const owned = countOwnedDecor(decorations, getDecorOwnerId());
   const full = owned >= DECOR_LIMIT;
@@ -48,7 +49,11 @@ export default function DecorPanel({ onClose }) {
 
       <div className="max-h-[38vh] space-y-2 overflow-y-auto px-3 py-2">
         {DECOR_CATEGORIES.map((cat) => {
-          const items = DECOR_CATALOG.filter((item) => item.category === cat.id);
+          const items = DECOR_CATALOG.filter(
+            (item) =>
+              item.category === cat.id &&
+              (!item.unlock || (Array.isArray(unlockedDecor) && unlockedDecor.includes(item.unlock)))
+          );
           if (!items.length) return null;
           return (
             <div key={cat.id}>

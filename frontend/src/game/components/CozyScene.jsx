@@ -25,6 +25,8 @@ import Wildlife from './Wildlife';
 import Bugs from './Bugs';
 import ForageItems from './ForageItems';
 import DecorationsScene from './DecorationsScene';
+import NpcScene from './NpcScene';
+import HiddenCollectibles from './HiddenCollectibles';
 import { FISHING_SPOTS } from '../fishingSpots';
 import { useQualityPreset, useSettingsStore } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
@@ -317,6 +319,13 @@ export default function CozyScene() {
           کل صحنه را unmount نکند. */}
       <Suspense fallback={null}>
         <DecorationsScene />
+      </Suspense>
+      {/* NPCها + کلکسیون پنهان (Phase 4) — مرز مستقل تا لود NPC کل صحنه را نفریزد */}
+      <Suspense fallback={null}>
+        <NpcScene />
+      </Suspense>
+      <Suspense fallback={null}>
+        <HiddenCollectibles />
       </Suspense>
       <Weather />
       <Fireflies count={fireflyCount} />

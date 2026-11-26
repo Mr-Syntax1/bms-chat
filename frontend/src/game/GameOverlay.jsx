@@ -23,6 +23,7 @@ import Wardrobe from './ui/Wardrobe';
 import CookingUI from './ui/CookingUI';
 import FishingUI from './ui/FishingUI';
 import DecorPanel from './ui/DecorPanel';
+import DialogueBox from './components/DialogueBox';
 import { useChatBubbles } from './hooks/useChatBubbles';
 import { loadWardrobe } from './models/wardrobeConfig';
 
@@ -174,6 +175,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
   const cookingStation = usePlayerStore((s) => s.cookingStation);
   const fishingActive = usePlayerStore((s) => s.fishingState.spotIndex >= 0);
   const decorMode = usePlayerStore((s) => s.decorMode);
+  const activeDialogue = usePlayerStore((s) => s.activeDialogue);
 
   const [entered, setEntered] = useState(false);
   // انتخابگر کاراکتر همیشه پیش از ورود نمایش داده می‌شود؛ انتخاب قبلی پیش‌فرض است.
@@ -204,6 +206,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
       preloadGroup('animals');
       preloadGroup('forage');
       preloadGroup('decor');
+      preloadGroup('npc');
     }, 1200);
     return () => clearTimeout(id);
   }, []);
@@ -245,6 +248,8 @@ export default function GameOverlay({ roomId, user, onClose }) {
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.code !== 'Escape') return;
+      // دیالوگ باز است → ESC مخصوص DialogueBox است (خودش متن را کامل/می‌بندد)
+      if (activeDialogue) return;
       if (cookingStation) {
         usePlayerStore.getState().closeCooking();
         return;
@@ -272,7 +277,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose, logOpen, settingsOpen, cookingStation, fishingActive, wardrobeOpen, entered, look, decorMode]);
+  }, [onClose, logOpen, settingsOpen, cookingStation, fishingActive, wardrobeOpen, entered, look, decorMode, activeDialogue]);
 
   // در حالت چیدمان موس آزاد است؛ چرخش دوربین را خودمان اعمال می‌کنیم.
   // look فقط از طریق ref خوانده می‌شود تا افکت به شیء ref وابسته نشود.
@@ -347,6 +352,19 @@ export default function GameOverlay({ roomId, user, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fishingActive]);
 
+  // دیالوگ NPC: قفل موس آزاد تا گزینه‌ها کلیک‌پذیر باشند؛ بستن → قفل برمی‌گردد
+  const prevDialogue = useRef(false);
+  useEffect(() => {
+    const open = Boolean(activeDialogue);
+    if (open) {
+      look.unlock();
+    } else if (prevDialogue.current && entered) {
+      look.lock();
+    }
+    prevDialogue.current = open;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDialogue]);
+
   // کلید L برای دفترچه
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -405,7 +423,8 @@ export default function GameOverlay({ roomId, user, onClose }) {
     !wardrobeOpen &&
     !cookingStation &&
     !fishingActive &&
-    !decorMode;
+    !decorMode &&
+    !activeDialogue;
   const loading = !entered;
 
   // وضعیت‌های واقعی برای صفحه‌ی لودینگ.
@@ -491,6 +510,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
 
       <Toasts />
       <InteractionPrompt />
+      {entered && <DialogueBox />}
 
       {/* نوار پایین */}
       {entered && (

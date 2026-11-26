@@ -12,6 +12,7 @@ import {
   findNearbyRestSpot,
   findNearbyCookingStation,
   findNearbyFishingSpot,
+  findNearbyNpc,
 } from '../interactionRegistry';
 import { findNearbyQuestItem } from '../questRegistry';
 import { getQuestTarget } from '../questSteps';
@@ -24,6 +25,7 @@ import { fishing } from '../fishData';
 import { nearestBugDistance, tryCatchBug } from '../bugData';
 import { findNearestForage, tryPickForage } from '../forageData';
 import { setEatPublisher, EAT_DURATION } from '../eatData';
+import { isNight } from '../envState';
 import Character from './Character';
 import ChatBubble from './ChatBubble';
 import {
@@ -284,6 +286,10 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             if (caught) {
               playPositionalOneShot(BUG_CATCH_SOUND, [x, 1.2, z], { volume: 0.9 });
               usePlayerStore.getState().addBug(caught);
+              // کرم شب‌تاب در شب برای کوئست جادوگر شمرده می‌شود (Phase 4)
+              if (caught.id === 'firefly' && isNight()) {
+                usePlayerStore.getState().addNightFirefly();
+              }
             }
             break;
           }
@@ -657,13 +663,15 @@ export default function PlayerController({ roomId, user, look, active = true }) 
 
       // نزدیک‌ترین آیتم تعاملی مأموریت (فاصله‌ی اقلیدسی)
       const near = findNearbyQuestItem(nextX, nextZ);
+      // اگر آیتم مأموریت نبود، NPC نزدیک (E → دیالوگ)
+      const npcNear = !near ? findNearbyNpc(nextX, nextZ) : null;
       // اگر آیتم مأموریت نبود، ایستگاه پخت نزدیک (E → UI پخت)
-      const cookNear = !near ? findNearbyCookingStation(nextX, nextZ) : null;
+      const cookNear = !near && !npcNear ? findNearbyCookingStation(nextX, nextZ) : null;
       // اگر هیچ‌کدام نبود، نقطه‌ی ماهیگیری نزدیک (E → مینی‌گیم ماهیگیری)
-      const fishNear = !near && !cookNear ? findNearbyFishingSpot(nextX, nextZ) : null;
+      const fishNear = !near && !npcNear && !cookNear ? findNearbyFishingSpot(nextX, nextZ) : null;
       // اگر آیتم مأموریت نبود، نقطه‌ی استراحت نزدیک (هاموک/کیسه‌خواب/کنده/میز)
       let restNear = null;
-      if (!near && !cookNear && !fishNear) {
+      if (!near && !npcNear && !cookNear && !fishNear) {
         const taken = new Set();
         for (const entry of remoteMap.values()) {
           if (entry.seat !== null && entry.seat !== undefined) taken.add(entry.seat);
@@ -678,28 +686,35 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             locked: Boolean(near.isLocked?.()),
             action: near.action,
           }
-          : cookNear
+          : npcNear
             ? {
-              key: cookNear.key,
-              label: 'برای پختن',
+              key: npcNear.id,
+              label: npcNear.label,
               locked: false,
-              action: cookNear.action,
+              action: npcNear.action,
             }
-            : fishNear
+            : cookNear
               ? {
-                key: fishNear.key,
-                label: 'برای ماهیگیری',
+                key: cookNear.key,
+                label: 'برای پختن',
                 locked: false,
-                action: fishNear.action,
+                action: cookNear.action,
               }
-              : restNear
+              : fishNear
                 ? {
-                  key: restNear.key,
-                  label: restNear.label,
+                  key: fishNear.key,
+                  label: 'برای ماهیگیری',
                   locked: false,
-                  action: () => usePlayerStore.getState().setSeat(restNear.seatIndex, restNear.rest),
+                  action: fishNear.action,
                 }
-                : null
+                : restNear
+                  ? {
+                    key: restNear.key,
+                    label: restNear.label,
+                    locked: false,
+                    action: () => usePlayerStore.getState().setSeat(restNear.seatIndex, restNear.rest),
+                  }
+                  : null
       );
 
       // راهنمای مسیر: فاصله تا هدف مرحله‌ی فعال (گردشده تا re-render کمینه شود)

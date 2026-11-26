@@ -37,8 +37,9 @@ import { GameIcon } from './icons';
 export default function CookingUI({ stationId, roomId, user }) {
   const ingredients = usePlayerStore((s) => s.ingredients);
   const closeCooking = usePlayerStore((s) => s.closeCooking);
+  const unlockedRecipes = usePlayerStore((s) => s.unlockedItems?.recipe);
 
-  const options = recipesForStation(stationId);
+  const options = recipesForStation(stationId, unlockedRecipes);
   const station = STATIONS[stationId];
 
   const [selectedId, setSelectedId] = useState(options[0]?.id ?? null);
@@ -179,7 +180,7 @@ export default function CookingUI({ stationId, roomId, user }) {
     const recipe = selectedRef.current;
     if (!recipe || phaseRef.current === 'cooking') return;
     const state = usePlayerStore.getState();
-    if (!matchRecipe(stationId, recipe.ingredients)) {
+    if (!matchRecipe(stationId, recipe.ingredients, unlockedRecipes)) {
       state.pushToast('این ترکیب با دستور پخت نمی‌خواند', 'warn');
       return;
     }

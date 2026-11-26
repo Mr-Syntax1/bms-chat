@@ -55,6 +55,9 @@ export const DECOR_CATALOG = [
   { id: 'bonfire', name: 'آتشدان', icon: 'flame', category: 'decor', modelKey: 'structures.bonfire', height: 0.8, radius: 1.0 },
   // نشانه
   { id: 'woodenSign', name: 'تخته‌ی چوبی', icon: 'sign', category: 'sign', modelKey: 'structures.sign', height: 1.5, radius: 0.4 },
+  // پاداش کوئست‌های NPC (Phase 4) — تا تحویل مأموریت قفل‌اند
+  { id: 'adventurer-quest', name: 'سنگ بلوط طلایی', icon: 'acorn', category: 'decor', modelKey: 'rocks.rocks', height: 0.5, radius: 0.6, unlock: 'adventurer-quest' },
+  { id: 'gnome-quest', name: 'سنگ گنوم جنگل', icon: 'rocks', category: 'decor', modelKey: 'rocks.rocks2', height: 0.55, radius: 0.65, unlock: 'gnome-quest' },
 ];
 
 export const DECOR_BY_ID = Object.fromEntries(DECOR_CATALOG.map((item) => [item.id, item]));

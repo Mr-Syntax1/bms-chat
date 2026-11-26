@@ -1,4 +1,5 @@
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { NPC_BY_ID } from '../npcData';
 import { GameIcon } from './icons';
 
 /**
@@ -16,6 +17,7 @@ export default function InteractionPrompt() {
   let locked = false;
   let key = 'E';
   let icon = null;
+  let isNpc = false;
 
   if (seated) {
     label = 'بلند شدن';
@@ -23,6 +25,11 @@ export default function InteractionPrompt() {
   } else if (nearInteractable) {
     label = nearInteractable.label;
     locked = Boolean(nearInteractable.locked);
+    // NPC: آیکون حباب گفتگو به‌جای آیکون شیء
+    if (NPC_BY_ID[nearInteractable.key]) {
+      isNpc = true;
+      icon = 'speech';
+    }
   } else if (nearForage?.item) {
     label = `چیدن ${nearForage.item.name}`;
     key = 'F';
@@ -48,7 +55,9 @@ export default function InteractionPrompt() {
         className={`flex items-center gap-2.5 rounded-2xl border px-3.5 py-2 backdrop-blur-xl ${
           locked
             ? 'border-[#f59e0b]/35 bg-[#171426]/85 text-[#fbbf24]'
-            : 'border-[#ffc66d]/30 bg-[#171426]/85 text-[#f5ebdd]'
+            : isNpc
+              ? 'border-[#9ad0ff]/35 bg-[#171426]/85 text-[#cbe4ff]'
+              : 'border-[#ffc66d]/30 bg-[#171426]/85 text-[#f5ebdd]'
         }`}
       >
         {/* حلقه‌ی درخشان */}

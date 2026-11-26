@@ -121,3 +121,130 @@ export function describeQuestStep(active) {
   if (max === 1) return step.desc;
   return `${step.title}: ${value}/${max}`;
 }
+
+// ---------------------------------------------------------------------------
+// مأموریت‌های NPC (Phase 4) — منبع واحد حقیقت برای دفترچه، نشانگر و دیالوگ.
+// value(state) شمارنده‌ی زنده از استور است؛ max آستانه‌ی تکمیل.
+// reward: { kind: 'hat'|'recipe'|'decor', id, label } + friendshipXp
+// ---------------------------------------------------------------------------
+export const NPC_QUESTS = {
+  grandpa: {
+    id: 'grandpa',
+    npcId: 'grandpa',
+    type: 'catch',
+    title: 'سه ماهی برای پدربزرگ',
+    desc: 'سه ماهی سالم صید کن (آشغال حساب نمی‌شود).',
+    icon: 'rod',
+    max: 3,
+    value: (s) => (s.fishCaught || []).filter((f) => !f.junk).length,
+    reward: { kind: 'hat', id: 'straw', label: 'کلاه ماهیگیری' },
+    friendshipXp: 45,
+  },
+  cow: {
+    id: 'cow',
+    npcId: 'cow',
+    type: 'deliver',
+    title: 'سبد آشپز',
+    desc: 'سه توت و یک قارچ به آشپز برسان.',
+    icon: 'berry',
+    max: 4,
+    value: (s) =>
+      Math.min(s.ingredients?.berries || 0, 3) + Math.min(s.ingredients?.mushroom || 0, 1),
+    consume: { berries: 3, mushroom: 1 },
+    reward: { kind: 'recipe', id: 'cow-quest', label: 'دستور پخت کیک توت و قارچ' },
+    friendshipXp: 40,
+  },
+  adventurer: {
+    id: 'adventurer',
+    npcId: 'adventurer',
+    type: 'find',
+    title: 'افسانه‌ی صندوقچه',
+    desc: 'زنجیره‌ی نقشه → فانوس → کلید → صندوقچه را کامل کن.',
+    icon: 'map',
+    max: 1,
+    value: (s) => (s.quests?.chestOpened ? 1 : 0),
+    reward: { kind: 'decor', id: 'adventurer-quest', label: 'سنگ بلوط طلایی' },
+    friendshipXp: 50,
+  },
+  littlegirl: {
+    id: 'littlegirl',
+    npcId: 'littlegirl',
+    type: 'catch',
+    title: 'سه نوع حشره',
+    desc: 'سه نوع مختلف حشره بگیر (پروانه/سوسک/کرم شب‌تاب).',
+    icon: 'butterfly',
+    max: 3,
+    value: (s) => new Set((s.bugsCaught || []).map((b) => b.id)).size,
+    reward: { kind: 'hat', id: 'catEars', label: 'کلاه گوش‌گربه‌ی حشره‌شناس' },
+    friendshipXp: 40,
+  },
+  witch: {
+    id: 'witch',
+    npcId: 'witch',
+    type: 'collect',
+    title: 'ده کرم شب‌تاب',
+    desc: 'در شب ده کرم شب‌تاب جمع کن.',
+    icon: 'firefly',
+    max: 10,
+    value: (s) => s.nightFireflies || 0,
+    reward: { kind: 'hat', id: 'wizard', label: 'کلاه مهتاب' },
+    friendshipXp: 55,
+  },
+  gnome: {
+    id: 'gnome',
+    npcId: 'gnome',
+    type: 'find',
+    title: 'بلوط‌های طلایی',
+    desc: 'سه بلوط طلایی پنهان را پیدا کن.',
+    icon: 'acorn',
+    max: 3,
+    value: (s) => (s.goldenAcorns || []).length,
+    reward: { kind: 'decor', id: 'gnome-quest', label: 'سنگ گنوم جنگل' },
+    friendshipXp: 60,
+  },
+};
+
+export const NPC_QUEST_LIST = Object.values(NPC_QUESTS);
+
+export function npcQuestValue(npcId, state) {
+  const quest = NPC_QUESTS[npcId];
+  if (!quest) return 0;
+  try {
+    return Number(quest.value(state)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+// offer = قابل پذیرش | active = در جریان | turnin = آماده‌ی تحویل | done = تمام
+export function npcQuestStatus(npcId, state) {
+  const quest = NPC_QUESTS[npcId];
+  if (!quest) return 'offer';
+  const inter = state.npcInteractions?.[npcId] || {};
+  if (inter.completed) return 'done';
+  const value = npcQuestValue(npcId, state);
+  if (value >= quest.max) return 'turnin';
+  if (inter.accepted) return 'active';
+  return 'offer';
+}
+
+// نشانگر بالای سر: «!» برای کوئست، «?» برای گفتگو
+export function npcMarker(npcId, state) {
+  const status = npcQuestStatus(npcId, state);
+  if (status === 'offer' || status === 'turnin') return '!';
+  if (status === 'active') return '?';
+  return null;
+}
+
+// هدف مسیر برای QuestTracker: نزدیک‌ترین NPC با کوئست آماده/فعال
+export function getNpcQuestTarget(state) {
+  let best = null;
+  for (const quest of NPC_QUEST_LIST) {
+    const status = npcQuestStatus(quest.npcId, state);
+    if (status !== 'turnin' && status !== 'offer') continue;
+    if (!best || (status === 'turnin' && best.status !== 'turnin')) {
+      best = { npcId: quest.npcId, status, title: quest.title };
+    }
+  }
+  return best;
+}
