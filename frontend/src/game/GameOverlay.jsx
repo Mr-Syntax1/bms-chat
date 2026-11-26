@@ -102,7 +102,7 @@ function ControlsHint() {
       <div>WASD حرکت • Shift دویدن</div>
       <div>موس: چرخش دوربین • ESC توقف</div>
       <div>E تعامل/نشستن • Q ایموت</div>
-      <div>G گیتار • M مارشمالو • F چراغ ون</div>
+      <div>G گیتار • M مارشمالو • F چیدن/تور/چراغ</div>
       <div>L دفترچه • C کمد • 1-5 ایموت سریع</div>
     </div>
   );
@@ -199,6 +199,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
       preloadGroup('cooking');
       preloadGroup('food');
       preloadGroup('animals');
+      preloadGroup('forage');
     }, 1200);
     return () => clearTimeout(id);
   }, []);

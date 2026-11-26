@@ -10,10 +10,12 @@ export default function InteractionPrompt() {
   const seated = usePlayerStore((s) => s.seated);
   const hovered = usePlayerStore((s) => s.hovered);
   const nearBug = usePlayerStore((s) => s.nearBug);
+  const nearForage = usePlayerStore((s) => s.nearForage);
 
   let label = null;
   let locked = false;
   let key = 'E';
+  let icon = null;
 
   if (seated) {
     label = 'بلند شدن';
@@ -21,6 +23,10 @@ export default function InteractionPrompt() {
   } else if (nearInteractable) {
     label = nearInteractable.label;
     locked = Boolean(nearInteractable.locked);
+  } else if (nearForage?.item) {
+    label = `چیدن ${nearForage.item.name}`;
+    key = 'F';
+    icon = nearForage.item.icon;
   } else if (nearBug) {
     label = 'گرفتن حشره';
     key = 'F';
@@ -58,6 +64,12 @@ export default function InteractionPrompt() {
         </span>
 
         <span className="text-[12px] font-semibold">{label}</span>
+
+        {icon && !locked && (
+          <span className="text-[#ffc66d]" aria-hidden="true">
+            <GameIcon name={icon} className="h-4 w-4" strokeWidth={1.7} />
+          </span>
+        )}
 
         {!locked ? (
           <kbd className="rounded-md border border-white/20 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#ffc66d]">

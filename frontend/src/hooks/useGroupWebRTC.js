@@ -68,6 +68,32 @@ function perPeerBitrate(profile, peerCount) {
   return Math.max(MIN_BITRATE[profile], Math.min(BITRATE[profile], share));
 }
 
+// پروفایل تطبیقی: با رشد تعداد peer، رزولوشن/فریم کمتر و بیت‌ریت سهمیه‌ای کمتر
+// تا آپلود اشباع نشود و فریم‌ها در mesh سه‌نفره+ فریز نکنند.
+function videoParamsFor(profile, peerCount) {
+  const count = Math.max(1, peerCount);
+  let scaleResolutionDownBy = 1;
+  let maxFramerate = MAX_FPS;
+  if (count >= 5) {
+    scaleResolutionDownBy = 2;
+    maxFramerate = 15;
+  } else if (count === 4) {
+    scaleResolutionDownBy = 1.75;
+    maxFramerate = 20;
+  } else if (count === 3) {
+    scaleResolutionDownBy = 1.5;
+    maxFramerate = 24;
+  }
+  return {
+    maxBitrate: perPeerBitrate(profile, count),
+    maxFramerate,
+    scaleResolutionDownBy,
+    // با ۳+ نفر، حفظ فریم‌ریت به قیمت افت شدید کیفیت تمام صفحه را خراب می‌کند؛
+    // حالت متعادل کیفیت/فریم را هم‌زمان پایین می‌آورد.
+    degradationPreference: count >= 3 ? 'balanced' : 'maintain-framerate',
+  };
+}
+
 async function setVideoSenderParameters(sender, profile = 'camera', peerCount = 1) {
   if (!sender?.track || sender.track.kind !== 'video') return;
   try {
@@ -76,10 +102,11 @@ async function setVideoSenderParameters(sender, profile = 'camera', peerCount = 
     }
     const params = sender.getParameters();
     if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-    params.encodings[0].maxBitrate = perPeerBitrate(profile, peerCount);
-    params.encodings[0].maxFramerate = MAX_FPS;
-    // maintain-framerate: اولویت نرخ فریم تا ویدیو/اسکرین‌شیر به ۲fps سقوط نکند
-    params.degradationPreference = 'maintain-framerate';
+    const tuning = videoParamsFor(profile, peerCount);
+    params.encodings[0].maxBitrate = tuning.maxBitrate;
+    params.encodings[0].maxFramerate = tuning.maxFramerate;
+    params.encodings[0].scaleResolutionDownBy = tuning.scaleResolutionDownBy;
+    params.degradationPreference = tuning.degradationPreference;
     await sender.setParameters(params);
   } catch (err) {
     console.debug('[GroupWebRTC] setParameters skipped:', err?.message);
@@ -426,7 +453,9 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     });
 
     const picked = activeVideo ? [...audio, activeVideo] : audio;
-    const signature = picked.map((track) => `${track.id}:${track.muted ? 'm' : 'u'}`).join('|');
+    // امضای پایدار بر اساس شناسه‌ی ترک‌ها؛ mute/unmute باعث ساخت MediaStream تازه نمی‌شود
+    // (srcObject churn روی <video> در تماس ۳+ نفره باعث فلیکر/فریز می‌شد)
+    const signature = picked.map((track) => track.id).join('|');
     if (!picked.length || signature === entry.remoteSig) return;
 
     entry.remoteSig = signature;
@@ -469,6 +498,8 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
     }
     peersRef.current.delete(id);
     setParticipants((previous) => previous.filter((participant) => participant.isLocal || participant.id !== id));
+    // با کم شدن تعداد peer، سهم آپلود بقیه زیاد می‌شود؛ پروفایل را دوباره اعمال کن
+    applyVideoSenderProfile();
   }
 
   function createPeer(peerId, role) {
@@ -563,11 +594,14 @@ export function useGroupWebRTC({ currentUser, connected = false, currentRoom = n
       }
     };
 
+    // با اضافه شدن peer جدید، تعداد نفرات عوض شده؛ پروفایل بیت‌ریت/رزولوشن
+    // همه‌ی فرستنده‌های قبلی هم باید بازتنظیم شود (وگرنه آپلود اشباع می‌شود)
+    applyVideoSenderProfile();
+
     return entry;
   }
 
-  async function sendOffer(peerId, { iceRestart = false } = {}) {
-    const call = callRef.current;
+  async function sendOffer(peerId, { iceRestart = false } = {}) {    const call = callRef.current;
     if (!call) return;
     const entry = createPeer(peerId, 'offerer');
     if (!entry) return;

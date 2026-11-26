@@ -111,6 +111,21 @@ function gridClassFor(count) {
 // ===========================================================================
 
 /** تشخیص «در حال صحبت» از روی سطح صدای stream (بدون پخش صدای اضافه) */
+// یک AudioContext مشترک برای همه‌ی کاشی‌ها: ساخت یک context به‌ازای هر شرکت‌کننده
+// در تماس ۳+ نفره سقف context مرورگر را پر می‌کرد و باعث قطع/فریز صدا می‌شد.
+let sharedAudioCtx = null;
+function getSharedAudioCtx() {
+  if (sharedAudioCtx && sharedAudioCtx.state !== 'closed') return sharedAudioCtx;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  try {
+    sharedAudioCtx = new AC();
+  } catch {
+    sharedAudioCtx = null;
+  }
+  return sharedAudioCtx;
+}
+
 function useSpeaking(stream, active = true) {
   const [speaking, setSpeaking] = useState(false);
   const audioTrack = stream?.getAudioTracks?.()[0] ?? null;
@@ -119,10 +134,9 @@ function useSpeaking(stream, active = true) {
     const reset = setTimeout(() => setSpeaking(false), 0);
     if (!active || !audioTrack) return () => clearTimeout(reset);
 
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return () => clearTimeout(reset);
+    const ctx = getSharedAudioCtx();
+    if (!ctx) return () => clearTimeout(reset);
 
-    let ctx;
     let source;
     let raf;
     let state = false;
@@ -130,7 +144,6 @@ function useSpeaking(stream, active = true) {
     let lastTick = 0;
 
     try {
-      ctx = new AC();
       source = ctx.createMediaStreamSource(new MediaStream([audioTrack]));
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 512;
@@ -170,7 +183,7 @@ function useSpeaking(stream, active = true) {
       } catch {
         /* ignore */
       }
-      ctx?.close?.().catch(() => { });
+      // context مشترک است و بسته نمی‌شود
     };
   }, [audioTrack, active]);
 

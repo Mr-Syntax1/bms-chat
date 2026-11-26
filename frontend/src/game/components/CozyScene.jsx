@@ -23,6 +23,7 @@ import CookingStation from './CookingStation';
 import FishingSpot from './FishingBobber';
 import Wildlife from './Wildlife';
 import Bugs from './Bugs';
+import ForageItems from './ForageItems';
 import { FISHING_SPOTS } from '../fishingSpots';
 import { useQualityPreset, useSettingsStore } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
@@ -297,6 +298,7 @@ export default function CozyScene() {
         <Wildlife />
       </Suspense>
       <Bugs />
+      <ForageItems />
       <Weather />
       <Fireflies count={fireflyCount} />
       <Butterflies count={preset.butterflies} />

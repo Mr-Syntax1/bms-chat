@@ -1,17 +1,17 @@
 # AI_HANDOFF — BMS Cozy Forest
 
 آخرین به‌روزرسانی: 2026-11-26
-فاز فعلی: PHASE 3c — DONE ✅ (حشرات و حیات وحش) · PHASE 3b — DONE ✅ (ماهیگیری) · PHASE 3a — DONE ✅ (پخت‌وپز) · **PHASE 2: 100% COMPLETE** 🎉
+فاز فعلی: PHASE 3d — DONE ✅ (چیدن گیاه) · PHASE 3c — DONE ✅ (حشرات و حیات وحش) · PHASE 3b — DONE ✅ (ماهیگیری) · PHASE 3a — DONE ✅ (پخت‌وپز) · **PHASE 2: 100% COMPLETE** 🎉
 
 ## 1) خلاصه
 بازی هم‌اکنون: زمین ناهموار + جنگل بلند + آبشار/رودخانه + کمپ/ساحل (Phase 1)،
 حس زنده‌بودن کاراکتر + نقاط استراحت (Phase 2a)، چرخ ایموت Q + نام‌شناور + حباب چت (Phase 2b)،
 انتخاب کاراکتر پیش از بازی + کمد لباس کامل (Phase 2c)، محیط واکنشی به اندازه‌ی گروه،
 تعامل هدفمند با بازیکن نزدیک و مرورگر کمپ‌های فعال (Phase 2d)، سیستم پخت‌وپز با ۴ ایستگاه و
-۴ سطح کیفیت (Phase 3a)، سیستم ماهیگیری (Phase 3b)، و از این دور:
-**حیات وحش و حشرات** — ۵ گونه‌ی حیوان (خرگوش/گوزن/اردک/جغد/تشی) با AI پرسه/فرار ۱۰Hz،
-حشرات رویه‌ای InstancedMesh (پروانه/سوسک/کرم شب‌تاب) با گرفتن با F و تور دستی،
-اینونتوری حشرات در دفترچه، و رفع باگ کلید C کمد.
+۴ سطح کیفیت (Phase 3a)، سیستم ماهیگیری (Phase 3b)، حیات وحش و حشرات (Phase 3c)، و از این دور:
+**چیدن گیاه** — ۳۶ گیاه قابل چیدن در ۶ گونه (قارچ جنگلی/قارچ مرغ جنگل/توت/گیاه معطر/میوه کاج/گل وحشی)
+با spawn ثابت seed‌دار، ری‌اسپاون ۱۰..۱۵ دقیقه‌ای بیرون React، چیدن با F، ۴ دستور پخت جدید و
+بخش «گیاهان چیده‌شده» در دفترچه. همچنین **رفع لگ تماس گروهی ۳+ نفره** در WebRTC mesh.
 
 ## 2) DONE ✅
 | مورد | فایل‌ها | چطور تأیید شد |
@@ -82,15 +82,30 @@
 | ۳c: پرامپت «گرفتن حشره» با آیکون SVG (بدون ایموجی) + `nearBug` در store | `ui/InteractionPrompt.jsx`, `stores/usePlayerStore.js` | eslint + build |
 | 🐞 رفع باگ: کلید C کمد اصلاً هندلر نداشت — افزودن toggle کامل (باز=unlock موس، بسته=lock، ESC هم می‌بندد) | `GameOverlay.jsx` | eslint + build |
 | ۳c: پیش‌بارگذاری گروه animals بعد از ورود (idle) | `GameOverlay.jsx`, `preload.js` (موجود) | eslint + build |
+| ۳d: ۶ گونه گیاه قابل چیدن داده‌محور (قارچ جنگلی/قارچ مرغ جنگل/توت/گیاه معطر/میوه کاج/گل وحشی) با کمیابی، زیستگاه و زمان ری‌اسپاون ۱۰..۱۵ دقیقه | `forageData.js` (جدید) | eslint + build |
+| ۳d: ۳۶ نقطه‌ی spawn ثابت با seed (mulberry32) — قارچ نزدیک تنه، قارچ نادر عمق جنگل، میوه کاج زیر کاج، توت لبه جنگل، گیاه/گل چمن‌زار | `forageData.js` | eslint + build |
+| ۳d: وضعیت زنده بیرون React — `picked: Uint8Array` + `respawnAt: Float64Array` + یک `setInterval` ماژول‌سطح (بدون setState در چرخه‌ی ری‌اسپاون) | `forageData.js` | eslint + build |
+| ۳d: رندر ۳بعدی گیاهان — قارچ/قارچ نادر/گل با GLB موجود (`Fitted`)، توت/گیاه/میوه کاج رویه‌ای؛ یک `useFrame` مشترک برای visibility + bob + پالس حلقه‌ی درخشش | `components/ForageItems.jsx` (جدید), `components/CozyScene.jsx` | eslint + build |
+| ۳d: چیدن با F — اولویت جدید F: گیاه (≤۲) → حشره (≤۲.۴) → چراغ ون؛ ژست `forage-pick` + صدا `berry_pick.mp3` + پخش اکشن شبکه‌ای | `components/PlayerController.jsx`, `models/characterConfig.js`, `sounds.js` | eslint + build |
+| ۳d: انیمیشن خم شدن به جلو برای چیدن روی مدل‌های بدون ریگ | `components/Character.jsx` | eslint + build |
+| ۳d: پرامپت «چیدن <نام گیاه>» با آیکون SVG همان گیاه + `nearForage` در store (مقایسه بر اساس index) | `ui/InteractionPrompt.jsx`, `stores/usePlayerStore.js` | eslint + build |
+| ۳d: اینونتوری گیاهان (`forageItems` + `addForageItem` که هم‌زمان `ingredients` را زیاد می‌کند) + بخش گروه‌بندی‌شده‌ی «گیاهان چیده‌شده» در دفترچه | `stores/usePlayerStore.js`, `ui/QuestLog.jsx` | eslint + build |
+| ۳d: ۴ دستور پخت جدید از گیاهان — خورش قارچ، پای توت، قارچ کبابی، دمنوش گل + ۵ ماده‌ی جدید در INGREDIENTS | `recipes.js`, `ui/CookingUI.jsx` (موجود) | eslint + build |
+| ۳d: آیکون‌های SVG جدید berry/herb/pinecone/flower (+pie/mug) در مجموعه‌ی GameIcon | `ui/icons.jsx` | eslint + build |
+| ۳d: پیش‌بارگذاری گروه forage (Mushrooms/MushroomLaetiporus/Flowers/Bush) بعد از ورود | `assetManifest.js`, `GameOverlay.jsx` | eslint + build |
+| 🐞 رفع لگ تماس گروهی ۳+ نفره: پروفایل ویدیوی تطبیقی (بیت‌ریت/فریم/رزولوشن بر اساس تعداد peer) + اعمال دوباره هنگام اضافه/حذف peer + `degradationPreference='balanced'` برای ۳+ | `hooks/useGroupWebRTC.js` | eslint + build |
+| 🐞 رفع لگ تماس گروهی: امضای پایدار `resyncPeer` (فقط شناسه‌ی ترک، بدون mute) تا srcObject با mute/unmute بازسازی نشود | `hooks/useGroupWebRTC.js` | eslint + build |
+| 🐞 رفع لگ تماس گروهی: یک AudioContext مشترک برای همه‌ی کاشی‌ها به‌جای یکی per participant (جلوگیری از اتمام سقف context مرورگر) | `components/GroupCallModal.jsx` | eslint + build |
 
 دستورهای تأیید: `npx eslint src/game` (exit 0) و `npm run build` (exit 0).
 
 ## 3) IN PROGRESS 🔄
-هیچ‌چیز نیمه‌کاره در 3c. Phase 3c کامل شد.
+هیچ‌چیز نیمه‌کاره در 3d. Phase 3d کامل شد.
 
 ## 4) NOT DONE ⬜ (به‌ترتیب)
-- Phase 3d — چیدن گیاه؛ Phase 3e — ساحل/تفریح؛ Phase 3f — دکور کمپ (منتظر دستور «next»).
-- گسترش دستورهای پخت از ۵ به ۵۰+ و Recipe Book با دستورهای کشف‌نشده (طبق MASTER_PROMPT).
+- Phase 3e — ساحل/تفریح؛ Phase 3f — دکور کمپ (منتظر دستور «next»).
+- چیدن گیاه: ذخیره‌سازی دائمی ری‌اسپاون/اینونتوری (فعلاً در حافظه‌ی صفحه) و همگام‌سازی چیدن بین بازیکنان (فعلاً هر کلاینت مستقل می‌چیند).
+- گسترش دستورهای پخت از ۹ به ۵۰+ و Recipe Book با دستورهای کشف‌نشده (طبق MASTER_PROMPT).
 - خوردن با انیمیشن لقمه/پف گونه + ذرات خرده و صداهای eat_crunch/eat_gulp (فعلاً فقط حذف از لیست + توست).
 - یخ‌دان اشتراکی (Icebox) و ظرف‌های Mug/Thermos.
 - ماهیگیری: دفترچه‌ی ماهی‌ها با رکورد/وزن‌های کشف‌شده (فعلاً لیست ساده) + بردن ماهی به یخ‌دان.
@@ -110,6 +125,8 @@
 - 3c: حشرات کاملاً رویه‌ای‌اند (بدون GLB): پروانه از دو مثلث بال + استوانه‌ی بدن، سوسک از کره‌ی کشیده + ۶ استوانه‌ی پا، کرم شب‌تاب از کره‌ی emissive. همه با `InstancedMesh`.
 - 3c: تور حشره (`HeldNet`) رویه‌ای است: استوانه‌ی دسته + torus حلقه + مخروط شفاف توری.
 - 3c: حیوانات از `useModelParts` استفاده می‌کنند (همان الگوی PondLife) تا بدون SkeletonUtils سبک بمانند؛ مدل‌ها ریگ‌دار نیستند و انیمیشن رویه‌ای (bob/tilt) دارند.
+- 3d: قارچ جنگلی/قارچ مرغ جنگل/گل وحشی از GLBهای موجود (`undergrowth.mushrooms`/`edibleMushroom`/`flowers`) رندر می‌شوند؛ توت (بوته‌ی `BushbyQuaternius` + کره‌های قرمز)، گیاه معطر (مخروط‌های سبز) و میوه کاج (مخروط + torus) رویه‌ای‌اند. هیچ GLB جدیدی اضافه نشد.
+- 3d: حلقه‌ی درخشش additive زیر هر گیاه با پالس opacity در همان `useFrame` مشترک `ForageItems` آپدیت می‌شود (بدون material جدید per frame).
 
 ## 6) تصمیم‌ها و انحراف‌ها
 - چرخ ایموت DOM روی Canvas است (z-70) تا با pointer lock هم کار کند؛ انتخاب با movementX/Y و رها کردن Q.
@@ -143,6 +160,15 @@
 - 3c: F دو کار دارد: اگر حشره‌ای در ۲.۴ واحد باشد تور می‌زند، وگرنه چراغ ون را toggle می‌کند (سازگاری با رفتار قبلی).
 - 3c: نوازش خرگوش فقط وقتی `local.moving === false` است شمارش می‌شود (۳ ثانیه)، سپس ۲.۵ ثانیه قلب نشان داده می‌شود.
 - 3c: باگ کلید C — هیچ‌جا هندلر `KeyC` وجود نداشت (فقط دکمه‌ی HUD کار می‌کرد). حالا در `GameOverlay` toggle می‌شود؛ هنگام باز شدن موس unlock و هنگام بسته شدن دوباره lock می‌شود و ESC هم کمد را می‌بندد.
+- 3d: تایمر ری‌اسپاون ماژول‌سطح است (`ensureRespawnTimer`, ۱ ثانیه) و در Node با `unref()` مانع خروج پروسه نمی‌شود؛ هیچ setState‌ای در چرخه‌ی ری‌اسپاون نیست — فقط `ForageItems` هر فریم `picked[i]` را می‌خواند.
+- 3d: چیدمان با seed ثابت 90217 است تا همه‌ی کلاینت‌ها مکان یکسان ببینند؛ چیدن اما محلی است (همگام‌سازی چیدن بین بازیکنان در فاز بعد).
+- 3d: F سه‌کاره شد با اولویت گیاه → حشره → چراغ ون؛ برای جلوگیری از تصادم، چیدن فقط وقتی `state.action` خالی است انجام می‌شود.
+- 3d: گیاهان چیده‌شده هم به `forageItems` (برای نمایش گروه‌بندی‌شده) و هم به `ingredients` (برای دستورهای پخت) اضافه می‌شوند؛ شناسه‌ی `mushroom` قارچ از قبل در ingredients بود و حالا با چیدن زیاد می‌شود.
+- 3d: گروه preload «forage» فقط ۴ مدل موجود را warm می‌کند و بعد از ورود (idle، ۱.۲s) اجرا می‌شود تا فریم اول سنگین نشود.
+- 🐞 تماس گروهی ۳+ نفره: علت اصلی این بود که `perPeerBitrate` فقط هنگام ساخت اتصال اعمال می‌شد؛ با ورود نفر سوم، فرستنده‌های موجود همچنان بیت‌ریت ۲ نفره می‌فرستادند و آپلود اشباع می‌شد. حالا `applyVideoSenderProfile()` در پایان `createPeer` و `closePeer` دوباره اجرا می‌شود و `videoParamsFor` رزولوشن/فریم را هم با تعداد peer کم می‌کند (۳ نفر: ۱.۵×، ۲۴fps؛ ۴ نفر: ۱.۷۵×، ۲۰fps؛ ۵+: ۲×، ۱۵fps).
+- 🐞 تماس گروهی: `degradationPreference` برای ۳+ نفر `balanced` شد (قبلاً `maintain-framerate` کیفیت را در شرایط اشباع کاملاً خراب می‌کرد)؛ برای ۱..۲ نفر همان `maintain-framerate` می‌ماند.
+- 🐞 تماس گروهی: `resyncPeer` دیگر mute/unmute را در امضا لحاظ نمی‌کند؛ فقط تغییر مجموعه‌ی ترک‌ها `MediaStream` تازه می‌سازد تا `srcObject` روی `<video>` هر بار بازسازی نشود (منبع فلیکر/فریز).
+- 🐞 تماس گروهی: `useSpeaking` از یک `AudioContext` مشترک ماژول‌سطح استفاده می‌کند؛ قبلاً هر کاشی یک context می‌ساخت که در ۳+ نفر به سقف context مرورگر می‌خورد.
 
 ## 7) مشکلات شناخته‌شده / تست دستی
 - 🚨 (2026-11-26) رگرسیون سوکت رفع شد: اگر دوباره «آنلاین/اتاق‌ها/تیک پیام» خالی شد، اول مطمئن شوید افکت اتصال در `App.jsx` (وابسته به `authUser?.id`) هست و `connectSocket` هیچ‌جای دیگری هم صدا زده نمی‌شود (دو بار connect = رفتار عجیب).
@@ -167,6 +193,13 @@
 - 3c: گرفتن حشره شعاع ۱.۹ واحدی تور دارد (پرامپت در ۲.۴ ظاهر می‌شود)؛ اگر احساس کردید حشره گرفته نمی‌شود، شعاع `tryCatchBug` را افزایش دهید.
 - 3c: اردک‌ها داخل برکه شنا می‌کنند؛ اگر روی خشکی/زیر آب دیده شدند، `POND` در `terrain.js` را بررسی کنید.
 - 3c: اگر کلید C کمد باز نشد، مطمئن شوید موس قفل است (دکمه‌ی ورود زده شده) و پنل دیگری (پخت/ماهیگیری/دفترچه/تنظیمات) باز نیست.
+- 3d: گیاهان با seed ثابت چیده شده‌اند؛ اگر قارچ/گل داخل تنه یا روی شیب افتاد، بازه‌های `buildList` در `forageData.js` را تنظیم کنید.
+- 3d: برد چیدن ۲.۰ واحد است (پرامپت هم همان‌جا ظاهر می‌شود)؛ برای راحت‌تر شدن `findNearestForage`/`tryPickForage` را افزایش دهید.
+- 3d: ری‌اسپاون ۱۰..۱۵ دقیقه است؛ برای تست سریع `respawnTime` هر نوع در `FORAGE_TYPES` را موقتاً کم کنید.
+- 3d: اگر گیاهی پس از چیدن ناپدید نشد، مطمئن شوید `ForageItems` داخل `Suspense`/Canvas مانت است و `forageWorld.picked` همان نمونه‌ای است که `tryPickForage` می‌نویسد.
+- 3d: چیدن بین بازیکنان همگام نیست (هر کلاینت لیست مستقل دارد)؛ این محدودیت شناخته‌شده است.
+- 🐞 تماس گروهی: اگر هنوز در ۳+ نفر لگ بود، اول `chrome://webrtc-internals` را ببینید — `maxBitrate` هر sender باید با تعداد peer پایین آمده باشد. اگر آپلود دستگاه کم است، `UPLOAD_BUDGET` را در `useGroupWebRTC.js` کم کنید.
+- 🐞 تماس گروهی: در شبکه‌های بدون TURN (فقط STUN)، mesh ۳+ نفره ذاتاً سنگین است؛ متغیرهای `VITE_TURN_*`/`VITE_METERED_*` را تنظیم کنید.
 
 ## 8) اجرا و تأیید
 ```
@@ -175,15 +208,16 @@ npx eslint src/game
 npm run build
 npm run dev
 ```
-کلیدها: نگه‌داشتن Q = چرخ ایموت · 1..5 میان‌بر · E تعامل/نشستن/بغل بازیکن نزدیک · **E نزدیک ایستگاه پخت = نگه‌داشتن برای پختن** · **E نزدیک نقطه‌ی ماهیگیری = مینی‌گیم ماهیگیری** · G گیتار · M مارشمالو · L دفترچه · C کمد · **F نزدیک حشره = گرفتن با تور / وگرنه چراغ ون**.
-کمد از دکمه‌ی کمد (آیکون SVG) در HUD **یا کلید C** و مرور کمپ‌ها از دکمه‌ی چادر در هدر چت باز می‌شود. غذاهای پخته‌شده، ماهی‌های صیدشده و حشرات گرفته‌شده در دفترچه (آیکون طومار) دیده می‌شوند.
+کلیدها: نگه‌داشتن Q = چرخ ایموت · 1..5 میان‌بر · E تعامل/نشستن/بغل بازیکن نزدیک · **E نزدیک ایستگاه پخت = نگه‌داشتن برای پختن** · **E نزدیک نقطه‌ی ماهیگیری = مینی‌گیم ماهیگیری** · G گیتار · M مارشمالو · L دفترچه · C کمد · **F = چیدن گیاه (اولویت) / گرفتن حشره با تور / چراغ ون**.
+کمد از دکمه‌ی کمد (آیکون SVG) در HUD **یا کلید C** و مرور کمپ‌ها از دکمه‌ی چادر در هدر چت باز می‌شود. غذاهای پخته‌شده، ماهی‌های صیدشده، حشرات گرفته‌شده و گیاهان چیده‌شده در دفترچه (آیکون طومار) دیده می‌شوند.
 
 ## 9) env / endpoint / store / localStorage جدید
-- store: `chatLog` + `pushChatLog`؛ `uiFlags`؛ `chatBubbleMap`؛ `wardrobe` + `setWardrobe`؛ `campMood` (module-level)؛ `ingredients` + `addIngredient` + `consumeIngredients`؛ `foods` + `addFood` + `eatFood`؛ `cookingStation` + `openCooking` + `closeCooking`؛ `fishCaught` + `addFish`؛ `fishingState` + `setFishingState`؛ **`bugsCaught` + `addBug`؛ `nearBug` + `setNearBug`**.
+- store: `chatLog` + `pushChatLog`؛ `uiFlags`؛ `chatBubbleMap`؛ `wardrobe` + `setWardrobe`؛ `campMood` (module-level)؛ `ingredients` + `addIngredient` + `consumeIngredients`؛ `foods` + `addFood` + `eatFood`؛ `cookingStation` + `openCooking` + `closeCooking`؛ `fishCaught` + `addFish`؛ `fishingState` + `setFishingState`؛ `bugsCaught` + `addBug`؛ `nearBug` + `setNearBug`؛ **`forageItems` + `addForageItem`؛ `nearForage` + `setNearForage`**.
 - endpoint جدید: `GET /api/calls/game/campsites`؛ `POST /api/calls/game/claim-character` اکنون `{ preferred?, roomId? }` می‌پذیرد.
-- localStorage: `preferred-character` و `wardrobe-<userId>` (بدون کلید جدید در 3c؛ حشرات/حیوانات هنوز ذخیره نمی‌شوند).
+- localStorage: `preferred-character` و `wardrobe-<userId>` (بدون کلید جدید در 3d؛ گیاهان هنوز ذخیره نمی‌شوند).
 
 ## 10) Changelog (جدیدترین اول)
+- 2026-11-26 — Phase 3d: چیدن گیاه — ۶ گونه × ۳۶ نقطه‌ی seed‌دار (قارچ جنگلی/قارچ مرغ جنگل/توت/گیاه معطر/میوه کاج/گل وحشی)، رندر با ۴ GLB موجود + ۳ مدل رویه‌ای، وضعیت `picked`/`respawnAt` بیرون React با تایمر ماژول‌سطح، چیدن با F (اولویت گیاه → حشره → چراغ)، ژست `forage-pick` + صدای berry_pick، اینونتوری گروه‌بندی‌شده در دفترچه، ۴ دستور پخت جدید (خورش قارچ/پای توت/قارچ کبابی/دمنوش گل)، آیکون‌های SVG جدید. **رفع لگ تماس گروهی ۳+ نفره**: پروفایل ویدیوی تطبیقی + اعمال دوباره هنگام تغییر تعداد peer + `balanced` برای ۳+، امضای پایدار `resyncPeer`، AudioContext مشترک برای کاشی‌ها. eslint ✅ build ✅
 - 2026-11-26 — Phase 3c: حشرات و حیات وحش — ۵ گونه حیوان با AI پرسه/فرار ۱۰Hz و ارتفاع زمین (خرگوش/گوزن جنگل، اردک برکه، جغد/تشی لبه‌ی جنگل)، نوازش خرگوش با قلب شناور، حشرات رویه‌ای InstancedMesh (پروانه/سوسک/کرم شب‌تاب) با wander ۱۲Hz، گرفتن با F + تور دستی + ژست `bug-catch` + صداهای bug_net/bug_catch، اینونتوری حشرات در دفترچه، آیکون‌های SVG جدید. **رفع باگ کلید C کمد** (هندلر گم‌شده + ESC). eslint ✅ build ✅
 - 2026-11-26 — 🐞 **رفع باگ کلیک روی توست Sileo (عدم ناوبری به DM):** توست `sileo` هیچ `onClick` روی خودِ توست ندارد (فقط `button: { title, onClick }` طبق `dist/index.d.ts`). `useChat.js`: افزودن پل ناوبری `setChatNavigator` + دکمه‌ی «مشاهده» و description کلیک‌پذیر که برای DM به `/chat` با `state.dmTarget` و برای گروه به `state.roomToJoin` (+ `ts` یکتا) ناوبری می‌کند. `App.jsx`: کامپوننت `NavigationBridge` داخل `BrowserRouter` که `useNavigate` را به هوک تزریق می‌کند (تا کلیک از `/profile` یا `/settings` هم کار کند). `Chat.jsx`: افکت `location.state` هم در mount اجرا می‌شود، `roomToJoin` را هم پشتیبانی می‌کند و با `handledNavRef` از اجرای دوباره (StrictMode) جلوگیری می‌کند. eslint ✅ build ✅
 - 2026-11-26 — 🚨 **رفع رگرسیون سوکت (اتصال گم‌شده بعد از انتقال `useChat` به App):** در commit `92cd31f` افکت `connectSocket()/disconnectSocket()` از `Chat.jsx` حذف شد ولی در `App.jsx` دوباره اضافه نشد؛ نتیجه: Ably هرگز وصل نمی‌شد و `connected` هیچ‌وقت `true` نمی‌شد (کاربران آنلاین خالی، اتاق‌ها خالی، آیکون پیام در حالت ساعت می‌ماند). `useChat.js`: افزودن `sessionUserId` به‌عنوان state تا effect حضور بعد از پر شدن `currentUserRef` دوباره اجرا شود؛ وابستگی effect حضور به `[connected, sessionUserId]`؛ گارد StrictMode روی تایمر `ably.close` (`closeTimerRef`) تا remount سریع اتصال جدید را نکشد؛ `disconnectSocket` حالا `sessionUserId` را هم null می‌کند؛ match کردن optimistic در هندلر `new-message` با `String(senderId)` مقاوم شد. `App.jsx`: افکت اتصال سطح App با گارد `authUser?.id` (اتصال فقط بعد از مشخص شدن کاربر). eslint ✅ build ✅

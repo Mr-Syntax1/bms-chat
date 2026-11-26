@@ -10,6 +10,20 @@
     <!-- Preload font -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <!-- Capture the install prompt as early as possible (before the React bundle loads) -->
+    <script>
+      (function () {
+        window.__deferredInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', function (e) {
+          e.preventDefault();
+          window.__deferredInstallPrompt = e;
+          try { window.dispatchEvent(new Event('pwa:beforeinstallprompt')); } catch (_) {}
+        });
+        window.addEventListener('appinstalled', function () {
+          window.__deferredInstallPrompt = null;
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -22,9 +22,16 @@ import { getWalkSurfaceY, isInWater } from '../terrain';
 import { applyFovKick } from '../cameraTuning';
 import { fishing } from '../fishData';
 import { nearestBugDistance, tryCatchBug } from '../bugData';
+import { findNearestForage, tryPickForage } from '../forageData';
 import Character from './Character';
 import ChatBubble from './ChatBubble';
-import { GUITAR_SOUNDS, YUM_SOUND, BUG_NET_SOUND, BUG_CATCH_SOUND } from '../sounds';
+import {
+  GUITAR_SOUNDS,
+  YUM_SOUND,
+  BUG_NET_SOUND,
+  BUG_CATCH_SOUND,
+  BERRY_PICK_SOUND,
+} from '../sounds';
 
 const WALK_SPEED = 3.6;
 const RUN_SPEED = 6.8;
@@ -91,6 +98,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
   const marshmallowTimer = useRef(null);
   const emoteTimer = useRef(null);
   const bugTimer = useRef(null);
+  const forageTimer = useRef(null);
 
   // ---- حالت دیباگ جهت کاراکتر (Ctrl+Shift+F) ----
   const debugRef = useRef({ enabled: false, lastPrint: 0 });
@@ -141,10 +149,12 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
       if (emoteTimer.current) clearTimeout(emoteTimer.current);
       if (bugTimer.current) clearTimeout(bugTimer.current);
+      if (forageTimer.current) clearTimeout(forageTimer.current);
       guitarTimer.current = null;
       marshmallowTimer.current = null;
       emoteTimer.current = null;
       bugTimer.current = null;
+      forageTimer.current = null;
     };
 
     // تایمرهای اکشن قبلی را می‌بندد تا با شروع اکشن جدید،
@@ -154,9 +164,11 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       if (guitarTimer.current) clearTimeout(guitarTimer.current);
       if (marshmallowTimer.current) clearTimeout(marshmallowTimer.current);
       if (bugTimer.current) clearTimeout(bugTimer.current);
+      if (forageTimer.current) clearTimeout(forageTimer.current);
       guitarTimer.current = null;
       marshmallowTimer.current = null;
       bugTimer.current = null;
+      forageTimer.current = null;
       if (hadAction) {
         state.endAction();
         publishPlayerAction(roomId, user, 'action-end');
@@ -217,6 +229,26 @@ export default function PlayerController({ roomId, user, look, active = true }) 
           break;
         }
         case 'KeyF': {
+          // اولویت: چیدن گیاه (F) → گرفتن حشره با تور (F) → چراغ ون
+          const forageNear = !state.action ? findNearestForage(x, z, 2.0) : null;
+          if (forageNear) {
+            event.preventDefault();
+            playPositionalOneShot(BERRY_PICK_SOUND, [x, 1.2, z], { volume: 0.8 });
+            state.startAction('forage-pick');
+            publishPlayerAction(roomId, user, 'action', { action: 'forage-pick', duration: 900 });
+            if (forageTimer.current) clearTimeout(forageTimer.current);
+            forageTimer.current = setTimeout(() => {
+              const s = usePlayerStore.getState();
+              if (s.action === 'forage-pick') s.endAction();
+              publishPlayerAction(roomId, user, 'action-end');
+              forageTimer.current = null;
+            }, 900);
+            // چیدن در همان لحظه (شعاع کمی بزرگ‌تر از برد پرامپت)
+            const picked = tryPickForage(x, z, 2.0);
+            if (picked) usePlayerStore.getState().addForageItem(picked);
+            usePlayerStore.getState().setNearForage(null);
+            break;
+          }
           // اگر حشره نزدیک است، F = گرفتن با تور؛ وگرنه چراغ ون
           const bugDist = nearestBugDistance(x, z);
           if (bugDist <= 2.4 && !state.action) {
@@ -369,6 +401,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       movingRef.current = false;
       runningRef.current = false;
       setNearInteractable(null);
+      usePlayerStore.getState().setNearForage(null);
       const seatedTarget = getQuestTarget(state.quests, state.collected);
       setQuestDistance(
         seatedTarget ? Math.round(Math.hypot(seatedTarget.x - spot.x, seatedTarget.z - spot.z)) : null
@@ -659,6 +692,12 @@ export default function PlayerController({ roomId, user, look, active = true }) 
 
       // نشانگر نزدیکی حشره برای HUD (فقط تغییر boolean رندر می‌شود)
       usePlayerStore.getState().setNearBug(nearestBugDistance(nextX, nextZ) <= 2.4);
+
+      // نشانگر نزدیکی گیاه برای HUD (فقط تغییر index رندر می‌شود)
+      const forageNear = findNearestForage(nextX, nextZ, 2.0);
+      usePlayerStore.getState().setNearForage(
+        forageNear ? { index: forageNear.index, item: forageNear.item } : null
+      );
     }
   });
 

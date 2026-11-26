@@ -466,6 +466,8 @@ export const PRELOAD_GROUPS = {
   npc: ['npc.grandpa', 'npc.adventurer', 'npc.littlegirl', 'npc.witch', 'npc.cow', 'npc.gnome'],
   animals: ['animals.rabbit', 'animals.deer', 'animals.duck', 'animals.frog', 'animals.owl', 'animals.porcupine', 'animals.goldfish'],
   cooking: ['cooking.pot', 'cooking.cauldron', 'cooking.fryingPan'],
+  // Phase 3d — گیاهان قابل چیدن (فقط مدل‌های موجود)
+  forage: ['undergrowth.mushrooms', 'undergrowth.edibleMushroom', 'undergrowth.flowers', 'undergrowth.bush'],
   food: ['food.steak', 'food.eggFried', 'food.corn', 'food.potato', 'food.pancakes', 'food.pie', 'food.stew', 'food.sushi', 'food.skewer'],
   comfort: ['comfort.bedroll', 'comfort.hammock', 'comfort.icebox', 'comfort.thermos', 'comfort.mug', 'comfort.stringLights', 'comfort.rug', 'comfort.flag'],
   wearables: ['structures.backpack'],

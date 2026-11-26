@@ -1,53 +1,157 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { sileo } from 'sileo';
 
-export default function InstallButton() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+// آیا همین حالا به صورت اپ نصب‌شده (standalone) اجرا می‌شویم؟
+function isStandalone() {
+  if (typeof window === 'undefined') return false;
+  const modes = ['(display-mode: standalone)', '(display-mode: window-controls-overlay)', '(display-mode: minimal-ui)'];
+  return (
+    modes.some((q) => window.matchMedia?.(q).matches) ||
+    window.navigator.standalone === true
+  );
+}
 
-  // تشخیص سیستم عامل برای نمایش راهنمای دقیق‌تر
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+// پرامپت ممکن است قبل از mount شدن ری‌اکت شلیک شده باشد؛ از کش سراسری می‌خوانیم.
+function getStoredPrompt() {
+  if (typeof window === 'undefined') return null;
+  return window.__deferredInstallPrompt || null;
+}
+
+function clearStoredPrompt() {
+  if (typeof window !== 'undefined') window.__deferredInstallPrompt = null;
+}
+
+export default function InstallButton() {
+  const [deferredPrompt, setDeferredPrompt] = useState(getStoredPrompt);
+  const [isInstalled, setIsInstalled] = useState(isStandalone);
+
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
+  const isFirefox = /firefox|fxios/i.test(ua);
+  const isSafari = /safari/i.test(ua) && !/chrome|chromium|crios|fxios|edg|opr|android/i.test(ua);
 
   useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-      setIsInstalled(true);
-      return;
-    }
+    const syncPrompt = () => setDeferredPrompt(getStoredPrompt());
 
-    const handler = (e) => {
+    const onBeforeInstall = (e) => {
       e.preventDefault();
+      window.__deferredInstallPrompt = e;
       setDeferredPrompt(e);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true);
+    const onInstalled = () => {
+      clearStoredPrompt();
       setDeferredPrompt(null);
-    });
+      setIsInstalled(true);
+    };
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    const onCaptured = () => syncPrompt();
+
+    // اگر پرامپت قبل از mount شلیک شده بود، همین‌جا بگیریم.
+    syncPrompt();
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onInstalled);
+    window.addEventListener('pwa:beforeinstallprompt', onCaptured);
+
+    const mql = window.matchMedia?.('(display-mode: standalone)');
+    const onDisplayMode = () => setIsInstalled(isStandalone());
+    mql?.addEventListener?.('change', onDisplayMode);
+
+    // وقتی تب دوباره فعال شد، وضعیت را تازه کنیم (مثلاً نصب در تب دیگر).
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setIsInstalled(isStandalone());
+        syncPrompt();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    // اگر مرورگر پشتیبانی کند، نصب‌بودن را دقیق‌تر تشخیص می‌دهیم.
+    navigator.getInstalledRelatedApps?.()
+      ?.then((apps) => {
+        if (apps && apps.length > 0) setIsInstalled(true);
+      })
+      .catch(() => {});
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener('pwa:beforeinstallprompt', onCaptured);
+      mql?.removeEventListener?.('change', onDisplayMode);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      // حالت ۱: مرورگر اجازه نصب مستقیم می‌دهد (کروم دسکتاپ/اندروید)
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-        setIsInstalled(true);
-      }
+  const showGuide = useCallback(() => {
+    let message;
+    if (isIOS) {
+      message =
+        'روی دکمه Share (مربع با فلش رو به بالا) در پایین مرورگر بزنید و "Add to Home Screen" را انتخاب کنید.';
+    } else if (isFirefox) {
+      message =
+        'فایرفاکس نصب مستقیم PWA را پشتیبانی نمی‌کند. برای نصب، از Chrome یا Edge استفاده کنید یا آدرس را در منوی مرورگر به Home Screen اضافه کنید.';
+    } else if (isSafari) {
+      message =
+        'در Safari مک از منوی File گزینه "Add to Dock" را انتخاب کنید.';
     } else {
-      // حالت ۲: مرورگر اجازه نصب مستقیم نمی‌دهد (آیفون یا رد شده توسط کاربر)
-      const message = isIOS
-        ? 'برای نصب، روی دکمه Share (مربع با فلش رو به بالا) در پایین مرورگر بزنید و "Add to Home Screen" را انتخاب کنید.'
-        : 'برای نصب، روی آیکون سه‌نقطه (⋮) در بالای مرورگر یا کنار url گزینه  "Install App" یا "نصب برنامه" را انتخاب کنید.';
+      message =
+        'روی آیکون سه‌نقطه (⋮) در بالای مرورگر بزنید و گزینه "Install App" یا "نصب برنامه" را انتخاب کنید.';
+    }
 
-      sileo.info({
-        title: 'راهنمای نصب',
-        description: message,
-        duration: 6000,
+    sileo.info({
+      title: 'راهنمای نصب',
+      description: message,
+      duration: 6000,
+    });
+  }, [isIOS, isFirefox, isSafari]);
+
+  const handleInstall = async () => {
+    // اگر همین حالا به شکل اپ اجرا می‌شویم، پیام مفید بده.
+    if (isStandalone()) {
+      setIsInstalled(true);
+      sileo.success({
+        title: 'نصب شده',
+        description: 'اپلیکیشن از قبل نصب شده و همین حالا در حالت اپ اجرا می‌شود.',
+        duration: 5000,
       });
+      return;
+    }
+
+    const prompt = deferredPrompt || getStoredPrompt();
+
+    // اگر پرامپت بومی در دسترس نیست، راهنمای دستی بده (کلیک هرگز بی‌اثر نمی‌ماند).
+    if (!prompt) {
+      showGuide();
+      return;
+    }
+
+    try {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+
+      // پرامپت فقط یک‌بار قابل استفاده است؛ مهم نیست نتیجه چه بود، پاکش کن.
+      clearStoredPrompt();
+      setDeferredPrompt(null);
+
+      if (choice?.outcome === 'accepted') {
+        setIsInstalled(true);
+        sileo.success({
+          title: 'نصب آغاز شد',
+          description: 'اپلیکیشن در حال نصب است...',
+          duration: 4000,
+        });
+      } else {
+        // کاربر رد کرد: پرامپت بومی دیگر در این نشست در دسترس نیست.
+        showGuide();
+      }
+    } catch {
+      // prompt() روی پرامپت مصرف‌شده یا نامعتبر خطا می‌دهد → fallback امن.
+      clearStoredPrompt();
+      setDeferredPrompt(null);
+      showGuide();
     }
   };
 

@@ -22,7 +22,25 @@ export default function QuestLog({ open, onClose }) {
   const eatFood = usePlayerStore((s) => s.eatFood);
   const fishCaught = usePlayerStore((s) => s.fishCaught);
   const bugsCaught = usePlayerStore((s) => s.bugsCaught);
+  const forageItems = usePlayerStore((s) => s.forageItems);
   const active = getActiveQuestStep(quests);
+
+  // گروه‌بندی گیاهان چیده‌شده بر اساس نوع (Phase 3d)
+  const forageGroups = [];
+  for (const item of forageItems) {
+    let group = forageGroups.find((g) => g.id === item.id);
+    if (!group) {
+      group = {
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        rarityColor: item.rarityColor,
+        count: 0,
+      };
+      forageGroups.push(group);
+    }
+    group.count += 1;
+  }
 
   useEffect(() => {
     if (!open) return undefined;
@@ -197,6 +215,35 @@ export default function QuestLog({ open, onClose }) {
                     <GameIcon name={bug.icon} className="h-5 w-5" strokeWidth={1.7} />
                   </span>
                   <span className="mt-0.5 line-clamp-1 px-0.5 text-[8px] text-[#f5ebdd]/65">{bug.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* گیاهان چیده‌شده */}
+        <section className="mt-5">
+          <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#ffc66d]/80">
+            گیاهان چیده‌شده ({forageItems.length})
+          </h3>
+          {forageGroups.length === 0 ? (
+            <p className="rounded-xl border border-white/6 bg-black/20 p-2.5 text-[10px] text-[#f5ebdd]/40">
+              هنوز گیاهی نچیدی. کنار قارچ/توت/گیاه با F بچین.
+            </p>
+          ) : (
+            <div className="grid grid-cols-4 gap-2">
+              {forageGroups.map((group) => (
+                <div
+                  key={group.id}
+                  title={`${group.name} ×${group.count}`}
+                  className="group relative flex aspect-square flex-col items-center justify-center rounded-xl border bg-black/25"
+                  style={{ borderColor: `${group.rarityColor || '#9fd6b0'}55` }}
+                >
+                  <span style={{ color: group.rarityColor || '#9fd6b0' }} aria-hidden="true">
+                    <GameIcon name={group.icon} className="h-5 w-5" strokeWidth={1.7} />
+                  </span>
+                  <span className="mt-0.5 line-clamp-1 px-0.5 text-[8px] text-[#f5ebdd]/65">{group.name}</span>
+                  <span className="font-mono text-[8px] text-[#f5ebdd]/45">×{group.count}</span>
                 </div>
               ))}
             </div>

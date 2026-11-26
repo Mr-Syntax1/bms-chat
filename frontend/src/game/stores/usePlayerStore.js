@@ -167,6 +167,9 @@ export const usePlayerStore = create((set, get) => ({
   // اینونتوری حشرات گرفته‌شده (Phase 3c)
   bugsCaught: [],
   nearBug: false,
+  // گیاهان چیده‌شده (Phase 3d)
+  forageItems: [],
+  nearForage: null,
   toasts: [],
   nearInteractable: null, // { key, label }
   // لاگ کوچک چت گوشه‌ی صفحه (آخرین ۳ پیام)
@@ -382,6 +385,24 @@ export const usePlayerStore = create((set, get) => ({
     if (!bug?.id) return;
     set((s) => ({ bugsCaught: [...s.bugsCaught.slice(-39), bug] }));
     get().pushToast(`گرفتی: ${bug.name}`, 'success');
+  },
+
+  // -------------------------------------------------------------------------
+  // گیاهان (Phase 3d)
+  // -------------------------------------------------------------------------
+  setNearForage: (item) => {
+    const current = get().nearForage;
+    if (current?.index === item?.index) return;
+    set({ nearForage: item });
+  },
+
+  addForageItem: (item) => {
+    if (!item?.id) return;
+    set((s) => ({
+      forageItems: [...s.forageItems.slice(-59), item],
+      ingredients: { ...s.ingredients, [item.id]: (s.ingredients[item.id] || 0) + 1 },
+    }));
+    get().pushToast(`چیدی: ${item.name}`, 'success');
   },
 
   // -------------------------------------------------------------------------

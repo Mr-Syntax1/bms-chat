@@ -54,6 +54,9 @@ export const QUEST_COMPLETE_SOUND = soundUrl('quest.complete');
 export const BUG_NET_SOUND = soundUrl('activity.bugNet');
 export const BUG_CATCH_SOUND = soundUrl('activity.bugCatch');
 
+// چیدن گیاه (Phase 3d)
+export const BERRY_PICK_SOUND = soundUrl('activity.berryPick');
+
 export const NPC_BLIPS = [1, 2, 3, 4]
   .map((i) => soundUrl(`npc.blip${i}`))
   .filter(Boolean);

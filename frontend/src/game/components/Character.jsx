@@ -259,6 +259,12 @@ export default function Character({
       tiltX = 0.14 + Math.sin(t * 9) * 0.12;
       rollZ = Math.sin(t * 9) * 0.1;
       bob = Math.abs(Math.sin(t * 9)) * 0.03;
+    } else if (currentAction === 'forage-pick') {
+      // چیدن گیاه: خم شدن به جلو و دست بردن به زمین
+      const e = Math.sin(t * 4) * 0.5 + 0.5;
+      tiltX = 0.34 + e * 0.12;
+      bob = -0.1 - e * 0.05;
+      rollZ = Math.sin(t * 4) * 0.05;
     }
 
     // ---- نگاه به دوربین وقتی ایستاده و دوربین نزدیک است ----
