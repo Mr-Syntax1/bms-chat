@@ -171,6 +171,10 @@ export const usePlayerStore = create((set, get) => ({
   // گیاهان چیده‌شده (Phase 3d)
   forageItems: [],
   nearForage: null,
+  // دکوراسیون کمپ (Phase 3f) — موقعیت‌های ثابت پس از جای‌گذاری
+  decorations: [],
+  decorMode: false,
+  selectedDecor: null,
   toasts: [],
   nearInteractable: null, // { key, label }
   // لاگ کوچک چت گوشه‌ی صفحه (آخرین ۳ پیام)
@@ -411,6 +415,46 @@ export const usePlayerStore = create((set, get) => ({
       ingredients: { ...s.ingredients, [item.id]: (s.ingredients[item.id] || 0) + 1 },
     }));
     get().pushToast(`چیدی: ${item.name}`, 'success');
+  },
+
+  // -------------------------------------------------------------------------
+  // دکوراسیون کمپ (Phase 3f)
+  // -------------------------------------------------------------------------
+  setDecorMode: (on) => set({ decorMode: Boolean(on) }),
+
+  setSelectedDecor: (id) => set({ selectedDecor: id }),
+
+  setDecorations: (list) => set({ decorations: Array.isArray(list) ? list : [] }),
+
+  addDecoration: (entry) => {
+    if (!entry?.uid) return;
+    set((s) => {
+      if (s.decorations.some((d) => d.uid === entry.uid)) return s;
+      return { decorations: [...s.decorations, entry] };
+    });
+  },
+
+  updateDecoration: (uid, patch) => {
+    if (!uid) return;
+    set((s) => ({
+      decorations: s.decorations.map((d) => (d.uid === uid ? { ...d, ...patch } : d)),
+    }));
+  },
+
+  removeDecoration: (uid) => {
+    if (!uid) return;
+    set((s) => ({ decorations: s.decorations.filter((d) => d.uid !== uid) }));
+  },
+
+  mergeDecorations: (list) => {
+    if (!Array.isArray(list) || list.length === 0) return;
+    set((s) => {
+      const byUid = new Map(s.decorations.map((d) => [d.uid, d]));
+      for (const entry of list) {
+        if (entry?.uid) byUid.set(entry.uid, { ...(byUid.get(entry.uid) || {}), ...entry });
+      }
+      return { decorations: Array.from(byUid.values()) };
+    });
   },
 
   // -------------------------------------------------------------------------

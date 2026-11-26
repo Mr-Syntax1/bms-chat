@@ -24,6 +24,7 @@ import FishingSpot from './FishingBobber';
 import Wildlife from './Wildlife';
 import Bugs from './Bugs';
 import ForageItems from './ForageItems';
+import DecorationsScene from './DecorationsScene';
 import { FISHING_SPOTS } from '../fishingSpots';
 import { useQualityPreset, useSettingsStore } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
@@ -311,6 +312,11 @@ export default function CozyScene() {
       </Suspense>
       <Suspense fallback={null}>
         <ForageItems />
+      </Suspense>
+      {/* دکوراسیون کمپ: مرز Suspense مستقل تا لود شدن مدل جدید
+          کل صحنه را unmount نکند. */}
+      <Suspense fallback={null}>
+        <DecorationsScene />
       </Suspense>
       <Weather />
       <Fireflies count={fireflyCount} />

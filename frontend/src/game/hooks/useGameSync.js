@@ -3,6 +3,14 @@ import { ably, getChannel, encodeChannelPart } from '../../lib/ably';
 import { usePlayerStore, emitSpatialFrame, remoteMap } from '../stores/usePlayerStore';
 import { playPositionalOneShot } from '../audio';
 import { GUITAR_SOUNDS, YUM_SOUND } from '../sounds';
+import {
+  setDecorContext,
+  setDecorPublisher,
+  initDecor,
+  applyDecorMessage,
+  isDecorEvent,
+  syncDecorToPeers,
+} from '../decorSync';
 
 // نرخ ارسال موقعیت: ۱۵ بار در ثانیه (۶۶ میلی‌ثانیه)
 const SYNC_INTERVAL = 66;
@@ -34,6 +42,11 @@ export function useGameSync({ roomId, user, enabled = true }) {
     const channel = getChannel(channelName);
     const store = usePlayerStore.getState();
     store.setSyncStatus('connecting');
+
+    // دکوراسیون: زمینه‌ی اتاق/مالک + بارگذاری از localStorage + تزریق ناشر
+    setDecorContext(roomId, user.id);
+    initDecor(roomId);
+    setDecorPublisher((type, extra) => publishPlayerAction(roomId, user, type, extra));
 
     const sessionToken = ++sessionSeq;
     sessions.set(channelName, sessionToken);
@@ -106,6 +119,13 @@ export function useGameSync({ roomId, user, enabled = true }) {
       const data = message?.data;
       if (!data || !data.userId) return;
       if (String(data.userId) === String(user.id)) return;
+
+      // دکوراسیون پیش از گارد remoteMap بررسی می‌شود؛ آیتم‌های بازیکن
+      // ناشناس/رفته هم باید اعمال شوند (موقعیت ثابت‌اند، نه ریموت زنده).
+      if (isDecorEvent(data.type)) {
+        applyDecorMessage(data);
+        return;
+      }
 
       const id = String(data.userId);
       const entry = remoteMap.get(id);
@@ -205,6 +225,8 @@ export function useGameSync({ roomId, user, enabled = true }) {
 
     const onPresenceEnter = (member) => {
       upsertFromMember(member);
+      // تازه‌وارد باید لیست کامل دکوراسیون را بگیرد
+      syncDecorToPeers();
       channel.presence
         .get()
         .then((members) => {
@@ -262,6 +284,9 @@ export function useGameSync({ roomId, user, enabled = true }) {
       syncPresenceMembers();
       usePlayerStore.getState().setSyncStatus('connected');
 
+      // تازه‌واردها آیتم‌های ما را بگیرند + ما هم از آن‌ها بخواهیم (اتصال دیرتر)
+      syncDecorToPeers();
+
       intervalId = setInterval(() => {
         const now = Date.now();
         const force = now - (lastSentRef.current.at || 0) > 3000;
@@ -304,6 +329,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
       ready = false;
       if (intervalId) clearInterval(intervalId);
       clearInterval(pruneId);
+      setDecorPublisher(null);
 
       const stale = isStale();
 
@@ -352,6 +378,7 @@ export function useGameSync({ roomId, user, enabled = true }) {
       state.clearRemotes();
       state.setSyncStatus('idle');
       state.setPeerCount(0);
+      setDecorContext(null, null);
     };
   }, [roomId, user?.id, user?.username, enabled]);
 

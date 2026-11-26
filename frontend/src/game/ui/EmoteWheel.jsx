@@ -111,6 +111,8 @@ export default function EmoteWheel({ roomId, user }) {
 
     const onKeyDown = (event) => {
       if (event.code !== 'KeyQ' || event.repeat) return;
+      // در حالت دکور، Q برای چرخش آیتم است نه چرخ ایموت
+      if (usePlayerStore.getState().decorMode) return;
       const tag = event.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target?.isContentEditable) return;
       event.preventDefault();

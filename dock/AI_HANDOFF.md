@@ -1,7 +1,7 @@
 # AI_HANDOFF — BMS Cozy Forest
 
 آخرین به‌روزرسانی: 2026-11-26
-فاز فعلی: PERFORMANCE & ANIMATION FIXES — DONE ✅ (FPS چندنفره / فریز تعامل / انیمیشن خوردن و پخت / صدای اقیانوس) · PHASE 3d — DONE ✅ (چیدن گیاه) · PHASE 3c — DONE ✅ (حشرات و حیات وحش) · PHASE 3b — DONE ✅ (ماهیگیری) · PHASE 3a — DONE ✅ (پخت‌وپز) · **PHASE 2: 100% COMPLETE** 🎉
+فاز فعلی: PHASE 3f — DONE ✅ (دکوراسیون کمپ) · PERFORMANCE & ANIMATION FIXES — DONE ✅ (FPS چندنفره / فریز تعامل / انیمیشن خوردن و پخت / صدای اقیانوس) · PHASE 3d — DONE ✅ (چیدن گیاه) · PHASE 3c — DONE ✅ (حشرات و حیات وحش) · PHASE 3b — DONE ✅ (ماهیگیری) · PHASE 3a — DONE ✅ (پخت‌وپز) · **PHASE 2: 100% COMPLETE** 🎉
 
 ## 1) خلاصه
 بازی هم‌اکنون: زمین ناهموار + جنگل بلند + آبشار/رودخانه + کمپ/ساحل (Phase 1)،
@@ -112,14 +112,23 @@
 | پولیش پخت: حرکت دایره‌ای هم‌زدن (roll+tilt هم‌فاز) و جهش کوچک هم‌گام برگرداندن | `components/Character.jsx` | eslint + build |
 | پولیش پخت: بخار روی هر ایستگاه در حین پخت — `InstancedMesh` ۷کره‌ای با بالا رفتن/محو شدن و پهن شدن | `components/CookingStation.jsx` | eslint + build |
 | صدای اقیانوس: ۶ منبع مکانی در امتداد خط ساحلی (`OCEAN_START_X`) با rolloff ملایم؛ port از `ambience.ocean` (`ocean.mp3`) + fallback synth | `components/AmbientAudio.jsx`, `sounds.js` (`OCEAN_SOUND` موجود) | eslint + build |
+| Phase 3f — کاتالوگ ۲۳ آیتم دکور در ۵ دسته (چادر/روشنایی/لوازم/تزئینات/نشانه) با مدل‌های موجود manifest | `decorData.js` (جدید) | eslint + build |
+| حالت چیدمان با B: آزادسازی قفل موس، پنل کاتالوگ، شبح نیمه‌شفاف سبز/قرمز، حلقه‌ی محدوده (۲۶ واحد) | `ui/DecorPanel.jsx` (جدید), `GameOverlay.jsx`, `components/DecorationsScene.jsx` (جدید) | eslint + build |
+| جای‌گذاری با ray-march روی زمین ناهموار (بدون raycast مش)، اعتبارسنجی شیب/آب/درخت/ون/تداخل/سقف ۱۵ | `decorData.js` (`raycastTerrain`, `canPlaceDecor`) | eslint + build |
+| چرخش Q/E (π/8) و مقیاس +/− (۰.۶..۱.۶)، Shift+کلیک برداشتن، راست‌کلیک حذف (فقط آیتم خودِ بازیکن) | `components/DecorationsScene.jsx` | eslint + build |
+| همگام‌سازی Ably: `place-decor`/`move-decor`/`remove-decor`/`decor-sync` روی `player-action` + گارد مالکیت | `decorSync.js` (جدید), `hooks/useGameSync.js` | eslint + build |
+| ذخیره‌سازی دائمی در `localStorage` با کلید `camp-decor-<roomId>` + sanitize ورودی | `decorData.js` (`loadDecor`/`saveDecor`/`sanitizeDecorList`) | eslint + build |
+| گروه preload `decor` (۲۳ مدل) + آیکون‌های SVG جدید (tent/table/bedroll/hammock/cooler/thermos/rug/flag/umbrella/rocks/log/sign) | `assetManifest.js`, `preload.js`, `ui/icons.jsx` | eslint + build |
+| گاردهای تعارض کلید: Q چرخ ایموت و E تعامل در حالت دکور غیرفعال؛ ESC اول از دکور خارج می‌شود | `ui/EmoteWheel.jsx`, `components/PlayerController.jsx`, `GameOverlay.jsx` | eslint + build |
 
 دستورهای تأیید: `npx eslint src/game` (exit 0) و `npm run build` (exit 0).
 
 ## 3) IN PROGRESS 🔄
-هیچ‌چیز نیمه‌کاره. Phase 3d و بستهٔ رفع کارایی/انیمیشن کامل شدند.
+هیچ‌چیز نیمه‌کاره. Phase 3f و بستهٔ رفع کارایی/انیمیشن کامل شدند.
 
 ## 4) NOT DONE ⬜ (به‌ترتیب)
-- Phase 3e — ساحل/تفریح؛ Phase 3f — دکور کمپ (منتظر دستور «next»).
+- Phase 3e — ساحل/تفریح (منتظر دستور «next»)؛ Phase 4 — NPC و داستان.
+- دکور: محدودیت مالکیت یعنی آیتم‌های بازیکنان قبلی فقط با صاحبشان جابه‌جا/حذف می‌شوند (طراحی‌شده)؛ «اشتراکی کردن» آیتم و دکور پیش‌فرض کمپ هنوز نیست.
 - چیدن گیاه: ذخیره‌سازی دائمی ری‌اسپاون/اینونتوری (فعلاً در حافظه‌ی صفحه) و همگام‌سازی چیدن بین بازیکنان (فعلاً هر کلاینت مستقل می‌چیند).
 - گسترش دستورهای پخت از ۹ به ۵۰+ و Recipe Book با دستورهای کشف‌نشده (طبق MASTER_PROMPT).
 - خوردن: انیمیشن + ذرات + صدا انجام شد، ولی پف گونه/حالت چهره‌ی واقعی (blendshape) و «سیری» به‌عنوان سیستم مستقل هنوز نیست.
@@ -239,12 +248,13 @@ npm run dev
 کمد از دکمه‌ی کمد (آیکون SVG) در HUD **یا کلید C** و مرور کمپ‌ها از دکمه‌ی چادر در هدر چت باز می‌شود. غذاهای پخته‌شده، ماهی‌های صیدشده، حشرات گرفته‌شده و گیاهان چیده‌شده در دفترچه (آیکون طومار) دیده می‌شوند. **کلیک روی غذای پخته‌شده در دفترچه = خوردن با انیمیشن و صدا.**
 
 ## 9) env / endpoint / store / localStorage جدید
-- store: `chatLog` + `pushChatLog`؛ `uiFlags`؛ `chatBubbleMap`؛ `wardrobe` + `setWardrobe`؛ `campMood` (module-level)؛ `ingredients` + `addIngredient` + `consumeIngredients`؛ `foods` + `addFood` + `eatFood` (اکنون `beginEating` + اکشن `eating` را هم راه می‌اندازد)؛ `cookingStation` + `openCooking` + `closeCooking`؛ `fishCaught` + `addFish`؛ `fishingState` + `setFishingState`؛ `bugsCaught` + `addBug`؛ `nearBug` + `setNearBug`؛ **`forageItems` + `addForageItem`؛ `nearForage` + `setNearForage`**.
-- ماژول‌های داده‌ی زنده (بیرون React): `forageWorld` (3d)؛ **`eatWorld` + `beginEating` + `EAT_DURATION` + `setEatPublisher` (چیدن/خوردن ۳e)**؛ `cooking` (3a)؛ `fishing` (3b)؛ `bugWorld` (3c).
+- store: `chatLog` + `pushChatLog`؛ `uiFlags`؛ `chatBubbleMap`؛ `wardrobe` + `setWardrobe`؛ `campMood` (module-level)؛ `ingredients` + `addIngredient` + `consumeIngredients`؛ `foods` + `addFood` + `eatFood` (اکنون `beginEating` + اکشن `eating` را هم راه می‌اندازد)؛ `cookingStation` + `openCooking` + `closeCooking`؛ `fishCaught` + `addFish`؛ `fishingState` + `setFishingState`؛ `bugsCaught` + `addBug`؛ `nearBug` + `setNearBug`؛ `forageItems` + `addForageItem`؛ `nearForage` + `setNearForage`؛ **`decorations` + `setDecorations` + `addDecoration` + `updateDecoration` + `removeDecoration` + `mergeDecorations`؛ `decorMode` + `setDecorMode`؛ `selectedDecor` + `setSelectedDecor` (3f)**.
+- ماژول‌های داده‌ی زنده (بیرون React): `forageWorld` (3d)؛ `eatWorld` + `beginEating` + `EAT_DURATION` + `setEatPublisher` (3e)؛ `cooking` (3a)؛ `fishing` (3b)؛ `bugWorld` (3c)؛ **`decorWorld` (3f: mode/rotation/scale/ghost)**؛ **`decorSync` (3f: context/publisher/actions)**.
 - endpoint جدید: `GET /api/calls/game/campsites`؛ `POST /api/calls/game/claim-character` اکنون `{ preferred?, roomId? }` می‌پذیرد.
-- localStorage: `preferred-character` و `wardrobe-<userId>` (بدون کلید جدید در 3d؛ گیاهان هنوز ذخیره نمی‌شوند).
+- localStorage: `preferred-character` و `wardrobe-<userId>` و **`camp-decor-<roomId>` (3f)**.
 
 ## 10) Changelog (جدیدترین اول)
+- 2026-11-26 — Phase 3f: دکوراسیون کمپ — حالت چیدمان با B (قفل موس آزاد، پنل کاتالوگ، حلقه‌ی محدوده ۲۶ واحدی)، ۲۳ آیتم در ۵ دسته از مدل‌های موجود manifest، شبح پیش‌نمایش نیمه‌شفاف سبز/قرمز (داده بیرون React در `decorWorld`)، پرتاب پرتو روی زمین ناهموار با ray-march + بایسکشن (بدون raycast مش)، اعتبارسنجی شیب/آب/تنه‌ی درخت/ون/آتش/تداخل و سقف ۱۵ آیتم هر بازیکن، چرخش Q/E و مقیاس +/−، Shift+کلیک برداشتن، راست‌کلیک حذف، مالکیت (فقط صاحب آیتم)، همگام‌سازی Ably با ۴ رویداد روی `player-action` (قبل از گارد remoteMap) و `decor-sync` برای تازه‌واردها، ذخیره‌سازی `localStorage` با کلید `camp-decor-<roomId>`، صداهای place_item/tent_zip، گروه preload `decor` و آیکون‌های SVG جدید. گاردهای Q/E و ESC و PauseMenu اضافه شد. eslint ✅ build ✅
 - 2026-11-26 — 🚨 **کارایی/انیمیشن**: (۱) افت FPS با ۲+ نفر رفع شد — علت: `occlude` در `Html` نام‌شناور و حباب چت باعث raycast بازگشتی روی کل صحنه در هر فریم می‌شد؛ به‌علاوه `wardrobe` با هر بسته‌ی موقعیت ارسال می‌شد و `JSON.stringify` در حلقه‌ی فریم بازیکن ریموت را re-render می‌کرد. راه‌حل: حذف occlude، LOD ۷۰ واحدی برای ریموت‌ها، مقایسه‌ی مرجع شیء برای کمد، ارسال کمد فقط هنگام تغییر. (۲) فریز ۳-۴ ثانیه‌ای E/F رفع شد — علت: یک مرز `Suspense` مشترک برای صحنه + کنترلر + ریموت + `Preload`؛ مونت هر GLB (غذای روی ایستگاه، کاراکتر ریموت) کل صحنه را remount و شیدرها را دوباره کامپایل می‌کرد. راه‌حل: مرزهای Suspense مستقل برای هر گروه دارایی. (۳) انیمیشن خوردن: لقمه/جویدن سه‌موجی + سر خوشحال + ذرات خرده‌نان `InstancedMesh` + eat_crunch/gulp/yum هم‌گام (`eatData.js`). (۴) پولیش پخت: هم‌زدن دایره‌ای، جهش برگرداندن، بخار `InstancedMesh` روی ایستگاه. (۵) صدای اقیانوس مکانی در امتداد ساحل با rolloff. eslint ✅ build ✅
 - 2026-11-26 — Phase 3d: چیدن گیاه — ۶ گونه × ۳۶ نقطه‌ی seed‌دار (قارچ جنگلی/قارچ مرغ جنگل/توت/گیاه معطر/میوه کاج/گل وحشی)، رندر با ۴ GLB موجود + ۳ مدل رویه‌ای، وضعیت `picked`/`respawnAt` بیرون React با تایمر ماژول‌سطح، چیدن با F (اولویت گیاه → حشره → چراغ)، ژست `forage-pick` + صدای berry_pick، اینونتوری گروه‌بندی‌شده در دفترچه، ۴ دستور پخت جدید (خورش قارچ/پای توت/قارچ کبابی/دمنوش گل)، آیکون‌های SVG جدید. **رفع لگ تماس گروهی ۳+ نفره**: پروفایل ویدیوی تطبیقی + اعمال دوباره هنگام تغییر تعداد peer + `balanced` برای ۳+، امضای پایدار `resyncPeer`، AudioContext مشترک برای کاشی‌ها. eslint ✅ build ✅
 - 2026-11-26 — Phase 3c: حشرات و حیات وحش — ۵ گونه حیوان با AI پرسه/فرار ۱۰Hz و ارتفاع زمین (خرگوش/گوزن جنگل، اردک برکه، جغد/تشی لبه‌ی جنگل)، نوازش خرگوش با قلب شناور، حشرات رویه‌ای InstancedMesh (پروانه/سوسک/کرم شب‌تاب) با wander ۱۲Hz، گرفتن با F + تور دستی + ژست `bug-catch` + صداهای bug_net/bug_catch، اینونتوری حشرات در دفترچه، آیکون‌های SVG جدید. **رفع باگ کلید C کمد** (هندلر گم‌شده + ESC). eslint ✅ build ✅

@@ -194,6 +194,8 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       // کلیدهای بازی فقط وقتی فعال است (Start خورده و در حالت بازی)
       if (!activeRef.current) return;
       const state = usePlayerStore.getState();
+      // در حالت چیدمان کمپ، کلیدهای بازی غیرفعال‌اند (Q/E چرخش، کلیک جای‌گذاری)
+      if (state.decorMode) return;
       const { x, z } = state.local;
 
       switch (event.code) {

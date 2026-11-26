@@ -471,6 +471,32 @@ export const PRELOAD_GROUPS = {
   food: ['food.steak', 'food.eggFried', 'food.corn', 'food.potato', 'food.pancakes', 'food.pie', 'food.stew', 'food.sushi', 'food.skewer'],
   comfort: ['comfort.bedroll', 'comfort.hammock', 'comfort.icebox', 'comfort.thermos', 'comfort.mug', 'comfort.stringLights', 'comfort.rug', 'comfort.flag'],
   wearables: ['structures.backpack'],
+  // Phase 3f — کاتالوگ دکوراسیون کمپ (فقط مدل‌های موجود)
+  decor: [
+    'structures.tent',
+    'structures.tent2',
+    'structures.tent3',
+    'structures.lantern',
+    'structures.postLantern',
+    'structures.picnicTable',
+    'structures.picnicTable2',
+    'structures.backpack',
+    'structures.bonfire',
+    'structures.sign',
+    'comfort.stringLights',
+    'comfort.bedroll',
+    'comfort.hammock',
+    'comfort.icebox',
+    'comfort.thermos',
+    'comfort.mug',
+    'comfort.rug',
+    'comfort.flag',
+    'beach.umbrella',
+    'undergrowth.flowers',
+    'undergrowth.mushrooms',
+    'rocks.rocks',
+    'rocks.choppedLog',
+  ],
 };
 
 /** همه‌ی urlهای یک گروه preload */

@@ -22,6 +22,7 @@ import CharacterSelector from './ui/CharacterSelector';
 import Wardrobe from './ui/Wardrobe';
 import CookingUI from './ui/CookingUI';
 import FishingUI from './ui/FishingUI';
+import DecorPanel from './ui/DecorPanel';
 import { useChatBubbles } from './hooks/useChatBubbles';
 import { loadWardrobe } from './models/wardrobeConfig';
 
@@ -103,7 +104,8 @@ function ControlsHint() {
       <div>موس: چرخش دوربین • ESC توقف</div>
       <div>E تعامل/نشستن • Q ایموت</div>
       <div>G گیتار • M مارشمالو • F چیدن/تور/چراغ</div>
-      <div>L دفترچه • C کمد • 1-5 ایموت سریع</div>
+      <div>L دفترچه • C کمد • B چیدمان کمپ</div>
+      <div>1-5 ایموت سریع</div>
     </div>
   );
 }
@@ -171,6 +173,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
   const setWardrobe = usePlayerStore((s) => s.setWardrobe);
   const cookingStation = usePlayerStore((s) => s.cookingStation);
   const fishingActive = usePlayerStore((s) => s.fishingState.spotIndex >= 0);
+  const decorMode = usePlayerStore((s) => s.decorMode);
 
   const [entered, setEntered] = useState(false);
   // انتخابگر کاراکتر همیشه پیش از ورود نمایش داده می‌شود؛ انتخاب قبلی پیش‌فرض است.
@@ -200,6 +203,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
       preloadGroup('food');
       preloadGroup('animals');
       preloadGroup('forage');
+      preloadGroup('decor');
     }, 1200);
     return () => clearTimeout(id);
   }, []);
@@ -248,6 +252,13 @@ export default function GameOverlay({ roomId, user, onClose }) {
       if (fishingActive) return;
       if (logOpen) return;
       if (settingsOpen) return;
+      // در حالت چیدمان، ESC اول از دکور خارج می‌شود و قفل موس برمی‌گردد
+      if (decorMode) {
+        usePlayerStore.getState().setDecorMode(false);
+        usePlayerStore.getState().setSelectedDecor(null);
+        if (entered) look.lock();
+        return;
+      }
       if (wardrobeOpen) {
         setWardrobeOpen(false);
         if (entered) look.lock();
@@ -261,7 +272,56 @@ export default function GameOverlay({ roomId, user, onClose }) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose, logOpen, settingsOpen, cookingStation, fishingActive, wardrobeOpen, entered, look]);
+  }, [onClose, logOpen, settingsOpen, cookingStation, fishingActive, wardrobeOpen, entered, look, decorMode]);
+
+  // در حالت چیدمان موس آزاد است؛ چرخش دوربین را خودمان اعمال می‌کنیم.
+  // look فقط از طریق ref خوانده می‌شود تا افکت به شیء ref وابسته نشود.
+  const lookRef = useRef(look);
+  useEffect(() => {
+    lookRef.current = look;
+  }, [look]);
+  useEffect(() => {
+    if (!decorMode) return undefined;
+    const SENS = 0.0022;
+    const onMove = (event) => {
+      if (document.pointerLockElement === document.body) return;
+      const yaw = lookRef.current?.yaw;
+      const pitch = lookRef.current?.pitch;
+      if (!yaw || !pitch) return;
+      yaw.current -= event.movementX * SENS;
+      pitch.current -= event.movementY * SENS;
+      pitch.current = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitch.current));
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, [decorMode]);
+
+  // کلید B برای ورود/خروج از حالت چیدمان کمپ
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.code !== 'KeyB' || event.repeat) return;
+      const tag = event.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target?.isContentEditable) return;
+      if (!entered) return;
+      if (logOpen || settingsOpen || wardrobeOpen || cookingStation || fishingActive) return;
+      // ورود فقط در حالت بازی (قفل موس) مجاز است
+      if (!decorMode && document.pointerLockElement !== document.body) return;
+      event.preventDefault();
+      const store = usePlayerStore.getState();
+      if (decorMode) {
+        store.setDecorMode(false);
+        store.setSelectedDecor(null);
+        look.lock();
+      } else {
+        look.unlock();
+        store.setDecorMode(true);
+        if (!store.selectedDecor) store.setSelectedDecor('tent');
+        pushToast('حالت چیدمان — آیتم را انتخاب و روی زمین کلیک کن', 'info');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [entered, logOpen, settingsOpen, wardrobeOpen, cookingStation, fishingActive, decorMode, look, pushToast]);
 
   // باز شدن ایستگاه پخت: قفل موس آزاد تا دکمه‌ها قابل کلیک باشند
   const prevCooking = useRef(null);
@@ -337,7 +397,15 @@ export default function GameOverlay({ roomId, user, onClose }) {
   }, [setVirtualInput, teleport, setSelfId]);
 
   const locked = look.locked;
-  const paused = entered && !locked && !logOpen && !settingsOpen && !wardrobeOpen && !cookingStation && !fishingActive;
+  const paused =
+    entered &&
+    !locked &&
+    !logOpen &&
+    !settingsOpen &&
+    !wardrobeOpen &&
+    !cookingStation &&
+    !fishingActive &&
+    !decorMode;
   const loading = !entered;
 
   // وضعیت‌های واقعی برای صفحه‌ی لودینگ.
@@ -457,6 +525,16 @@ export default function GameOverlay({ roomId, user, onClose }) {
       <FacingDebug />
       {entered && <EmoteWheel roomId={roomId} user={user} />}
       {entered && <ChatLogCorner />}
+
+      {entered && decorMode && (
+        <DecorPanel
+          onClose={() => {
+            usePlayerStore.getState().setDecorMode(false);
+            usePlayerStore.getState().setSelectedDecor(null);
+            look.lock();
+          }}
+        />
+      )}
 
       {paused && (
         <PauseMenu
