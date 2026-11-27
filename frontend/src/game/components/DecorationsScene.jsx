@@ -12,7 +12,6 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { modelUrl } from '../assetManifest';
 import { usePlayerStore } from '../stores/usePlayerStore';
-import { useQualityPreset } from '../stores/useSettingsStore';
 import { playPositionalOneShot } from '../audio';
 import { PLACE_ITEM_SOUND, TENT_ZIP_SOUND } from '../sounds';
 import { getGroundHeight } from '../terrain';
@@ -59,7 +58,6 @@ function measureScene(url, scene) {
 // ---------------------------------------------------------------------------
 function DecorModel({ entry, url }) {
   const meta = DECOR_BY_ID[entry.id];
-  const preset = useQualityPreset();
   const { scene } = useGLTF(url);
   const info = useMemo(() => measureScene(url, scene), [url, scene]);
 
@@ -67,11 +65,11 @@ function DecorModel({ entry, url }) {
     const copy = scene.clone(true);
     copy.traverse((child) => {
       if (!child.isMesh) return;
-      child.castShadow = preset.shadows;
-      child.receiveShadow = true;
+      child.castShadow = false;
+      child.receiveShadow = false;
     });
     return copy;
-  }, [scene, preset.shadows]);
+  }, [scene]);
 
   const s = (meta.height / info.sizeY) * (entry.scale || 1);
   const groundY = getGroundHeight(entry.x, entry.z);
@@ -81,7 +79,7 @@ function DecorModel({ entry, url }) {
       <group position={[-info.centerX * s, 0, -info.centerZ * s]} scale={s}>
         <primitive object={clone} />
       </group>
-      {meta.light && preset.shadows && (
+      {meta.light && (
         <pointLight position={[0, meta.height * 0.85, 0]} color="#ffc46b" intensity={2.4} distance={7} decay={2} />
       )}
     </group>

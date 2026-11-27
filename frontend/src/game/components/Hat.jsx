@@ -170,7 +170,7 @@ export default function Hat({ value }) {
 }
 
 // کوله‌پشتی از GLB موجود؛ شال گردنی رویه‌ای
-function Backpack() {
+function Backpack({ anchor, fallback }) {
   const { scene } = useGLTF(modelUrl('structures.backpack'));
   const object = useMemo(() => {
     const clone = scene.clone(true);
@@ -183,16 +183,22 @@ function Backpack() {
     return clone;
   }, [scene]);
 
+  const a = anchor?.bone ? anchor : fallback || anchor || {};
+  const x = a.x ?? 0;
+  const y = a.y ?? 1.0;
+  const z = a.z ?? -0.24;
+  const scale = a.scale ?? 0.9;
+
   return (
-    <group position={[0, 1.0, -0.24]} rotation={[0, Math.PI, 0]} scale={0.9}>
+    <group position={[x, y, z]} rotation={[0, Math.PI, 0]} scale={scale}>
       <primitive object={object} scale={0.7} />
     </group>
   );
 }
 
-function Scarf() {
+function Scarf({ y = 1.36 }) {
   return (
-    <group position={[0, 1.36, 0]}>
+    <group position={[0, y, 0]}>
       <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
         <torusGeometry args={[0.19, 0.06, 10, 22]} />
         <meshStandardMaterial color="#c9553f" roughness={0.95} />
@@ -205,9 +211,12 @@ function Scarf() {
   );
 }
 
-export function Accessory({ value }) {
-  if (value === 'backpack') return <Backpack />;
-  if (value === 'scarf') return <Scarf />;
+export function Accessory({ value, anchor = null, fallback = null }) {
+  if (value === 'backpack') return <Backpack anchor={anchor} fallback={fallback} />;
+  if (value === 'scarf') {
+    const neckY = (anchor?.y ?? fallback?.y ?? 0.95) + 0.42;
+    return <Scarf y={neckY} />;
+  }
   return null;
 }
 

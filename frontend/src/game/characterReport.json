@@ -1,0 +1,2443 @@
+{
+  "generatedAt": "2026-11-27T14:28:57.664Z",
+  "root": "public/game-models/characters",
+  "targetHeight": 1.75,
+  "count": 7,
+  "characters": {
+    "cute_axolotl": {
+      "file": "characters/cute_axolotl.glb",
+      "name": "cute_axolotl",
+      "bytes": 3180440,
+      "kb": 3105.9,
+      "skinned": false,
+      "bones": {
+        "all": [],
+        "named": {}
+      },
+      "bonePositions": {},
+      "animations": [],
+      "textures": [],
+      "maxTextureSize": 0,
+      "triangles": 123908,
+      "meshes": 8,
+      "materials": 3,
+      "meshList": [
+        {
+          "name": "Object_4",
+          "material": "skin",
+          "color": "#e7e7e7",
+          "center": [
+            -0.044,
+            0.104,
+            0.014
+          ],
+          "size": [
+            1.864,
+            2.15,
+            2.434
+          ],
+          "vertices": 41003
+        },
+        {
+          "name": "Object_6",
+          "material": "skin",
+          "color": "#e7e7e7",
+          "center": [
+            -0.115,
+            -1.486,
+            -0.323
+          ],
+          "size": [
+            1.516,
+            1.836,
+            2.101
+          ],
+          "vertices": 5683
+        },
+        {
+          "name": "Object_8",
+          "material": "skin",
+          "color": "#e7e7e7",
+          "center": [
+            0.422,
+            -0.964,
+            0
+          ],
+          "size": [
+            0.323,
+            0.377,
+            1.522
+          ],
+          "vertices": 1118
+        },
+        {
+          "name": "Object_10",
+          "material": "skin",
+          "color": "#e7e7e7",
+          "center": [
+            0.434,
+            -1.642,
+            0
+          ],
+          "size": [
+            0.322,
+            0.378,
+            1.525
+          ],
+          "vertices": 1118
+        },
+        {
+          "name": "Object_12",
+          "material": "head_things",
+          "color": "#e74d6d",
+          "center": [
+            0.183,
+            0.344,
+            0
+          ],
+          "size": [
+            0.657,
+            1.638,
+            3.281
+          ],
+          "vertices": 10590
+        },
+        {
+          "name": "Object_14",
+          "material": "face_elements",
+          "color": "#000000",
+          "center": [
+            0.778,
+            0.14,
+            0
+          ],
+          "size": [
+            0.196,
+            0.3,
+            1.406
+          ],
+          "vertices": 1118
+        },
+        {
+          "name": "Object_16",
+          "material": "head_things",
+          "color": "#e74d6d",
+          "center": [
+            0.446,
+            0.804,
+            -0.528
+          ],
+          "size": [
+            0.459,
+            0.44,
+            0.563
+          ],
+          "vertices": 1677
+        },
+        {
+          "name": "Object_18",
+          "material": "face_elements",
+          "color": "#000000",
+          "center": [
+            0.887,
+            0.075,
+            -0.012
+          ],
+          "size": [
+            0.054,
+            0.089,
+            0.611
+          ],
+          "vertices": 562
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.976,
+          -2.404,
+          -1.64
+        ],
+        "max": [
+          0.914,
+          1.179,
+          1.64
+        ],
+        "center": [
+          -0.031,
+          -0.612,
+          0
+        ],
+        "height": 3.583,
+        "width": 1.89,
+        "depth": 3.281,
+        "minY": -2.404,
+        "maxY": 1.179,
+        "centerX": -0.031,
+        "centerZ": 0
+      },
+      "forward": {
+        "axis": "x",
+        "rotation": -1.571,
+        "confidence": "medium",
+        "votes": {
+          "z": 0.5,
+          "-z": 1,
+          "x": 5,
+          "-x": 1
+        },
+        "evidence": [
+          "face meshes (Object_14,Object_18) → x",
+          "head triangle density (x) → x",
+          "normal concavity (1076.1) → -z",
+          "head protrusion → -x"
+        ],
+        "signals": {
+          "face": {
+            "meshes": [
+              "Object_14",
+              "Object_18"
+            ],
+            "centroid": [
+              0.782,
+              0.138,
+              0
+            ],
+            "offsetFromCenter": [
+              0.813,
+              0
+            ]
+          },
+          "handedness": null,
+          "protrusion": {
+            "headZ": 0,
+            "headX": -0.05,
+            "feetZ": -0.907,
+            "feetX": -0.316
+          },
+          "concavity": {
+            "xp": 554.954,
+            "xn": 0,
+            "zp": 794.352,
+            "zn": 1076.052
+          },
+          "density": {
+            "xp": 9649,
+            "xn": 5734,
+            "zp": 17520,
+            "zn": 18564
+          }
+        },
+        "note": "چند سیگنال مستقل هم‌سو هستند"
+      },
+      "visual": {
+        "scale": 0.488,
+        "width": 1.603,
+        "depth": 0.923,
+        "headCenter": [
+          -0.003,
+          1.294,
+          0.095
+        ],
+        "headWidth": 1.259,
+        "headDepth": 0.87,
+        "headRadius": 0.63,
+        "headTopY": 1.75,
+        "eyeY": 1.294,
+        "torsoY": 0.921,
+        "groundOffset": 1.174,
+        "modelOriginVisual": [
+          0,
+          0.015
+        ],
+        "bands": {
+          "crown": {
+            "n": 5452,
+            "x5": -0.5468939282352384,
+            "x50": 0.002442517771066199,
+            "x95": 0.5468939341474996,
+            "y5": 1.6502706740147943,
+            "y50": 1.6917933274213655,
+            "y95": 1.7425768206596395,
+            "z5": -0.24737514121825133,
+            "z50": 0.011426602607528289,
+            "z95": 0.19251704871599873
+          },
+          "face": {
+            "n": 24108,
+            "x5": -0.6294184938319406,
+            "x50": -0.0034927176569260606,
+            "x95": 0.6294184677520379,
+            "y5": 1.1066006371629182,
+            "y50": 1.2860464071354347,
+            "y95": 1.4828989012398874,
+            "z5": -0.4490543389577025,
+            "z50": 0.09466981875203247,
+            "z95": 0.4206762820601148
+          },
+          "eye": {
+            "n": 16290,
+            "x5": -0.6354869049914533,
+            "x50": -0.015400875997595233,
+            "x95": 0.6354869044107266,
+            "y5": 1.1691691657925478,
+            "y50": 1.2844156226382712,
+            "y95": 1.4180079218010884,
+            "z5": -0.45318719794234125,
+            "z50": 0.10803946383854045,
+            "z95": 0.4243501793266261
+          },
+          "torso": {
+            "n": 16341,
+            "x5": -0.5584227707870131,
+            "x50": -0.01001746472097914,
+            "x95": 0.5473477754928715,
+            "y5": 0.7516556652658554,
+            "y50": 0.9206389570756381,
+            "y95": 1.070712831206929,
+            "z5": -0.4053114790978935,
+            "z50": 0.06388705357360129,
+            "z95": 0.3784401219119267
+          }
+        }
+      },
+      "anchors": {
+        "hat": {
+          "bone": null,
+          "x": 0.002,
+          "y": 1.73,
+          "z": 0.011,
+          "scale": 1.5
+        },
+        "glasses": {
+          "bone": null,
+          "x": -0.015,
+          "y": 1.274,
+          "z": 0.444,
+          "scale": 1.35
+        },
+        "backpack": {
+          "bone": null,
+          "x": 0,
+          "y": 0.921,
+          "z": -0.425,
+          "scale": 1.4
+        },
+        "prop": {
+          "x": 0.608,
+          "y": 0.921,
+          "z": 0.064,
+          "scale": 1.2
+        },
+        "shirt": {
+          "minT": 0.3,
+          "maxT": 0.82,
+          "tint": true
+        }
+      },
+      "fallbackAnchors": {
+        "hat": {
+          "x": 0.002,
+          "y": 1.73,
+          "z": 0.011,
+          "scale": 1.5
+        },
+        "glasses": {
+          "x": -0.015,
+          "y": 1.274,
+          "z": 0.444,
+          "scale": 1.35
+        },
+        "backpack": {
+          "x": 0,
+          "y": 0.921,
+          "z": -0.425,
+          "scale": 1.4
+        },
+        "prop": {
+          "x": 0.608,
+          "y": 0.921,
+          "z": 0.064,
+          "scale": 1.2
+        }
+      },
+      "animationMap": {
+        "idle": null,
+        "walk": null,
+        "run": null,
+        "jump": null,
+        "wave": null,
+        "dance": null,
+        "sit": null,
+        "sleep": null,
+        "mode": "procedural",
+        "all": []
+      }
+    },
+    "cute_cat_in_cute_banana": {
+      "file": "characters/cute_cat_in_cute_banana.glb",
+      "name": "cute_cat_in_cute_banana",
+      "bytes": 1439356,
+      "kb": 1405.6,
+      "skinned": true,
+      "bones": {
+        "all": [
+          "GLTF_created_0_rootJoint",
+          "spine_19",
+          "spine001_8",
+          "spine002_7",
+          "spine005_6",
+          "spine004_5",
+          "pelvisL_9",
+          "thighL_11",
+          "shinL_10",
+          "thighR_13",
+          "shinR_12",
+          "pelvisR_14",
+          "upper_armL_16",
+          "forearmL_15",
+          "upper_armR_18",
+          "forearmR_17"
+        ],
+        "named": {
+          "spine": "spine_19",
+          "hips": "pelvisL_9"
+        }
+      },
+      "bonePositions": {
+        "spine": [
+          0.227,
+          4.145,
+          -0.052
+        ],
+        "hips": [
+          0.228,
+          4.145,
+          -0.055
+        ]
+      },
+      "animations": [
+        {
+          "name": "metarigAction.001",
+          "duration": 3.33,
+          "channels": 39,
+          "samplers": 39
+        }
+      ],
+      "textures": [
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 117293
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 80344
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 54350
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 160637
+        }
+      ],
+      "maxTextureSize": 1024,
+      "triangles": 19224,
+      "meshes": 10,
+      "materials": 7,
+      "meshList": [
+        {
+          "name": "Object_7",
+          "material": "Material.002",
+          "color": "#ffffff",
+          "center": [
+            0.243,
+            4.797,
+            -0.074
+          ],
+          "size": [
+            0.86,
+            1.745,
+            1.147
+          ],
+          "vertices": 2224
+        },
+        {
+          "name": "Object_8",
+          "material": "Material.006",
+          "color": "#c17b60",
+          "center": [
+            0.243,
+            4.797,
+            -0.074
+          ],
+          "size": [
+            0.892,
+            1.777,
+            1.178
+          ],
+          "vertices": 2224
+        },
+        {
+          "name": "Object_10",
+          "material": "Material.003",
+          "color": "#a67f5a",
+          "center": [
+            0.217,
+            5.713,
+            0.027
+          ],
+          "size": [
+            0.217,
+            0.351,
+            0.242
+          ],
+          "vertices": 24
+        },
+        {
+          "name": "Object_11",
+          "material": "Material.006",
+          "color": "#c17b60",
+          "center": [
+            0.216,
+            5.713,
+            0.027
+          ],
+          "size": [
+            0.24,
+            0.377,
+            0.267
+          ],
+          "vertices": 24
+        },
+        {
+          "name": "Object_13",
+          "material": "Material.005",
+          "color": "#ffffff",
+          "center": [
+            0.254,
+            4.344,
+            -0.106
+          ],
+          "size": [
+            1.203,
+            0.389,
+            0.32
+          ],
+          "vertices": 394
+        },
+        {
+          "name": "Object_14",
+          "material": "Material.006",
+          "color": "#c17b60",
+          "center": [
+            0.254,
+            4.344,
+            -0.106
+          ],
+          "size": [
+            1.234,
+            0.421,
+            0.351
+          ],
+          "vertices": 394
+        },
+        {
+          "name": "Object_16",
+          "material": "Material.004",
+          "color": "#ffffff",
+          "center": [
+            0.241,
+            3.982,
+            -0.037
+          ],
+          "size": [
+            0.837,
+            0.392,
+            0.299
+          ],
+          "vertices": 482
+        },
+        {
+          "name": "Object_17",
+          "material": "Material.006",
+          "color": "#c17b60",
+          "center": [
+            0.241,
+            3.982,
+            -0.037
+          ],
+          "size": [
+            0.871,
+            0.46,
+            0.334
+          ],
+          "vertices": 482
+        },
+        {
+          "name": "Object_19",
+          "material": "Material.001",
+          "color": "#ffffff",
+          "center": [
+            0.241,
+            4.843,
+            -0.004
+          ],
+          "size": [
+            0.653,
+            0.589,
+            0.607
+          ],
+          "vertices": 3161
+        },
+        {
+          "name": "Object_20",
+          "material": "Material.007",
+          "color": "#ffc8af",
+          "center": [
+            0.241,
+            4.843,
+            -0.004
+          ],
+          "size": [
+            0.676,
+            0.612,
+            0.631
+          ],
+          "vertices": 3161
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.363,
+          3.752,
+          -0.663
+        ],
+        "max": [
+          0.871,
+          5.901,
+          0.515
+        ],
+        "center": [
+          0.254,
+          4.827,
+          -0.074
+        ],
+        "height": 2.149,
+        "width": 1.234,
+        "depth": 1.178,
+        "minY": 3.752,
+        "maxY": 5.901,
+        "centerX": 0.254,
+        "centerZ": -0.074
+      },
+      "forward": {
+        "axis": "z",
+        "rotation": 0,
+        "confidence": "high",
+        "votes": {
+          "z": 5.5,
+          "-z": 1,
+          "x": 0,
+          "-x": 0
+        },
+        "evidence": [
+          "rig L/R (-0.005,0.579) → z",
+          "head triangle density (z) → z",
+          "head protrusion → -z"
+        ],
+        "signals": {
+          "face": null,
+          "handedness": {
+            "leftBones": 5,
+            "rightBones": 5,
+            "leftAvg": [
+              0.53,
+              4.232,
+              -0.066
+            ],
+            "rightAvg": [
+              -0.048,
+              4.227,
+              -0.071
+            ],
+            "rightVector": [
+              -0.579,
+              -0.005
+            ],
+            "forwardVector": [
+              -0.005,
+              0.579
+            ],
+            "axis": "z"
+          },
+          "protrusion": {
+            "headZ": -0.178,
+            "headX": -0.034,
+            "feetZ": 0.368,
+            "feetX": -0.026
+          },
+          "concavity": {
+            "xp": 0,
+            "xn": 0,
+            "zp": 0,
+            "zn": 0
+          },
+          "density": {
+            "xp": 1136,
+            "xn": 1422,
+            "zp": 1902,
+            "zn": 1014
+          }
+        },
+        "note": "چند سیگنال مستقل هم‌سو هستند"
+      },
+      "visual": {
+        "scale": 0.814,
+        "width": 1.005,
+        "depth": 0.96,
+        "headCenter": [
+          0.196,
+          1.307,
+          -0.005
+        ],
+        "headWidth": 0.507,
+        "headDepth": 0.526,
+        "headRadius": 0.263,
+        "headTopY": 1.75,
+        "eyeY": 1.307,
+        "torsoY": 0.903,
+        "groundOffset": -3.055,
+        "modelOriginVisual": [
+          -0.207,
+          0.06
+        ],
+        "bands": {
+          "crown": {
+            "n": 24,
+            "x5": 0.07826073541722765,
+            "x50": 0.26187293282254526,
+            "x95": 0.27154362157318446,
+            "y5": 1.6929189196269852,
+            "y50": 1.7249780604687805,
+            "y95": 1.75,
+            "z5": -0.06323343353473847,
+            "z50": 0.11595075889866763,
+            "z95": 0.1306594671759764
+          },
+          "face": {
+            "n": 2660,
+            "x5": -0.06472437194851055,
+            "x50": 0.19556790889804584,
+            "x95": 0.4421478668315988,
+            "y5": 1.0950058770357545,
+            "y50": 1.1280076118205205,
+            "y95": 1.486027877255963,
+            "z5": -0.4075553882970203,
+            "z50": -0.005293776794606675,
+            "z95": 0.11806140324275537
+          },
+          "eye": {
+            "n": 641,
+            "x5": -0.12517493996079387,
+            "x50": 0.17516855638884327,
+            "x95": 0.517517953739732,
+            "y5": 1.1922827928447008,
+            "y50": 1.3089146706366654,
+            "y95": 1.4225704220366702,
+            "z5": -0.44838789584889155,
+            "z50": -0.038976684026214764,
+            "z95": 0.1280202868778879
+          },
+          "torso": {
+            "n": 3552,
+            "x5": -0.0688055754015103,
+            "x50": 0.19426887348136102,
+            "x95": 0.4613112736064643,
+            "y5": 0.7486434948806899,
+            "y50": 0.9031553972241468,
+            "y95": 1.070691985525533,
+            "z5": -0.3671756109139112,
+            "z50": -0.03699492798324073,
+            "z95": 0.2157388756548467
+          }
+        }
+      },
+      "anchors": {
+        "hat": {
+          "bone": null,
+          "x": 0.262,
+          "y": 1.73,
+          "z": 0.116,
+          "scale": 1.195
+        },
+        "glasses": {
+          "bone": null,
+          "x": 0.175,
+          "y": 1.287,
+          "z": 0.148,
+          "scale": 1.096
+        },
+        "backpack": {
+          "bone": "spine_19",
+          "x": 0,
+          "y": 0.903,
+          "z": -0.387,
+          "scale": 1.297
+        },
+        "prop": {
+          "x": 0.292,
+          "y": 0.903,
+          "z": -0.037,
+          "scale": 1.058
+        },
+        "shirt": {
+          "minT": 0.3,
+          "maxT": 0.82,
+          "tint": true
+        }
+      },
+      "fallbackAnchors": {
+        "hat": {
+          "x": 0.262,
+          "y": 1.73,
+          "z": 0.116,
+          "scale": 1.195
+        },
+        "glasses": {
+          "x": 0.175,
+          "y": 1.287,
+          "z": 0.148,
+          "scale": 1.096
+        },
+        "backpack": {
+          "x": 0,
+          "y": 0.903,
+          "z": -0.387,
+          "scale": 1.297
+        },
+        "prop": {
+          "x": 0.292,
+          "y": 0.903,
+          "z": -0.037,
+          "scale": 1.058
+        }
+      },
+      "animationMap": {
+        "idle": "metarigAction.001",
+        "walk": "metarigAction.001",
+        "run": "metarigAction.001",
+        "jump": null,
+        "wave": null,
+        "dance": null,
+        "sit": null,
+        "sleep": null,
+        "mode": "clips",
+        "all": [
+          "metarigAction.001"
+        ]
+      }
+    },
+    "cute_demon": {
+      "file": "characters/cute_demon.glb",
+      "name": "cute_demon",
+      "bytes": 1819908,
+      "kb": 1777.3,
+      "skinned": false,
+      "bones": {
+        "all": [],
+        "named": {}
+      },
+      "bonePositions": {},
+      "animations": [],
+      "textures": [
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 1239440
+        }
+      ],
+      "maxTextureSize": 1024,
+      "triangles": 16500,
+      "meshes": 1,
+      "materials": 1,
+      "meshList": [
+        {
+          "name": "Object_5",
+          "material": "material_0",
+          "color": "#aaaaaa",
+          "center": [
+            0,
+            0,
+            -0.003
+          ],
+          "size": [
+            0.942,
+            1.001,
+            0.372
+          ],
+          "vertices": 11877
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.471,
+          -0.5,
+          -0.19
+        ],
+        "max": [
+          0.471,
+          0.5,
+          0.183
+        ],
+        "center": [
+          0,
+          0,
+          -0.003
+        ],
+        "height": 1.001,
+        "width": 0.942,
+        "depth": 0.372,
+        "minY": -0.5,
+        "maxY": 0.5,
+        "centerX": 0,
+        "centerZ": -0.003
+      },
+      "forward": {
+        "axis": "z",
+        "rotation": 0,
+        "confidence": "high",
+        "votes": {
+          "z": 3.5,
+          "-z": 0,
+          "x": 0,
+          "-x": 1
+        },
+        "evidence": [
+          "head triangle density (z) → z",
+          "normal concavity (212.5) → -x",
+          "head protrusion → z"
+        ],
+        "signals": {
+          "face": null,
+          "handedness": null,
+          "protrusion": {
+            "headZ": 0.046,
+            "headX": -0.001,
+            "feetZ": -0.003,
+            "feetX": -0.002
+          },
+          "concavity": {
+            "xp": 203.233,
+            "xn": 212.545,
+            "zp": 31.638,
+            "zn": 0
+          },
+          "density": {
+            "xp": 1623,
+            "xn": 1644,
+            "zp": 931,
+            "zn": 383
+          }
+        },
+        "note": "چند سیگنال مستقل هم‌سو هستند"
+      },
+      "visual": {
+        "scale": 1.748,
+        "width": 1.648,
+        "depth": 0.651,
+        "headCenter": [
+          0.03,
+          1.293,
+          -0.008
+        ],
+        "headWidth": 0.954,
+        "headDepth": 0.502,
+        "headRadius": 0.477,
+        "headTopY": 1.75,
+        "eyeY": 1.293,
+        "torsoY": 0.896,
+        "groundOffset": 0.875,
+        "modelOriginVisual": [
+          0,
+          0.006
+        ],
+        "bands": {
+          "crown": {
+            "n": 287,
+            "x5": -0.23818700599542342,
+            "x50": 0.09529792412000376,
+            "x95": 0.2499518185025883,
+            "y5": 1.6502194202885605,
+            "y50": 1.6943468531843338,
+            "y95": 1.7468630327879837,
+            "z5": -0.03480975612978819,
+            "z50": 0.026987764523678723,
+            "z95": 0.15404908073648277
+          },
+          "face": {
+            "n": 2027,
+            "x5": -0.47813980338822565,
+            "x50": 0.03011848200554134,
+            "x95": 0.47587601369106375,
+            "y5": 1.1045805511263564,
+            "y50": 1.2621205181344066,
+            "y95": 1.4721590000580635,
+            "z5": -0.20251143589422924,
+            "z50": -0.008076240659600793,
+            "z95": 0.2990529814092744
+          },
+          "eye": {
+            "n": 1429,
+            "x5": -0.44663668210558916,
+            "x50": 0.03284715848269784,
+            "x95": 0.45512500763013286,
+            "y5": 1.1657238204559024,
+            "y50": 1.2805449440878753,
+            "y95": 1.4194726349937992,
+            "z5": -0.2174011134783133,
+            "z50": -0.008720255974207919,
+            "z95": 0.29168795287629956
+          },
+          "torso": {
+            "n": 2649,
+            "x5": -0.7163287373879488,
+            "x50": -0.001971408822145698,
+            "x95": 0.7025539282901505,
+            "y5": 0.7488657900574531,
+            "y50": 0.8957259192076871,
+            "y95": 1.0614815131186177,
+            "z5": -0.20399751034348254,
+            "z50": -0.06768377640212066,
+            "z95": 0.17740371330650506
+          }
+        }
+      },
+      "anchors": {
+        "hat": {
+          "bone": null,
+          "x": 0.095,
+          "y": 1.73,
+          "z": 0.027,
+          "scale": 1.5
+        },
+        "glasses": {
+          "bone": null,
+          "x": 0.033,
+          "y": 1.273,
+          "z": 0.312,
+          "scale": 1.35
+        },
+        "backpack": {
+          "bone": null,
+          "x": 0,
+          "y": 0.896,
+          "z": -0.224,
+          "scale": 1.4
+        },
+        "prop": {
+          "x": 0.7,
+          "y": 0.896,
+          "z": -0.068,
+          "scale": 1.2
+        },
+        "shirt": {
+          "minT": 0.3,
+          "maxT": 0.82,
+          "tint": true
+        }
+      },
+      "fallbackAnchors": {
+        "hat": {
+          "x": 0.095,
+          "y": 1.73,
+          "z": 0.027,
+          "scale": 1.5
+        },
+        "glasses": {
+          "x": 0.033,
+          "y": 1.273,
+          "z": 0.312,
+          "scale": 1.35
+        },
+        "backpack": {
+          "x": 0,
+          "y": 0.896,
+          "z": -0.224,
+          "scale": 1.4
+        },
+        "prop": {
+          "x": 0.7,
+          "y": 0.896,
+          "z": -0.068,
+          "scale": 1.2
+        }
+      },
+      "animationMap": {
+        "idle": null,
+        "walk": null,
+        "run": null,
+        "jump": null,
+        "wave": null,
+        "dance": null,
+        "sit": null,
+        "sleep": null,
+        "mode": "procedural",
+        "all": []
+      }
+    },
+    "cute_gugugaga": {
+      "file": "characters/cute_gugugaga.glb",
+      "name": "cute_gugugaga",
+      "bytes": 2226940,
+      "kb": 2174.7,
+      "skinned": true,
+      "bones": {
+        "all": [
+          "GLTF_created_0_rootJoint",
+          "Root_22",
+          "Hip_21",
+          "Pelvis_6",
+          "L_Thigh_2",
+          "L_Calf_1",
+          "L_Foot_0",
+          "R_Thigh_5",
+          "R_Calf_4",
+          "R_Foot_3",
+          "Waist_20",
+          "Spine01_19",
+          "Spine02_18",
+          "NeckTwist01_9",
+          "NeckTwist02_8",
+          "Head_7",
+          "L_Clavicle_13",
+          "L_Upperarm_12",
+          "L_Forearm_11",
+          "L_Hand_10",
+          "R_Clavicle_17",
+          "R_Upperarm_16",
+          "R_Forearm_15",
+          "R_Hand_14",
+          "neutral_bone_23"
+        ],
+        "named": {
+          "head": "Head_7",
+          "neck": "NeckTwist01_9",
+          "spine": "Spine01_19",
+          "hips": "Pelvis_6",
+          "leftHand": "L_Hand_10",
+          "rightHand": "R_Hand_14"
+        }
+      },
+      "bonePositions": {
+        "head": [
+          0.003,
+          0.349,
+          0
+        ],
+        "neck": [
+          0.02,
+          0.257,
+          -0.001
+        ],
+        "spine": [
+          0.019,
+          0.101,
+          -0.003
+        ],
+        "hips": [
+          0.019,
+          0.059,
+          -0.003
+        ],
+        "leftHand": [
+          -0.017,
+          0.126,
+          -0.156
+        ],
+        "rightHand": [
+          -0.017,
+          0.125,
+          0.156
+        ]
+      },
+      "animations": [],
+      "textures": [
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 1146214
+        }
+      ],
+      "maxTextureSize": 1024,
+      "triangles": 6067,
+      "meshes": 1,
+      "materials": 1,
+      "meshList": [
+        {
+          "name": "Object_7",
+          "material": "tripo_mat_608d4a7a-9910-427b-92e4-e1e4c7493527",
+          "color": "#ffffff",
+          "center": [
+            0,
+            0.333,
+            0
+          ],
+          "size": [
+            0.394,
+            0.667,
+            0.367
+          ],
+          "vertices": 17801
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.197,
+          0,
+          -0.183
+        ],
+        "max": [
+          0.197,
+          0.667,
+          0.183
+        ],
+        "center": [
+          0,
+          0.333,
+          0
+        ],
+        "height": 0.667,
+        "width": 0.394,
+        "depth": 0.367,
+        "minY": 0,
+        "maxY": 0.667,
+        "centerX": 0,
+        "centerZ": 0
+      },
+      "forward": {
+        "axis": "x",
+        "rotation": -1.571,
+        "confidence": "high",
+        "votes": {
+          "z": 0.5,
+          "-z": 0,
+          "x": 7,
+          "-x": 0
+        },
+        "evidence": [
+          "rig L/R (0.16,0) → x",
+          "head triangle density (x) → x",
+          "normal concavity (299.8) → x",
+          "head protrusion → x"
+        ],
+        "signals": {
+          "face": null,
+          "handedness": {
+            "leftBones": 7,
+            "rightBones": 7,
+            "leftAvg": [
+              -0.005,
+              0.138,
+              -0.081
+            ],
+            "rightAvg": [
+              -0.005,
+              0.138,
+              0.079
+            ],
+            "rightVector": [
+              0,
+              0.16
+            ],
+            "forwardVector": [
+              0.16,
+              0
+            ],
+            "axis": "x"
+          },
+          "protrusion": {
+            "headZ": 0,
+            "headX": 0.031,
+            "feetZ": 0,
+            "feetX": 0.004
+          },
+          "concavity": {
+            "xp": 299.751,
+            "xn": 0.052,
+            "zp": 287.236,
+            "zn": 295.445
+          },
+          "density": {
+            "xp": 823,
+            "xn": 89,
+            "zp": 373,
+            "zn": 374
+          }
+        },
+        "note": "چند سیگنال مستقل هم‌سو هستند"
+      },
+      "visual": {
+        "scale": 2.625,
+        "width": 0.962,
+        "depth": 1.034,
+        "headCenter": [
+          0.022,
+          1.291,
+          0.274
+        ],
+        "headWidth": 0.784,
+        "headDepth": 0.538,
+        "headRadius": 0.392,
+        "headTopY": 1.75,
+        "eyeY": 1.291,
+        "torsoY": 0.877,
+        "groundOffset": 0,
+        "modelOriginVisual": [
+          0,
+          0
+        ],
+        "bands": {
+          "crown": {
+            "n": 150,
+            "x5": -0.10103055264865504,
+            "x50": 0.00171212930844082,
+            "x95": 0.10103013370089499,
+            "y5": 1.6610260794347738,
+            "y50": 1.6883698976161001,
+            "y95": 1.75,
+            "z5": -0.09247825834736158,
+            "z50": -0.04110525247808444,
+            "z95": 0.19176717934400256
+          },
+          "face": {
+            "n": 3679,
+            "x5": -0.3921318965259424,
+            "x50": 0.02226000043656824,
+            "x95": 0.3921316211086459,
+            "y5": 1.1061404285028518,
+            "y50": 1.232925617311328,
+            "y95": 1.465774530754172,
+            "z5": -0.1198689395697881,
+            "z50": 0.27397184012107934,
+            "z95": 0.41779356119566785
+          },
+          "eye": {
+            "n": 2675,
+            "x5": -0.385269264015655,
+            "x50": 0.025684665078583694,
+            "x95": 0.38526898336587306,
+            "y5": 1.1677705271350096,
+            "y50": 1.2534334710246613,
+            "y95": 1.414398274251798,
+            "z5": -0.08562912225211672,
+            "z50": 0.2979243302892891,
+            "z95": 0.40751296677229865
+          },
+          "torso": {
+            "n": 9063,
+            "x5": -0.4023857718495909,
+            "x50": 0.005136916438545014,
+            "x95": 0.4023856047034695,
+            "y5": 0.7637023467389974,
+            "y50": 0.8767092397922659,
+            "y95": 1.034256106238805,
+            "z5": -0.3287656466663149,
+            "z50": -0.04110560321691214,
+            "z95": 0.22943130067012513
+          }
+        }
+      },
+      "anchors": {
+        "hat": {
+          "bone": "Head_7",
+          "x": 0.002,
+          "y": 1.73,
+          "z": -0.041,
+          "scale": 1.5
+        },
+        "glasses": {
+          "bone": "Head_7",
+          "x": 0.026,
+          "y": 1.271,
+          "z": 0.428,
+          "scale": 1.35
+        },
+        "backpack": {
+          "bone": "Spine01_19",
+          "x": 0,
+          "y": 0.877,
+          "z": -0.349,
+          "scale": 1.241
+        },
+        "prop": {
+          "x": 0.443,
+          "y": 0.877,
+          "z": -0.041,
+          "scale": 1.013
+        },
+        "shirt": {
+          "minT": 0.3,
+          "maxT": 0.82,
+          "tint": true
+        }
+      },
+      "fallbackAnchors": {
+        "hat": {
+          "x": 0.002,
+          "y": 1.73,
+          "z": -0.041,
+          "scale": 1.5
+        },
+        "glasses": {
+          "x": 0.026,
+          "y": 1.271,
+          "z": 0.428,
+          "scale": 1.35
+        },
+        "backpack": {
+          "x": 0,
+          "y": 0.877,
+          "z": -0.349,
+          "scale": 1.241
+        },
+        "prop": {
+          "x": 0.443,
+          "y": 0.877,
+          "z": -0.041,
+          "scale": 1.013
+        }
+      },
+      "animationMap": {
+        "idle": null,
+        "walk": null,
+        "run": null,
+        "jump": null,
+        "wave": null,
+        "dance": null,
+        "sit": null,
+        "sleep": null,
+        "mode": "procedural",
+        "all": []
+      }
+    },
+    "cute_purple_pony": {
+      "file": "characters/cute_purple_pony.glb",
+      "name": "cute_purple_pony",
+      "bytes": 926064,
+      "kb": 904.4,
+      "skinned": false,
+      "bones": {
+        "all": [],
+        "named": {}
+      },
+      "bonePositions": {},
+      "animations": [],
+      "textures": [
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 35333
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 128200
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 9185
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 50647
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 39355
+        }
+      ],
+      "maxTextureSize": 1024,
+      "triangles": 22090,
+      "meshes": 7,
+      "materials": 7,
+      "meshList": [
+        {
+          "name": "Object_2",
+          "material": "material_5",
+          "color": "#ffffff",
+          "center": [
+            0.002,
+            0.568,
+            -0.378
+          ],
+          "size": [
+            0.339,
+            0.825,
+            0.521
+          ],
+          "vertices": 862
+        },
+        {
+          "name": "Object_3",
+          "material": "material_4",
+          "color": "#ffffff",
+          "center": [
+            -0.061,
+            1.115,
+            0.233
+          ],
+          "size": [
+            0.565,
+            0.937,
+            0.662
+          ],
+          "vertices": 1853
+        },
+        {
+          "name": "Object_4",
+          "material": "material_3",
+          "color": "#ffffff",
+          "center": [
+            0,
+            1.306,
+            0.541
+          ],
+          "size": [
+            0.108,
+            0.224,
+            0.185
+          ],
+          "vertices": 294
+        },
+        {
+          "name": "Object_6",
+          "material": "material_6",
+          "color": "#ffffff",
+          "center": [
+            0,
+            0.986,
+            0.463
+          ],
+          "size": [
+            0.482,
+            0.346,
+            0.252
+          ],
+          "vertices": 1888
+        },
+        {
+          "name": "Object_7",
+          "material": "material_0",
+          "color": "#ffffff",
+          "center": [
+            0,
+            0.681,
+            0.147
+          ],
+          "size": [
+            0.528,
+            1.362,
+            0.972
+          ],
+          "vertices": 5383
+        },
+        {
+          "name": "Object_8",
+          "material": "material_1",
+          "color": "#ffffff",
+          "center": [
+            0.123,
+            1.015,
+            0.436
+          ],
+          "size": [
+            0.156,
+            0.273,
+            0.165
+          ],
+          "vertices": 946
+        },
+        {
+          "name": "Object_9",
+          "material": "material_2",
+          "color": "#ffffff",
+          "center": [
+            -0.123,
+            1.015,
+            0.436
+          ],
+          "size": [
+            0.156,
+            0.273,
+            0.165
+          ],
+          "vertices": 946
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.343,
+          0,
+          -0.639
+        ],
+        "max": [
+          0.264,
+          1.583,
+          0.633
+        ],
+        "center": [
+          -0.039,
+          0.791,
+          -0.003
+        ],
+        "height": 1.583,
+        "width": 0.607,
+        "depth": 1.272,
+        "minY": 0,
+        "maxY": 1.583,
+        "centerX": -0.039,
+        "centerZ": -0.003
+      },
+      "forward": {
+        "axis": "z",
+        "rotation": 0,
+        "confidence": "high",
+        "votes": {
+          "z": 4.5,
+          "-z": 0,
+          "x": 0,
+          "-x": 0
+        },
+        "evidence": [
+          "head triangle density (z) → z",
+          "normal concavity (1063.1) → z",
+          "head protrusion → z"
+        ],
+        "signals": {
+          "face": null,
+          "handedness": null,
+          "protrusion": {
+            "headZ": 0.551,
+            "headX": 0.079,
+            "feetZ": -0.248,
+            "feetX": 0.079
+          },
+          "concavity": {
+            "xp": 123.318,
+            "xn": 45.772,
+            "zp": 1063.099,
+            "zn": 6.585
+          },
+          "density": {
+            "xp": 1142,
+            "xn": 401,
+            "zp": 7454,
+            "zn": 82
+          }
+        },
+        "note": "چند سیگنال مستقل هم‌سو هستند"
+      },
+      "visual": {
+        "scale": 1.105,
+        "width": 0.671,
+        "depth": 1.406,
+        "headCenter": [
+          0,
+          1.289,
+          0.415
+        ],
+        "headWidth": 0.574,
+        "headDepth": 0.478,
+        "headRadius": 0.287,
+        "headTopY": 1.75,
+        "eyeY": 1.289,
+        "torsoY": 0.952,
+        "groundOffset": 0,
+        "modelOriginVisual": [
+          0.044,
+          0.003
+        ],
+        "bands": {
+          "crown": {
+            "n": 29,
+            "x5": -0.1162090195631175,
+            "x50": 0.06439442562482285,
+            "x95": 0.1435251935102743,
+            "y5": 1.6469166599208696,
+            "y50": 1.690524134099895,
+            "y95": 1.7388975150951638,
+            "z5": 0.07205658701877186,
+            "z50": 0.2266584224889756,
+            "z95": 0.3381981374486469
+          },
+          "face": {
+            "n": 3889,
+            "x5": -0.3411706196547961,
+            "x50": -0.000028075834404216265,
+            "x95": 0.23241458022347497,
+            "y5": 1.1070337238007129,
+            "y50": 1.2429057490642146,
+            "y95": 1.4710585328422674,
+            "z5": 0.10187206527451032,
+            "z50": 0.4154116190632656,
+            "z95": 0.5801732237265509
+          },
+          "eye": {
+            "n": 2906,
+            "x5": -0.3479129435081025,
+            "x50": -0.000025268250561671457,
+            "x95": 0.23241458022347497,
+            "y5": 1.1719539685289175,
+            "y50": 1.2509634771661828,
+            "y95": 1.4069570927521824,
+            "z5": 0.09982342305362531,
+            "z50": 0.41231207982906537,
+            "z95": 0.5610549787399008
+          },
+          "torso": {
+            "n": 4307,
+            "x5": -0.1837041703316582,
+            "x50": -0.00000842275052232647,
+            "x95": 0.18367747089654413,
+            "y5": 0.7843381908707932,
+            "y50": 0.9515094648482794,
+            "y95": 1.0651351452367126,
+            "z5": -0.2323933820908457,
+            "z50": 0.4827261492238722,
+            "z95": 0.6290603011945758
+          }
+        }
+      },
+      "anchors": {
+        "hat": {
+          "bone": null,
+          "x": 0.064,
+          "y": 1.73,
+          "z": 0.227,
+          "scale": 1.305
+        },
+        "glasses": {
+          "bone": null,
+          "x": 0,
+          "y": 1.269,
+          "z": 0.581,
+          "scale": 1.196
+        },
+        "backpack": {
+          "bone": null,
+          "x": 0,
+          "y": 0.952,
+          "z": -0.252,
+          "scale": 0.866
+        },
+        "prop": {
+          "x": 0.202,
+          "y": 0.952,
+          "z": 0.483,
+          "scale": 0.706
+        },
+        "shirt": {
+          "minT": 0.3,
+          "maxT": 0.82,
+          "tint": true
+        }
+      },
+      "fallbackAnchors": {
+        "hat": {
+          "x": 0.064,
+          "y": 1.73,
+          "z": 0.227,
+          "scale": 1.305
+        },
+        "glasses": {
+          "x": 0,
+          "y": 1.269,
+          "z": 0.581,
+          "scale": 1.196
+        },
+        "backpack": {
+          "x": 0,
+          "y": 0.952,
+          "z": -0.252,
+          "scale": 0.866
+        },
+        "prop": {
+          "x": 0.202,
+          "y": 0.952,
+          "z": 0.483,
+          "scale": 0.706
+        }
+      },
+      "animationMap": {
+        "idle": null,
+        "walk": null,
+        "run": null,
+        "jump": null,
+        "wave": null,
+        "dance": null,
+        "sit": null,
+        "sleep": null,
+        "mode": "procedural",
+        "all": []
+      }
+    },
+    "cute_robot": {
+      "file": "characters/cute_robot.glb",
+      "name": "cute_robot",
+      "bytes": 131100,
+      "kb": 128,
+      "skinned": false,
+      "bones": {
+        "all": [],
+        "named": {}
+      },
+      "bonePositions": {},
+      "animations": [
+        {
+          "name": "Animation",
+          "duration": 0.58,
+          "channels": 2,
+          "samplers": 2
+        }
+      ],
+      "textures": [],
+      "maxTextureSize": 0,
+      "triangles": 3218,
+      "meshes": 7,
+      "materials": 5,
+      "meshList": [
+        {
+          "name": "Object_4",
+          "material": "BODY",
+          "color": "#00ffeb",
+          "center": [
+            -0.109,
+            1.23,
+            0.018
+          ],
+          "size": [
+            1.495,
+            1.713,
+            1.749
+          ],
+          "vertices": 1634
+        },
+        {
+          "name": "Object_5",
+          "material": "GLOW",
+          "color": "#ffed00",
+          "center": [
+            0.005,
+            1.227,
+            0.816
+          ],
+          "size": [
+            0.382,
+            0.382,
+            0
+          ],
+          "vertices": 64
+        },
+        {
+          "name": "Object_6",
+          "material": "SCREEN",
+          "color": "#000000",
+          "center": [
+            0.47,
+            1.23,
+            0
+          ],
+          "size": [
+            0,
+            1.057,
+            1.057
+          ],
+          "vertices": 49
+        },
+        {
+          "name": "Object_8",
+          "material": "BODY",
+          "color": "#00ffeb",
+          "center": [
+            0,
+            0.076,
+            -0.025
+          ],
+          "size": [
+            0.442,
+            0.156,
+            0.83
+          ],
+          "vertices": 592
+        },
+        {
+          "name": "Object_9",
+          "material": "Material.001",
+          "color": "#ffffff",
+          "center": [
+            0,
+            0,
+            -0.025
+          ],
+          "size": [
+            0.442,
+            0.004,
+            0.83
+          ],
+          "vertices": 64
+        },
+        {
+          "name": "mesh_2",
+          "material": "EYES",
+          "color": "#b9ff00",
+          "center": [
+            0.473,
+            1.235,
+            0.136
+          ],
+          "size": [
+            0,
+            0.336,
+            0.179
+          ],
+          "vertices": 47
+        },
+        {
+          "name": "mesh_3",
+          "material": "EYES",
+          "color": "#b9ff00",
+          "center": [
+            0.473,
+            1.235,
+            -0.138
+          ],
+          "size": [
+            0,
+            0.336,
+            0.179
+          ],
+          "vertices": 47
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.856,
+          -0.002,
+          -0.856
+        ],
+        "max": [
+          0.639,
+          2.086,
+          0.893
+        ],
+        "center": [
+          -0.109,
+          1.042,
+          0.018
+        ],
+        "height": 2.089,
+        "width": 1.495,
+        "depth": 1.749,
+        "minY": -0.002,
+        "maxY": 2.086,
+        "centerX": -0.109,
+        "centerZ": 0.018
+      },
+      "forward": {
+        "axis": "x",
+        "rotation": -1.571,
+        "confidence": "medium",
+        "votes": {
+          "z": 3.5,
+          "-z": 0,
+          "x": 4,
+          "-x": 0
+        },
+        "evidence": [
+          "face meshes (Object_5,Object_6,mesh_2,mesh_3) → x",
+          "head triangle density (z) → z",
+          "normal concavity (67.5) → z",
+          "head protrusion → x"
+        ],
+        "signals": {
+          "face": {
+            "meshes": [
+              "Object_5",
+              "Object_6",
+              "mesh_2",
+              "mesh_3"
+            ],
+            "centroid": [
+              0.355,
+              1.232,
+              0.204
+            ],
+            "offsetFromCenter": [
+              0.464,
+              0.185
+            ]
+          },
+          "handedness": null,
+          "protrusion": {
+            "headZ": 0.118,
+            "headX": 0.148,
+            "feetZ": -0.086,
+            "feetX": 0.218
+          },
+          "concavity": {
+            "xp": 27.288,
+            "xn": 0,
+            "zp": 67.503,
+            "zn": 0
+          },
+          "density": {
+            "xp": 432,
+            "xn": 72,
+            "zp": 687,
+            "zn": 98
+          }
+        },
+        "note": "چند سیگنال مستقل هم‌سو هستند"
+      },
+      "visual": {
+        "scale": 0.838,
+        "width": 1.466,
+        "depth": 1.253,
+        "headCenter": [
+          -0.684,
+          1.286,
+          0.005
+        ],
+        "headWidth": 1.186,
+        "headDepth": 0.971,
+        "headRadius": 0.593,
+        "headTopY": 1.75,
+        "eyeY": 1.286,
+        "torsoY": 0.94,
+        "groundOffset": 0.002,
+        "modelOriginVisual": [
+          0.015,
+          0.091
+        ],
+        "bands": {
+          "crown": {
+            "n": 21,
+            "x5": -0.276575200779367,
+            "x50": -7.875094436501536e-8,
+            "x95": 0.27657494798814863,
+            "y5": 1.6803269437466937,
+            "y50": 1.6925748467070647,
+            "y95": 1.735218534828619,
+            "z5": -0.27657509434497957,
+            "z50": -6.1687085704049636e-9,
+            "z95": 0.2765752167106546
+          },
+          "face": {
+            "n": 790,
+            "x5": -0.7424694615307952,
+            "x50": -0.6837490043125334,
+            "x95": 0.44389456272991656,
+            "y5": 1.0993510930080792,
+            "y50": 1.1505370777780002,
+            "y95": 1.4896148047771083,
+            "z5": -0.4361235356181578,
+            "z50": 0.00453045672080011,
+            "z95": 0.5344652764189634
+          },
+          "eye": {
+            "n": 249,
+            "x5": -0.7286718907142592,
+            "x50": -0.2652561381470706,
+            "x95": 0.5835242910358539,
+            "y5": 1.1559049542789526,
+            "y50": 1.2851823412308547,
+            "y95": 1.416095123494241,
+            "z5": -0.5835245017164522,
+            "z50": 0.3941270475642933,
+            "z95": 0.5344652764189634
+          },
+          "torso": {
+            "n": 591,
+            "x5": -0.7466992577169883,
+            "x50": -0.683748974838565,
+            "x95": 0.4992455884249592,
+            "y5": 0.7798203060995628,
+            "y50": 0.9400442070364341,
+            "y95": 1.0551602365007307,
+            "z5": -0.4030121169414436,
+            "z50": 0.10238532505467457,
+            "z95": 0.5248989035584275
+          }
+        }
+      },
+      "anchors": {
+        "hat": {
+          "bone": null,
+          "x": 0,
+          "y": 1.73,
+          "z": 0,
+          "scale": 1.5
+        },
+        "glasses": {
+          "bone": null,
+          "x": -0.265,
+          "y": 1.266,
+          "z": 0.554,
+          "scale": 1.35
+        },
+        "backpack": {
+          "bone": null,
+          "x": 0,
+          "y": 0.94,
+          "z": -0.423,
+          "scale": 1.4
+        },
+        "prop": {
+          "x": 0.685,
+          "y": 0.94,
+          "z": 0.102,
+          "scale": 1.2
+        },
+        "shirt": {
+          "minT": 0.3,
+          "maxT": 0.82,
+          "tint": true
+        }
+      },
+      "fallbackAnchors": {
+        "hat": {
+          "x": 0,
+          "y": 1.73,
+          "z": 0,
+          "scale": 1.5
+        },
+        "glasses": {
+          "x": -0.265,
+          "y": 1.266,
+          "z": 0.554,
+          "scale": 1.35
+        },
+        "backpack": {
+          "x": 0,
+          "y": 0.94,
+          "z": -0.423,
+          "scale": 1.4
+        },
+        "prop": {
+          "x": 0.685,
+          "y": 0.94,
+          "z": 0.102,
+          "scale": 1.2
+        }
+      },
+      "animationMap": {
+        "idle": "Animation",
+        "walk": "Animation",
+        "run": "Animation",
+        "jump": null,
+        "wave": null,
+        "dance": null,
+        "sit": null,
+        "sleep": null,
+        "mode": "clips",
+        "all": [
+          "Animation"
+        ]
+      }
+    },
+    "cute_skull_character": {
+      "file": "characters/cute_skull_character.glb",
+      "name": "cute_skull_character",
+      "bytes": 3488792,
+      "kb": 3407,
+      "skinned": false,
+      "bones": {
+        "all": [],
+        "named": {}
+      },
+      "bonePositions": {},
+      "animations": [],
+      "textures": [
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 1037883
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 766171
+        },
+        {
+          "name": "image/png",
+          "mime": "image/png",
+          "width": 1024,
+          "height": 1024,
+          "bytes": 494042
+        }
+      ],
+      "maxTextureSize": 1024,
+      "triangles": 17608,
+      "meshes": 1,
+      "materials": 1,
+      "meshList": [
+        {
+          "name": "Object_4",
+          "material": "Material.001",
+          "color": "#ffffff",
+          "center": [
+            0,
+            0,
+            0
+          ],
+          "size": [
+            0.618,
+            1.153,
+            0.52
+          ],
+          "vertices": 13549
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.309,
+          -0.577,
+          -0.26
+        ],
+        "max": [
+          0.309,
+          0.577,
+          0.26
+        ],
+        "center": [
+          0,
+          0,
+          0
+        ],
+        "height": 1.153,
+        "width": 0.618,
+        "depth": 0.52,
+        "minY": -0.577,
+        "maxY": 0.577,
+        "centerX": 0,
+        "centerZ": 0
+      },
+      "forward": {
+        "axis": "z",
+        "rotation": 0,
+        "confidence": "high",
+        "votes": {
+          "z": 3.5,
+          "-z": 1,
+          "x": 0,
+          "-x": 0
+        },
+        "evidence": [
+          "head triangle density (z) → z",
+          "normal concavity (312.0) → z",
+          "head protrusion → -z"
+        ],
+        "signals": {
+          "face": null,
+          "handedness": null,
+          "protrusion": {
+            "headZ": -0.012,
+            "headX": 0,
+            "feetZ": 0.009,
+            "feetX": 0
+          },
+          "concavity": {
+            "xp": 63.999,
+            "xn": 62.786,
+            "zp": 312.001,
+            "zn": 16.996
+          },
+          "density": {
+            "xp": 946,
+            "xn": 954,
+            "zp": 3061,
+            "zn": 975
+          }
+        },
+        "note": "چند سیگنال مستقل هم‌سو هستند"
+      },
+      "visual": {
+        "scale": 1.517,
+        "width": 0.937,
+        "depth": 0.79,
+        "headCenter": [
+          0.001,
+          1.289,
+          0.21
+        ],
+        "headWidth": 0.527,
+        "headDepth": 0.676,
+        "headRadius": 0.338,
+        "headTopY": 1.75,
+        "eyeY": 1.289,
+        "torsoY": 0.887,
+        "groundOffset": 0.875,
+        "modelOriginVisual": [
+          0,
+          0
+        ],
+        "bands": {
+          "crown": {
+            "n": 268,
+            "x5": -0.23651125097682582,
+            "x50": 0.0008982093240320354,
+            "x95": 0.23651125097682582,
+            "y5": 1.6456832824985987,
+            "y50": 1.6960436603034623,
+            "y95": 1.7446046554219428,
+            "z5": -0.2742800421550539,
+            "z50": -0.07284143615592478,
+            "z95": 0.17536019532020697
+          },
+          "face": {
+            "n": 3073,
+            "x5": -0.26168994770383786,
+            "x50": 0.0008982093240320354,
+            "x95": 0.2652888487289146,
+            "y5": 1.1007190922540102,
+            "y50": 1.224820654079786,
+            "y95": 1.4676254261937223,
+            "z5": -0.31205034811741994,
+            "z50": 0.20953158895313714,
+            "z95": 0.36420868425940184
+          },
+          "eye": {
+            "n": 1959,
+            "x5": -0.27248210642665355,
+            "x50": 0.0008982093240320354,
+            "x95": 0.2760794926675921,
+            "y5": 1.1636695871188079,
+            "y50": 1.2517988013193362,
+            "y95": 1.4136691769320584,
+            "z5": -0.31205034811741994,
+            "z50": 0.19874094501445963,
+            "z95": 0.36241074853100164
+          },
+          "torso": {
+            "n": 3881,
+            "x5": -0.23111592900748706,
+            "x50": 0.0008982093240320354,
+            "x95": 0.23291386473588727,
+            "y5": 0.7482007658851957,
+            "y50": 0.8866903762601712,
+            "y95": 1.057553453017946,
+            "z5": -0.15917270332369346,
+            "z50": -0.04226590550152545,
+            "z95": 0.22931647849494868
+          }
+        }
+      },
+      "anchors": {
+        "hat": {
+          "bone": null,
+          "x": 0.001,
+          "y": 1.73,
+          "z": -0.073,
+          "scale": 1.5
+        },
+        "glasses": {
+          "bone": null,
+          "x": 0.001,
+          "y": 1.269,
+          "z": 0.382,
+          "scale": 1.35
+        },
+        "backpack": {
+          "bone": null,
+          "x": 0,
+          "y": 0.887,
+          "z": -0.179,
+          "scale": 1.209
+        },
+        "prop": {
+          "x": 0.255,
+          "y": 0.887,
+          "z": -0.042,
+          "scale": 0.986
+        },
+        "shirt": {
+          "minT": 0.3,
+          "maxT": 0.82,
+          "tint": true
+        }
+      },
+      "fallbackAnchors": {
+        "hat": {
+          "x": 0.001,
+          "y": 1.73,
+          "z": -0.073,
+          "scale": 1.5
+        },
+        "glasses": {
+          "x": 0.001,
+          "y": 1.269,
+          "z": 0.382,
+          "scale": 1.35
+        },
+        "backpack": {
+          "x": 0,
+          "y": 0.887,
+          "z": -0.179,
+          "scale": 1.209
+        },
+        "prop": {
+          "x": 0.255,
+          "y": 0.887,
+          "z": -0.042,
+          "scale": 0.986
+        }
+      },
+      "animationMap": {
+        "idle": null,
+        "walk": null,
+        "run": null,
+        "jump": null,
+        "wave": null,
+        "dance": null,
+        "sit": null,
+        "sleep": null,
+        "mode": "procedural",
+        "all": []
+      }
+    }
+  }
+}

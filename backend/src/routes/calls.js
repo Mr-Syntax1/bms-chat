@@ -569,18 +569,17 @@ callsRouter.post('/group/leave', requireAuth, groupRateLimit, async (req, res) =
 // ===================================
 
 // ---------------------------------------------------------------------------
-// اختصاص کاراکتر یکتا برای بازی کمپ (حداکثر ۹ نفر)
+// اختصاص کاراکتر یکتا برای بازی کمپ (حداکثر ۷ نفر — هم‌راستا با ۷ مدل کاراکتر)
+// شناسه‌ها همان کلیدهای CHARACTER_CONFIG در frontend هستند؛ فایل = <id>.glb
 // ---------------------------------------------------------------------------
 const GAME_CHARACTERS = [
-  'Cactoro.glb',
-  'Citizen.glb',
-  'CoolBannanaGuy.glb',
-  'CubeGuyCharacter.glb',
-  'CuteCharacter.glb',
-  'CuteRedDino.glb',
-  'DORAEMON.glb',
-  'miku.glb',
-  'MushroomCharacter.glb',
+  'cute_axolotl',
+  'cute_cat_in_cute_banana',
+  'cute_demon',
+  'cute_gugugaga',
+  'cute_purple_pony',
+  'cute_robot',
+  'cute_skull_character',
 ];
 const GAME_CAPACITY = GAME_CHARACTERS.length;
 const CLAIM_TTL = 2 * 60 * 60 * 1000;
@@ -588,7 +587,7 @@ const CLAIM_TTL = 2 * 60 * 60 * 1000;
 // userId → { file, at, roomId }
 const gameAssignments = new Map();
 
-const characterUrl = (file) => `/game-models/characters/${file}`;
+const characterUrl = (id) => `/game-models/characters/${id}.glb`;
 
 function pruneAssignments() {
   const now = Date.now();

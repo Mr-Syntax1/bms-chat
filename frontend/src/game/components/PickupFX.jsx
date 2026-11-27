@@ -2,9 +2,12 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { pickupEvents, advancePickup } from '../pickupFX';
+import { PARTICLE_BUDGET } from '../fxBudget';
 
 const LIFE = 0.75;
-const PER_SLOT = 10; // ذره در هر انفجار
+// بودجه‌ی جهانی این سیستم = PARTICLE_BUDGET.pickup (۸ ذره).
+// تعداد هر انفجار طوری انتخاب می‌شود که مجموع از سقف رد نشود.
+const PER_SLOT = Math.max(1, Math.floor(PARTICLE_BUDGET.pickup / pickupEvents.slots.length));
 const TOTAL = pickupEvents.slots.length * PER_SLOT;
 
 // جهت‌های ثابت ذرات (یک‌بار ساخته می‌شود، بدون alloc در فریم)

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { WATERFALL, WATER_LEVEL, getWaterfallTopY } from '../terrain';
 import { useQualityPreset } from '../stores/useSettingsStore';
+import { PARTICLE_BUDGET } from '../fxBudget';
 
 const TOP_Y = getWaterfallTopY();
 // صفحه از لبه‌ی بالای دیواره تا حوضچه‌ی فرود کشیده می‌شود؛ طول = وتر،
@@ -219,7 +220,8 @@ function SprayParticles({ count }) {
 
 export default function Waterfall() {
   const preset = useQualityPreset();
-  const sprayCount = Math.round(90 * preset.particles);
+  // سقف جهانی ذرات — پاشش آبشار هرگز از بودجه‌ی خودش بیشتر نمی‌شود
+  const sprayCount = PARTICLE_BUDGET.waterfall;
 
   return (
     <group>

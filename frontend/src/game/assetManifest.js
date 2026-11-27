@@ -57,16 +57,15 @@ const missing = (fallback, note) => m(null, { fallback, note });
 // ===========================================================================
 export const MODELS = {
   // ---- کاراکترهای بازیکن (characterConfig.js از همین‌ها می‌خواند) ----
+  // ۷ مدل جدید «cute» — بدون نسخه‌ی opt (فایل‌ها از قبل سبک/بهینه‌اند).
   characters: {
-    cactoro: m('opt/Cactoro.glb', { note: 'نسخه‌ی بهینه‌شده در ریشه‌ی opt' }),
-    citizen: m('characters/Citizen.glb', { opt: true }),
-    banana: m('characters/CoolBannanaGuy.glb', { heavy: true, opt: true }),
-    cubeGuy: m('characters/CubeGuyCharacter.glb', { opt: true }),
-    cute: m('characters/CuteCharacter.glb', { opt: true }),
-    redDino: m('characters/CuteRedDino.glb', { opt: true }),
-    doraemon: m('characters/DORAEMON.glb', { opt: true }),
-    miku: m('characters/miku.glb', { opt: true }),
-    mushroom: m('characters/MushroomCharacter.glb', { heavy: true, opt: true }),
+    axolotl: m('characters/cute_axolotl.glb', { heavy: true }),
+    catBanana: m('characters/cute_cat_in_cute_banana.glb', { heavy: true }),
+    demon: m('characters/cute_demon.glb', { heavy: true }),
+    gugugaga: m('characters/cute_gugugaga.glb', { heavy: true }),
+    pony: m('characters/cute_purple_pony.glb', { heavy: true }),
+    robot: m('characters/cute_robot.glb'),
+    skull: m('characters/cute_skull_character.glb', { heavy: true }),
   },
 
   // ---- NPCها (Phase 4؛ فعلاً preload نمی‌شوند) ----
@@ -80,14 +79,17 @@ export const MODELS = {
   },
 
   // ---- درخت‌ها ----
+  // تک‌مدل: تنها منبع درخت‌ها PineTrees.glb است (۹۷KB، ۳۶۶۶ مثلث، بدون Draco لازم).
+  // Pine.glb / Pine2.glb / opt-Pine / BirchTrees / Fern حذف شدند.
   trees: {
-    pineOpt: m('trees/Pine.glb', { opt: true, note: 'instanced — opt/trees/Pine.glb (108KB)' }),
-    pine: m('trees/Pine.glb', { opt: true }),
-    pine2: m('trees/Pine2.glb', { opt: true, note: 'instanced — opt/trees/Pine2.glb (110KB)' }),
-    fern: m('trees/Fern.glb', { opt: true }),
+    pine: m('trees/PineTrees.glb', {
+      note: 'تک‌مدل درخت — همه‌ی درخت‌ها از همین فایل instanced می‌شوند (۹۷KB)',
+    }),
+    // alias سازگاری برای کدهای قدیمی که pineOpt می‌خوانند
+    pineOpt: m('trees/PineTrees.glb', { note: 'alias سازگاری → همان PineTrees.glb' }),
+    giantTree: m('trees/PineTrees.glb', { note: 'giant = PineTrees با ارتفاع هدف بزرگ' }),
     oak: missing('procedural: تنه‌ی استوانه + ۳ تا ۵ کره‌ی شاخ‌وبرگ', 'مدل oak/broadleaf موجود نیست'),
     deadTree: missing('procedural: تنه‌ی مخروطی تیره + شاخه‌های سیلندری', 'مدل درخت مرده موجود نیست'),
-    giantTree: m('trees/Pine.glb', { opt: true, note: 'giant = Pine با scaleY بزرگ' }),
   },
 
   // ---- زیربوته و کف جنگل ----
@@ -428,9 +430,7 @@ export function placeholderSounds() {
 export const PRELOAD_GROUPS = {
   // لازم برای دیدن صحنه در اولین فریم: زمین، جنگل، آتش، کمپ، کاراکترها
   core: [
-    'trees.pineOpt',
     'trees.pine',
-    'trees.pine2',
     'structures.bonfireOpt',
     'structures.rvOpt',
     'structures.tentOpt',

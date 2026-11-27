@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { CAMP_RADIUS, SAND_START_X, QUEST_SPOTS } from '../sceneLayout';
 import { useQualityPreset } from '../stores/useSettingsStore';
+import { BUTTERFLY_SPLIT } from '../fxBudget';
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -39,12 +40,17 @@ const COLORS = ['#ffd166', '#ff9ecd', '#9ad0ff', '#ffe6a8', '#c9a6ff'];
  * پروانه‌های نزدیک گل‌ها.
  * مسیر پرواز با توابع مثلثاتی در shader محاسبه می‌شود تا هزینه‌ی CPU صفر باشد.
  */
-export default function Butterflies({ count = 12 }) {
+export default function Butterflies({ count = BUTTERFLY_SPLIT.ambient }) {
   const preset = useQualityPreset();
   const meshRef = useRef(null);
   const materialRef = useRef(null);
 
-  const total = preset.butterflies === 0 ? 0 : Math.min(count, preset.butterflies);
+  // سقف جهانی: مجموع پروانه‌ها (این سیستم + Bugs) هرگز از ۱۲ بیشتر نمی‌شود.
+  // سهم این سیستم = BUTTERFLY_SPLIT.ambient (۸).
+  const total =
+    preset.butterflies === 0
+      ? 0
+      : Math.min(count, preset.butterflies, BUTTERFLY_SPLIT.ambient);
   const geometry = useMemo(() => makeWingGeometry(), []);
 
   const instances = useMemo(() => {

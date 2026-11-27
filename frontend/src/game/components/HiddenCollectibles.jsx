@@ -8,6 +8,7 @@ import { registerQuestItem } from '../questRegistry';
 import { playPositionalOneShot } from '../audio';
 import { QUEST_ACCEPT_SOUND } from '../sounds';
 import { kickPunch, kickShake } from '../juice';
+import { PARTICLE_BUDGET } from '../fxBudget';
 import { emitPickup } from '../pickupFX';
 
 // بلوط طلایی پنهان: درخشش ملایم + چرخش آرام + تعامل E
@@ -70,7 +71,7 @@ function GoldenAcorn({ index, spot }) {
       {/* درخشش نامحسوس (راهنمای بصری) */}
       <pointLight color="#ffd24d" intensity={2.4} distance={4} decay={2} position={[0, 0.7, 0]} />
       <Sparkles
-        count={8}
+        count={PARTICLE_BUDGET.acorn}
         scale={[0.7, 0.7, 0.7]}
         position={[0, 0.6, 0]}
         size={2}

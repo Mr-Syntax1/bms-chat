@@ -7,17 +7,15 @@ import * as THREE from 'three';
 export const PREFERRED_CHARACTER_KEY = 'preferred-character';
 export const wardrobeKeyFor = (userId) => `wardrobe-${userId}`;
 
-// نام نمایشی کاراکترها برای انتخابگر پیش‌بازی و کمد (کلید = نام فایل مدل)
+// نام نمایشی کاراکترها برای انتخابگر پیش‌بازی و کمد (کلید = شناسه‌ی کاراکتر)
 export const CHARACTER_LABELS = {
-  'Cactoro.glb': 'کاکتوس',
-  'Citizen.glb': 'شهروند',
-  'CoolBannanaGuy.glb': 'موز باحال',
-  'CubeGuyCharacter.glb': 'آدم مکعبی',
-  'CuteCharacter.glb': 'کوچولوی بامزه',
-  'CuteRedDino.glb': 'داینوی قرمز',
-  'DORAEMON.glb': 'دورامون',
-  'miku.glb': 'میکو',
-  'MushroomCharacter.glb': 'قارچ‌کوچولو',
+  cute_axolotl: 'آکسولوتل',
+  cute_cat_in_cute_banana: 'گربه‌ی موزی',
+  cute_demon: 'دیو کوچولو',
+  cute_gugugaga: 'گوگوگاگا',
+  cute_purple_pony: 'پونی بنفش',
+  cute_robot: 'ربات کوچولو',
+  cute_skull_character: 'اسکلت بامزه',
 };
 
 export const DEFAULT_WARDROBE = {

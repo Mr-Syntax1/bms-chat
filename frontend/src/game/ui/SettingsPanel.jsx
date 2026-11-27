@@ -69,12 +69,12 @@ export default function SettingsPanel({ onClose }) {
           </div>
 
           <div className="mb-2 grid grid-cols-2 gap-1.5 text-[10px] text-[#f5ebdd]/50">
-            <span>سایه: {preset.shadows ? 'روشن' : 'خاموش'}</span>
-            <span>بلوم: {preset.bloom ? 'روشن' : 'خاموش'}</span>
+            <span>سایه: خاموش (ثابت)</span>
+            <span>بلوم: خاموش (ثابت)</span>
             <span>درختان: {preset.treeDensity}</span>
             <span>کرم شب‌تاب: {preset.fireflies}</span>
             <span>شعاع چانک: {preset.chunkRadius}</span>
-            <span>پروازها: {preset.butterflies}</span>
+            <span>پروانه: {preset.butterflies}</span>
           </div>
 
           <Toggle

@@ -5,6 +5,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { QUEST_SPOTS } from '../sceneLayout';
 import Fitted from '../models/Fitted';
 import { modelUrl } from '../assetManifest';
+import { PARTICLE_BUDGET } from '../fxBudget';
 import {
   PostLanternModel,
   WoodenSignModel,
@@ -43,13 +44,14 @@ function StarBurst({ active }) {
   const [done, setDone] = useState(false);
 
   const positions = useMemo(() => {
-    const arr = new Float32Array(60 * 3);
+    const count = PARTICLE_BUDGET.burst;
+    const arr = new Float32Array(count * 3);
     let seed = 777;
     const rand = () => {
       seed = (seed * 1664525 + 1013904223) % 4294967296;
       return seed / 4294967296;
     };
-    for (let i = 0; i < 60; i += 1) {
+    for (let i = 0; i < count; i += 1) {
       arr[i * 3] = (rand() - 0.5) * 0.8;
       arr[i * 3 + 1] = rand() * 1.2;
       arr[i * 3 + 2] = (rand() - 0.5) * 0.8;
@@ -129,7 +131,7 @@ function Parchment({ index, spot }) {
       <group ref={ref} position={[0, 1.05, 0]}>
         <Fitted url={modelUrl('quest.parchment')} height={0.95} />
         <pointLight color="#ffe6a8" intensity={3} distance={5} decay={2} />
-        <Sparkles count={12} scale={[0.9, 0.9, 0.9]} size={2} speed={0.25} color="#ffe6a8" />
+        <Sparkles count={PARTICLE_BUDGET.quest} scale={[0.9, 0.9, 0.9]} size={2} speed={0.25} color="#ffe6a8" />
       </group>
 
       {near && <InteractHint label="تکه نقشه" y={2.4} />}
@@ -156,7 +158,7 @@ function Lantern({ index, spot }) {
             <sphereGeometry args={[0.16, 10, 10]} />
             <meshBasicMaterial color="#ffd08a" />
           </mesh>
-          <Sparkles count={16} scale={[1.2, 1.6, 1.2]} position={[0, 2.6, 0]} size={2.4} speed={0.3} color="#ffcf7a" />
+          <Sparkles count={PARTICLE_BUDGET.quest} scale={[1.2, 1.6, 1.2]} position={[0, 2.6, 0]} size={2.4} speed={0.3} color="#ffcf7a" />
           <StarBurst active />
         </>
       )}
@@ -246,7 +248,7 @@ function TreasureChest() {
       {opened && (
         <>
           <pointLight position={[0, 1.6, 0]} color="#ffd24d" intensity={22} distance={18} decay={1.6} />
-          <Sparkles color="#ffd24d" count={70} scale={[2.4, 2.8, 2.4]} position={[0, 1.4, 0]} size={3.4} speed={0.7} />
+          <Sparkles color="#ffd24d" count={PARTICLE_BUDGET.quest} scale={[2.4, 2.8, 2.4]} position={[0, 1.4, 0]} size={3.4} speed={0.7} />
         </>
       )}
       {near && !opened && <InteractHint label="باز کردن صندوقچه" locked={!hasKey} />}

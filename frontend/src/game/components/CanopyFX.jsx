@@ -4,62 +4,19 @@ import * as THREE from 'three';
 import { useQualityPreset } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { getGroundHeight } from '../terrain';
+import { PARTICLE_BUDGET } from '../fxBudget';
 
 // ---------------------------------------------------------------------------
-// حس تاج جنگل: ستون‌های نور ارزان، گرده‌های شناور و برگ‌های در حال ریزش.
-// همه‌ی تعدادها از preset می‌آیند؛ low = خاموش.
+// حس تاج جنگل: گرده‌های شناور و برگ‌های در حال ریزش.
+//
+//  ⚠️ ستون‌های نور (light shafts / god rays) کاملاً حذف شدند — آن‌ها همان
+//  «مخروط‌های نور معلق در هوا»ی اسکرین‌شات ۲ بودند.
+//  ⚠️ تعداد برگ‌ها و گرده‌ها از سقف جهانی ذرات (PARTICLE_BUDGET) می‌آید، نه
+//  per-preset — قبلاً گرده‌ها تا ۷۰ عدد می‌رفتند و سقف ۵۰ را می‌شکستند.
 // ---------------------------------------------------------------------------
-const SHAFT_COUNT = { low: 0, medium: 3, high: 5 };
-const POLLEN_COUNT = { low: 0, medium: 90, high: 180 };
-const LEAF_COUNT = { low: 0, medium: 26, high: 48 };
+const POLLEN_COUNT = PARTICLE_BUDGET.pollen;
 
-// ستون‌های نور نزدیک محوطه‌ی آتش و آبشار
-const SHAFT_SPOTS = [
-  { x: -8, z: -6, r: 2.4, h: 13 },
-  { x: 6, z: 8, r: 2.0, h: 12 },
-  { x: -38, z: -44, r: 2.8, h: 15 },
-  { x: -22, z: -20, r: 2.2, h: 12 },
-  { x: 12, z: -14, r: 1.8, h: 11 },
-];
-
-function LightShafts() {
-  const groupRef = useRef(null);
-
-  useFrame(({ clock }) => {
-    const group = groupRef.current;
-    if (!group) return;
-    // شب ثابت: ستون‌های مهتاب بسیار محو + سوسوی آرام
-    const t = clock.elapsedTime;
-    for (let i = 0; i < group.children.length; i += 1) {
-      const mesh = group.children[i];
-      const breath = 0.5 + 0.5 * Math.sin(t * 0.35 + i * 1.9);
-      mesh.material.opacity = 0.035 * (0.6 + breath * 0.6);
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      {SHAFT_SPOTS.map((spot, i) => {
-        const ground = getGroundHeight(spot.x, spot.z);
-        return (
-          <mesh key={i} position={[spot.x, ground + spot.h * 0.5, spot.z]}>
-            <cylinderGeometry args={[spot.r * 0.35, spot.r, spot.h, 10, 1, true]} />
-            <meshBasicMaterial
-              color="#ffe7b0"
-              transparent
-              opacity={0.08}
-              depthWrite={false}
-              side={THREE.DoubleSide}
-              blending={THREE.AdditiveBlending}
-            />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
-function Pollen({ count }) {
+export function Pollen({ count }) {
   const ref = useRef(null);
 
   const positions = useMemo(() => {
@@ -199,19 +156,20 @@ function FallingLeaves({ count }) {
 
 export default function CanopyFX() {
   const preset = useQualityPreset();
-  // کمپ شلوغ (۳+ نفر) چگالی ذرات تاج را ۵۰٪ بیشتر می‌کند
+  // کمپ شلوغ (۳+ نفر) گرده‌ی بیشتری نشان می‌دهد، ولی برگ‌ها سقف جهانی دارند
   const crowded = usePlayerStore((s) => s.peerCount >= 3);
   const tier = preset.treeDensity > 700 ? 'high' : preset.treeDensity > 500 ? 'medium' : 'low';
 
   if (tier === 'low') return null;
 
-  const crowdMul = crowded ? 1.5 : 1;
+  const crowdMul = crowded ? 1.4 : 1;
+  const leafCount = PARTICLE_BUDGET.leaves;
+  const pollenCount = Math.min(PARTICLE_BUDGET.pollen, Math.round(POLLEN_COUNT * crowdMul));
 
   return (
     <group>
-      <LightShafts count={SHAFT_COUNT[tier]} />
-      <Pollen count={Math.round(POLLEN_COUNT[tier] * crowdMul)} />
-      <FallingLeaves count={Math.round(LEAF_COUNT[tier] * crowdMul)} />
+      <Pollen count={pollenCount} />
+      <FallingLeaves count={leafCount} />
     </group>
   );
 }

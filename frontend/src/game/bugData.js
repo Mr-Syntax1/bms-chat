@@ -8,6 +8,7 @@
 // ---------------------------------------------------------------------------
 import { QUEST_SPOTS } from './sceneLayout';
 import { getGroundHeight, isInWater, pathDistance, POND, WATER_LEVEL, CAMP_RADIUS } from './terrain';
+import { BUTTERFLY_SPLIT, FIREFLY_SPLIT } from './fxBudget';
 
 export const BUG_TYPES = {
   butterfly: { name: 'پروانه', icon: 'butterfly', rarity: 'common', color: '#ffd166' },
@@ -15,10 +16,12 @@ export const BUG_TYPES = {
   firefly: { name: 'کرم شب‌تاب', icon: 'firefly', rarity: 'rare', color: '#ffe07a' },
 };
 
+// سقف جهانی حشرات — مجموع دو سیستم (این فایل + CozyScene/Butterflies) از
+// GLOBAL_FIREFLIES/GLOBAL_BUTTERFLIES بیشتر نمی‌شود. سهم این فایل = قابل‌گرفتن.
 const COUNTS = {
-  low: { butterfly: 6, beetle: 3, firefly: 4 },
-  medium: { butterfly: 10, beetle: 5, firefly: 6 },
-  high: { butterfly: 14, beetle: 7, firefly: 9 },
+  low: { butterfly: 2, beetle: 3, firefly: 2 },
+  medium: { butterfly: 3, beetle: 4, firefly: 3 },
+  high: { butterfly: BUTTERFLY_SPLIT.catchable, beetle: 5, firefly: FIREFLY_SPLIT.catchable },
 };
 
 const BUTTERFLY_COLORS = ['#ffd166', '#ff9ecd', '#9ad0ff', '#c9a6ff', '#ffe6a8'];

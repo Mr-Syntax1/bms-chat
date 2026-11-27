@@ -19,16 +19,16 @@ function SunLens({ x }) {
 
 /**
  * عینک روی چشم‌ها؛ z مثبت = جلوی صورت.
- * `y` از بیرون تعیین می‌شود (ارتفاع خط چشم در گروه لنگر).
+ * `y` و `z` از بیرون تعیین می‌شوند (آفست خط چشم نسبت به لنگر سر).
  */
-export default function Glasses({ value, y = 0 }) {
+export default function Glasses({ value, y = 0, z = 0 }) {
   if (value !== 'round' && value !== 'sun') return null;
   const isSun = value === 'sun';
   const Lens = isSun ? SunLens : RoundLens;
   const gap = isSun ? 0.065 : 0.062;
 
   return (
-    <group position={[0, y, 0.17]}>
+    <group position={[0, y, z]}>
       <Lens x={-gap} />
       <Lens x={gap} />
       <mesh position={[0, 0, 0]}>

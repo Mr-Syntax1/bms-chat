@@ -8,6 +8,7 @@ import { registerInteractable, registerCookingStation } from '../interactionRegi
 import { usePlayerStore } from '../stores/usePlayerStore';
 import Fitted from '../models/Fitted';
 import { STATIONS, cooking, subscribeCooking } from '../recipes';
+import { PARTICLE_BUDGET } from '../fxBudget';
 
 const POT_URL = modelUrl('cooking.pot');
 const CAULDRON_URL = modelUrl('cooking.cauldron');
@@ -45,7 +46,8 @@ function Tripod({ children }) {
 
 // بخار ملایم بالای ظرف در حین پخت: چند کره‌ی شفاف که بالا می‌روند و محو
 // می‌شوند. فقط یک InstancedMesh؛ هیچ تخصیصی در هر فریم ندارد.
-const STEAM_COUNT = 7;
+// تعداد از سقف جهانی ذرات می‌آید (فقط یک ایستگاه هم‌زمان می‌پزد).
+const STEAM_COUNT = PARTICLE_BUDGET.steam;
 
 function Steam({ active }) {
   const meshRef = useRef(null);

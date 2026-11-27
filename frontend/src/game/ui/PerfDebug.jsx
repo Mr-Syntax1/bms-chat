@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { perfStats } from '../debugStats';
 import { chunkStats } from '../world/ChunkManager';
 import { useSettingsStore } from '../stores/useSettingsStore';
+import { TREE_MODEL_BYTES } from '../models/pineParts';
 
 // هر ۰.۵ ثانیه مقادیر را از ماژول‌های mutable می‌خواند (بدون setState در حلقه‌ی فریم)
 function useSlowStats(active) {
@@ -13,6 +14,9 @@ function useSlowStats(active) {
         ...perfStats,
         chunks: chunkStats.chunks,
         trees: chunkStats.trees,
+        lod0: chunkStats.lod0,
+        lod1: chunkStats.lod1,
+        lod2: chunkStats.lod2,
         flora: chunkStats.flora,
       });
     }, 500);
@@ -20,6 +24,8 @@ function useSlowStats(active) {
   }, [active]);
   return snap;
 }
+
+const KB = (bytes) => `${(bytes / 1024).toFixed(0)}KB`;
 
 /**
  * پنل دیباگ کارایی (Ctrl+Shift+P).
@@ -78,6 +84,16 @@ export default function PerfDebug() {
         <div className="flex justify-between">
           <span className="text-[#f5ebdd]/45">trees</span>
           <span>{snap.trees}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[#f5ebdd]/45">lod 0/1/2</span>
+          <span>
+            {snap.lod0}/{snap.lod1}/{snap.lod2}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[#f5ebdd]/45">tree model</span>
+          <span className="text-[#9ad0ff]">{KB(TREE_MODEL_BYTES)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-[#f5ebdd]/45">flora</span>

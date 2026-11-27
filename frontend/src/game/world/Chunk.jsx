@@ -1,12 +1,16 @@
 // ---------------------------------------------------------------------------
-// world/Chunk.jsx — رندر محتوای چانک‌ها (Phase 5)
+// world/Chunk.jsx — رندر محتوای چانک‌ها (Phase 5 + پاس کارایی ۵.۱)
 //
 //  • محتوا از چانک‌های فعال می‌آید (استریمینگ)، ولی برای کم‌کردن draw call
 //    همه‌ی چانک‌های فعال در یک مجموعه InstancedMesh تجمیع می‌شوند و با تغییر
 //    مجموعه‌ی چانک‌ها بازسازی می‌شوند (به‌جای یک مش به‌ازای هر چانک).
-//  • LOD درختان: نزدیک = Pine/Pine2 کامل، دور = تک‌مدل سبک opt-Pine بدون سایه.
-//  • NEVER BirchTrees — فقط Pine / Pine2 / opt-Pine.
-//  • هندسه/متریال مدل‌ها بین همه‌ی چانک‌ها مشترک و کش‌شده است.
+//  • تک‌مدل درخت: همه‌ی LODها از PineTrees.glb می‌آیند.
+//      LOD0: ۰..۴۰   — کامل، با تینت برگ
+//      LOD1: ۴۰..۸۰  — همان مدل، بدون تینت
+//      LOD2: ۸۰..۱۲۰ — همان مدل، مقیاس ماتریس ساده‌تر
+//    همه‌ی لایه‌ها همیشه رندر می‌شوند تا با جابه‌جایی بازیکن «درخت ناپدید»
+//    نشود؛ فقط تینت/سایه عوض می‌شود.
+//  • سایه‌ها سراسر بازی خاموش‌اند (shadowMap.enabled=false).
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -96,24 +100,26 @@ function TreeParts({ model, items, castShadow, leafTint = true }) {
 
 /**
  * درختان همه‌ی چانک‌های فعال در یک مجموعه InstancedMesh تجمیع‌شده.
- * @param {{near:Array, far:Array}} groups  (near: Pine/Pine2، far: opt-Pine سبک)
+ * همه‌ی لایه‌ها از یک مدل (PineTrees.glb) می‌آیند.
+ * @param {{near:Array, far:Array, far2?:Array}} groups
  */
-export function ChunkTrees({ groups, castShadow = true }) {
-  const pine = usePineModel(modelUrl('trees.pineOpt'));
-  const pine2 = usePineModel(modelUrl('trees.pine2'));
+export function ChunkTrees({ groups, castShadow = false }) {
+  const pine = usePineModel(modelUrl('trees.pine'));
 
-  const split = useMemo(() => {
-    const a = [];
-    const b = [];
-    (groups.near || []).forEach((t) => (t.variant === 1 ? b : a).push(t));
-    return { a, b, far: groups.far || [] };
-  }, [groups]);
+  const split = useMemo(
+    () => ({
+      lod0: groups.near || [],
+      lod1: groups.far || [],
+      lod2: groups.far2 || [],
+    }),
+    [groups]
+  );
 
   return (
     <group name="chunk-trees">
-      <TreeParts model={pine} items={split.a} castShadow={castShadow} />
-      <TreeParts model={pine2} items={split.b} castShadow={castShadow} />
-      <TreeParts model={pine} items={split.far} castShadow={false} leafTint={false} />
+      <TreeParts model={pine} items={split.lod0} castShadow={castShadow} />
+      <TreeParts model={pine} items={split.lod1} castShadow={false} />
+      <TreeParts model={pine} items={split.lod2} castShadow={false} />
     </group>
   );
 }
@@ -179,12 +185,10 @@ function FloraInstances({ url, items, targetHeight, castShadow = false }) {
 export function ChunkFlora({ flora }) {
   return (
     <group name="chunk-flora">
-      <FloraInstances url={modelUrl('undergrowth.grass')} items={flora.grass || []} targetHeight={0.5} />
+      <FloraInstances url={modelUrl('undergrowth.grass')} items={flora.grass || []} targetHeight={0.55} />
       <FloraInstances url={modelUrl('undergrowth.flowers')} items={flora.flowers || []} targetHeight={0.42} />
-      <FloraInstances url={modelUrl('rocks.rocksOpt')} items={flora.rocks || []} targetHeight={0.7} castShadow />
+      <FloraInstances url={modelUrl('rocks.rocksOpt')} items={flora.rocks || []} targetHeight={0.7} />
       <FloraInstances url={modelUrl('undergrowth.mushrooms')} items={flora.mushrooms || []} targetHeight={0.3} />
     </group>
   );
 }
-
-// ارتفاع/شیب زمین برای درختان (یک‌بار هنگام تولید داده‌ی رندر)

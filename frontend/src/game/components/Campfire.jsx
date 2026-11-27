@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { FIRE_KEEPOUT, SEAT_SPOTS } from '../sceneLayout';
 import { registerInteractable } from '../interactionRegistry';
 import { usePlayerStore, campMood } from '../stores/usePlayerStore';
-import { useQualityPreset } from '../stores/useSettingsStore';
+import { PARTICLE_BUDGET } from '../fxBudget';
 import InstancedGLB from '../models/InstancedGLB';
 import { modelUrl } from '../assetManifest';
 import { Model as BonfireModel } from '../models/Bonfire';
@@ -29,7 +29,6 @@ const FIRE_ROCK_RING = Array.from({ length: 7 }, (_, i) => {
 });
 
 export default function Campfire() {
-  const preset = useQualityPreset();
   const lightRef = useRef(null);
   const emberRef = useRef(null);
   const glowRef = useRef(null);
@@ -81,9 +80,7 @@ export default function Campfire() {
         intensity={38}
         distance={30}
         decay={1.6}
-        castShadow={preset.shadows}
-        shadow-bias={-0.0015}
-        shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
+        castShadow={false}
       />
       <pointLight ref={emberRef} position={[0, 0.5, 0]} color="#ff6b2c" intensity={9} distance={11} decay={2} />
 
@@ -92,7 +89,7 @@ export default function Campfire() {
         <meshBasicMaterial color="#ff8c42" transparent opacity={0.13} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
 
-      <Sparkles count={38} scale={[2, 2.8, 2]} position={[0, 1.5, 0]} size={2.8} speed={0.35} opacity={0.85} color="#ffb066" />
+      <Sparkles count={PARTICLE_BUDGET.campfire} scale={[2, 2.8, 2]} position={[0, 1.5, 0]} size={2.8} speed={0.35} opacity={0.85} color="#ffb066" />
 
       {/* نشانگر تعامل بالای آتش */}
       {nearFire && !seated && (

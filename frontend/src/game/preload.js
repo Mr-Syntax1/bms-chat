@@ -1,6 +1,6 @@
 import './models/setupDraco';
 import { useGLTF } from '@react-three/drei';
-import { CHARACTER_FILES, characterUrl } from './models/characterConfig';
+import { CHARACTER_IDS, characterUrl } from './models/characterConfig';
 import { groupUrls, PRELOAD_GROUPS } from './assetManifest';
 
 // ---------------------------------------------------------------------------
@@ -22,8 +22,8 @@ export function preloadAllModels() {
   if (started) return;
   started = true;
 
-  // کاراکترها (۹ مدل) — برای دیدن خود و بازیکنان دیگر لازم‌اند
-  CHARACTER_FILES.forEach((file) => useGLTF.preload(characterUrl(file)));
+  // کاراکترها (۷ مدل) — برای دیدن خود و بازیکنان دیگر لازم‌اند
+  CHARACTER_IDS.forEach((id) => useGLTF.preload(characterUrl(id)));
 
   [...coreUrls, ...beachUrls, ...questUrls].forEach((url) => {
     useGLTF.preload(url);

@@ -135,7 +135,6 @@ function TypeMesh({ type, list, indices, geometry, extra }) {
       ref={meshRef}
       args={[geometry, undefined, indices.length]}
       frustumCulled={false}
-      castShadow={type === 'beetle'}
     >
       <meshStandardMaterial
         roughness={0.7}

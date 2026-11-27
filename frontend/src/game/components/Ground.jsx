@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
@@ -12,7 +12,6 @@ import {
   groundColorAt,
 } from '../terrain';
 import { useQualityPreset } from '../stores/useSettingsStore';
-import { usePlayerStore } from '../stores/usePlayerStore';
 
 // ---------------------------------------------------------------------------
 // زمین heightmap با vertex color
@@ -384,66 +383,21 @@ export default function Ground() {
 }
 
 // نورپردازی شب دنج — شب ثابت: ماه سرد + هاله‌ی آسمان، بدون خورشید/چرخه
-// سایه‌ها: دوربین سایه با بازیکن حرکت می‌کند و فقط محدوده‌ی نزدیک را می‌پوشاند
-// (به‌جای ±۱۰۰ روی نقشه‌ی ۴۰۰ واحد که کیفیت سایه را نابود می‌کرد).
-function FollowMoonShadow({ preset }) {
-  const lightRef = useRef(null);
-  const targetRef = useRef(null);
-  const tick = useRef(0);
-  const half = (preset.shadowDistance ?? 64) * 0.5;
-
-  useEffect(() => {
-    if (lightRef.current && targetRef.current) {
-      lightRef.current.target = targetRef.current;
-      lightRef.current.target.updateMatrixWorld();
-    }
-  }, []);
-
-  useFrame(() => {
-    const light = lightRef.current;
-    if (!light) return;
-    // هر ۸ فریم یک‌بار — حرکت نور سایه باید ثابت بماند تا سایه نلرزد
-    tick.current += 1;
-    if (tick.current % 8 !== 0) return;
-    const { local } = usePlayerStore.getState();
-    light.position.set(local.x + 34, 62, local.z + 22);
-    if (targetRef.current) {
-      targetRef.current.position.set(local.x, 0, local.z);
-      targetRef.current.updateMatrixWorld();
-    }
-  });
-
+// ⚠️ پاس کارایی ۵.۱: سایه‌ها کاملاً خاموش‌اند (shadowMap.enabled=false).
+//    تنها منبع نور جهت‌دار، «ماه» است؛ هیچ SpotLight/light shaft وجود ندارد.
+//    ردیابی دوربین سایه و shadow camera حذف شدند چون سایه رندر نمی‌شود.
+function MoonLight() {
   return (
-    <>
-      <directionalLight
-        ref={lightRef}
-        position={[34, 62, 22]}
-        intensity={0.8}
-        color="#b7caff"
-        castShadow={preset.shadows}
-        shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
-        shadow-camera-left={-half}
-        shadow-camera-right={half}
-        shadow-camera-top={half}
-        shadow-camera-bottom={-half}
-        shadow-camera-near={1}
-        shadow-camera-far={170}
-        shadow-bias={-0.0012}
-        shadow-normalBias={0.03}
-      />
-      <object3D ref={targetRef} />
-    </>
+    <directionalLight position={[34, 62, 22]} intensity={0.85} color="#b7caff" castShadow={false} />
   );
 }
 
 export function AmbientSetup() {
-  const preset = useQualityPreset();
-
   return (
     <>
-      <ambientLight intensity={0.24} color="#93a7d4" />
+      <ambientLight intensity={0.26} color="#93a7d4" />
       <hemisphereLight args={['#5d7fa8', '#1b2a20', 0.55]} />
-      <FollowMoonShadow preset={preset} />
+      <MoonLight />
     </>
   );
 }

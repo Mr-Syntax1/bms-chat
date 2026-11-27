@@ -3,9 +3,19 @@ import { create } from 'zustand';
 // ---------------------------------------------------------------------------
 // تنظیمات گرافیکی/صوتی/کنترل — ذخیره در localStorage
 // پیش‌فرض‌ها محافظه‌کارانه‌اند تا روی موبایل هم روان اجرا شود
+//
+// ⚠️ سقف‌های ثابت (پاس کارایی ۵.۱) — در همه‌ی پریست‌ها یکسان:
+//    shadows: false       → سایه کاملاً خاموش (shadowMap.enabled = false)
+//    bloom: false         → بلوم/پست‌پروسسینگ کاملاً حذف
+//    fireflies: 10        → حداکثر ۱۰ کرم شب‌تاب در کل صحنه (GLOBAL)
+//    butterflies: 12      → حداکثر ۱۲ پروانه در کل صحنه (GLOBAL)
+//    particles: 1         → فقط برای مقیاس افکت‌های غیرذره‌ای
 // ---------------------------------------------------------------------------
 const STORAGE_KEY = 'cozy-forest-settings-v2';
 const LEGACY_KEYS = ['cozy-forest-settings-v1'];
+
+export const MAX_FIREFLIES = 10;
+export const MAX_BUTTERFLIES = 12;
 
 export const QUALITY_PRESETS = {
   low: {
@@ -15,69 +25,69 @@ export const QUALITY_PRESETS = {
     shadowMapSize: 1024,
     shadowDistance: 40,
     bloom: false,
-    vignette: true,
-    particles: 0.35,
+    vignette: false,
+    particles: 0.5,
     treeDensity: 300,
-    treeLodDistance: 30,
+    treeLodDistance: 40,
     grassDensity: 0.3,
-    butterflies: 0,
-    fireflies: 24,
+    butterflies: 6,
+    fireflies: 6,
     envAnimation: false,
-    chunkRadius: 2,
+    chunkRadius: 5,
     aiRadius: 40,
   },
   medium: {
     label: 'متوسط',
     dpr: 1.25,
-    shadows: true,
+    shadows: false,
     shadowMapSize: 1024,
     shadowDistance: 56,
-    bloom: true,
-    vignette: true,
-    particles: 0.7,
+    bloom: false,
+    vignette: false,
+    particles: 0.75,
     treeDensity: 500,
-    treeLodDistance: 42,
+    treeLodDistance: 40,
     grassDensity: 0.6,
     butterflies: 10,
-    fireflies: 42,
+    fireflies: 8,
     envAnimation: true,
-    chunkRadius: 3,
+    chunkRadius: 5,
     aiRadius: 60,
   },
   high: {
     label: 'زیاد',
     dpr: 1.5,
-    shadows: true,
+    shadows: false,
     shadowMapSize: 2048,
     shadowDistance: 72,
-    bloom: true,
-    vignette: true,
+    bloom: false,
+    vignette: false,
     particles: 1,
     treeDensity: 800,
-    treeLodDistance: 50,
+    treeLodDistance: 40,
     grassDensity: 1,
-    butterflies: 18,
-    fireflies: 60,
+    butterflies: MAX_BUTTERFLIES,
+    fireflies: MAX_FIREFLIES,
     envAnimation: true,
-    chunkRadius: 4,
+    chunkRadius: 6,
     aiRadius: 80,
   },
   ultra: {
     label: 'فوق‌العاده',
     dpr: 2,
-    shadows: true,
+    shadows: false,
     shadowMapSize: 4096,
     shadowDistance: 90,
-    bloom: true,
-    vignette: true,
-    particles: 1.25,
+    bloom: false,
+    vignette: false,
+    particles: 1,
     treeDensity: 1000,
-    treeLodDistance: 62,
+    treeLodDistance: 40,
     grassDensity: 1.35,
-    butterflies: 26,
-    fireflies: 80,
+    butterflies: MAX_BUTTERFLIES,
+    fireflies: MAX_FIREFLIES,
     envAnimation: true,
-    chunkRadius: 5,
+    chunkRadius: 6,
     aiRadius: 100,
   },
 };

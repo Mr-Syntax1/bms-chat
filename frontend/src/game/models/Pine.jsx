@@ -3,7 +3,7 @@ import { useGLTF } from '@react-three/drei';
 import { useModelClone } from './useModel';
 import { modelUrl } from '../assetManifest';
 
-const URL = modelUrl('trees.pineOpt');
+const URL = modelUrl('trees.pine');
 
 // درخت کاج (نسخه‌ی تک‌نمونه؛ جنگل از InstancedMesh استفاده می‌کند)
 export function Model(props) {

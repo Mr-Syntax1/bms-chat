@@ -5,6 +5,7 @@
 //    چانک‌های فعال عوض شود، state به‌روز می‌شود (نه هر فریم).
 //  • رندر درختان/فلور در یک مجموعه InstancedMesh تجمیع‌شده انجام می‌شود.
 //  • progressive: در فریم اول فقط شعاع کوچک، بعد از ۲ ثانیه شعاع کامل preset.
+//  • حداقل شعاع رندر ۳ است تا با اولین قدم بازیکن، چانک‌ها unload نشوند.
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -19,7 +20,7 @@ const CHECK_INTERVAL = 0.5; // ثانیه
 
 export default function StreamedWorld() {
   const preset = useQualityPreset();
-  const radius = Math.max(2, Math.round(preset.chunkRadius ?? 3));
+  const radius = Math.max(3, Math.round(preset.chunkRadius ?? 3));
 
   const [set, setSet] = useState(null);
   const timer = useRef(0);
@@ -31,7 +32,7 @@ export default function StreamedWorld() {
   useEffect(() => {
     // تغییر تنظیمات گرافیکی → بازسازی فوری
     resetChunkState();
-  }, [radius, preset.treeDensity, preset.grassDensity, preset.treeLodDistance]);
+  }, [radius, preset.treeDensity, preset.grassDensity]);
 
   // پرایم اولیه: بدون انتظار ۰.۵ ثانیه، بلافاصله چانک‌های اطراف بازیکن
   useEffect(() => {
@@ -41,8 +42,7 @@ export default function StreamedWorld() {
       local.z,
       effectiveRadius.current,
       preset.treeDensity * 3.25,
-      preset.grassDensity,
-      preset.treeLodDistance
+      preset.grassDensity
     );
     if (next) setSet(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -62,8 +62,7 @@ export default function StreamedWorld() {
       local.z,
       effectiveRadius.current,
       preset.treeDensity * 3.25,
-      preset.grassDensity,
-      preset.treeLodDistance
+      preset.grassDensity
     );
     if (next) setSet(next);
   });
@@ -74,13 +73,14 @@ export default function StreamedWorld() {
     return {
       near: placeTrees(set.groups.near),
       far: placeTrees(set.groups.far),
+      far2: placeTrees(set.groups.far2),
     };
   }, [set]);
 
   // ثبت درختان فعال برای برخورد بازیکن (بدون درخت نامرئی)
   useEffect(() => {
     if (!groups) return;
-    setActiveTrees([...groups.near, ...groups.far]);
+    setActiveTrees([...groups.near, ...groups.far, ...groups.far2]);
   }, [groups]);
 
   const flora = useMemo(
@@ -92,7 +92,7 @@ export default function StreamedWorld() {
 
   return (
     <group name={`streamed-${chunkState.signature}`}>
-      <ChunkTrees groups={groups} castShadow={preset.shadows} />
+      <ChunkTrees groups={groups} />
       <ChunkFlora flora={flora} />
     </group>
   );

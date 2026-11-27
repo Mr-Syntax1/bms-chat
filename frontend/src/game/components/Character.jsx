@@ -5,14 +5,15 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SkeletonUtils } from 'three-stdlib';
 import {
-  CHARACTERS,
+  CHARACTER_IDS,
   DEFAULT_CHARACTER,
   CLIP_SUFFIX,
   TARGET_HEIGHT,
   characterUrl,
+  getCharacterConfig,
   getFacingOffset,
   getPropAnchor,
-  getHeadAnchor,
+  getWardrobeAnchors,
 } from '../models/characterConfig';
 import { applyShirtTint, normalizeWardrobe } from '../models/wardrobeConfig';
 import { useSettingsStore } from '../stores/useSettingsStore';
@@ -64,8 +65,11 @@ export default function Character({
   crumbs = false,
   ...props
 }) {
-  const config = CHARACTERS[model] || CHARACTERS[DEFAULT_CHARACTER];
+  const config = getCharacterConfig(model);
   const url = characterUrl(model);
+  // آیا مدل کلیپ واقعی دارد؟ (idle/walk/run از config می‌آیند، بقیه از CLIP_SUFFIX)
+  const animMode = config.animations?.mode || 'procedural';
+  const hasClips = animMode === 'clips' || animMode === 'hybrid';
 
   const groupRef = useRef(null);
   const innerRef = useRef(null);
@@ -96,9 +100,19 @@ export default function Character({
     return key;
   };
 
-  // سوییچ کلیپ برای مدل‌های ریگ‌دار
+  // نام کلیپ برای یک اکشن: اول از animationMap کاراکتر، بعد CLIP_SUFFIX، بعد idle
+  const clipFor = (key) => {
+    const map = config.animations || {};
+    if (key === 'idle' && map.idle) return map.idle;
+    if (key === 'walk' && map.walk) return map.walk;
+    if (key === 'run' && map.run) return map.run;
+    const suffix = config.clipOverrides?.[key] || CLIP_SUFFIX[key];
+    return `${config.clipPrefix || ''}${suffix}`;
+  };
+
+  // سوییچ کلیپ برای مدل‌های ریگ‌دار/کلیپ‌دار
   useFrame(() => {
-    if (!config.clips || !actions) return;
+    if (!hasClips || !actions) return;
     const isMoving = Boolean(resolve(moving));
     const isRunning = Boolean(resolve(running));
     const currentEmote = resolve(emote);
@@ -107,12 +121,9 @@ export default function Character({
     const currentRest = resolve(rest);
 
     const key = pickClip(isMoving, isRunning, currentEmote, currentAction, isSeated, currentRest);
-    const suffix = config.clipOverrides?.[key] || CLIP_SUFFIX[key];
-    const clipName = `${config.prefix || ''}${suffix}`;
+    const clipName = clipFor(key);
     // اگر کلیپ موردنظر نبود، به idle برگرد
-    const next =
-      actions[clipName] ||
-      actions[`${config.prefix || ''}${config.clipOverrides?.idle || CLIP_SUFFIX.idle}`];
+    const next = actions[clipName] || actions[clipFor('idle')];
     if (!next || currentRef.current === next) return;
 
     const prev = currentRef.current;
@@ -178,7 +189,7 @@ export default function Character({
     baseY.current += (targetY - baseY.current) * 0.18;
     inner.position.y = baseY.current;
 
-    if (config.clips) {
+    if (animMode === 'clips') {
       // تکان سر ملایم هنگام راه رفتن برای مدل‌های ریگ‌دار
       const tRig = clock.elapsedTime + phase.current;
       const rigBob = isMoving ? Math.abs(Math.sin(tRig * (isRunning ? 11 : 7))) * 0.05 : 0;
@@ -354,10 +365,11 @@ export default function Character({
 
   // مقیاس و آفست عمودی بر اساس ارتفاع واقعی مدل
   const scale = TARGET_HEIGHT / config.height;
-  const lift = -(config.minY || 0) * scale;
+  // groundOffset از بازرسی هر مدل می‌آید تا پاها دقیقاً روی y=0 بنشینند
+  const lift = Number.isFinite(config.groundOffset) ? config.groundOffset : -(config.minY || 0) * scale;
   // لنگر پروپ مخصوص همین مدل (نسبت سر/بدن هر کاراکتر فرق دارد)
   const propAnchor = getPropAnchor(model);
-  const headAnchor = getHeadAnchor(model);
+  const wardrobeAnchors = getWardrobeAnchors(model);
   // wardrobe می‌تواند شیء ثابت یا getter باشد؛ کلید JSON از رندر تکراری جلوگیری می‌کند.
   // اگر کمد ارسال نشده باشد (بازیکن قدیمی)، هیچ آیتم/تینتی اعمال نمی‌شود.
   const wardrobeRaw = resolve(wardrobe);
@@ -368,22 +380,32 @@ export default function Character({
     [wardrobeKey]
   );
 
+  // لنگرهای کمد هر کاراکتر (bone + offset + scale) — از characterReport.json
+  const hatAnchor = wardrobeAnchors.hat;
+  const glassesAnchor = wardrobeAnchors.glasses;
+  const backpackAnchor = wardrobeAnchors.backpack;
+  // اختلاف عینک نسبت به کلاه، داخل گروه مقیاس‌شده‌ی سر
+  const headScale = hatAnchor.scale || 1;
+  const glassesLocalY = (glassesAnchor.y - hatAnchor.y) / headScale;
+  const glassesLocalZ = (glassesAnchor.z - hatAnchor.z) / headScale;
+
   // بون سر (اگر مدل اسکلت دارد) تا کلاه/عینک با انیمیشن سر حرکت کنند
   const headBone = useMemo(() => {
-    if (!headAnchor.bone) return null;
+    const boneName = hatAnchor.bone || glassesAnchor.bone;
+    if (!boneName) return null;
     let found = null;
     clone.traverse((child) => {
-      if (!found && child.isBone && child.name === headAnchor.bone) found = child;
+      if (!found && child.isBone && child.name === boneName) found = child;
     });
     if (!found) {
       clone.traverse((child) => {
-        if (!found && child.isBone && child.name.toLowerCase().includes(headAnchor.bone.toLowerCase())) {
+        if (!found && child.isBone && child.name.toLowerCase().includes(boneName.toLowerCase())) {
           found = child;
         }
       });
     }
     return found;
-  }, [clone, headAnchor.bone]);
+  }, [clone, hatAnchor.bone, glassesAnchor.bone]);
 
   // رنگ/بافت پیراهن روی تنه — فقط وقتی انتخاب پیراهن عوض شود
   const shirtKey = `${wardrobeItems.shirt.color}:${wardrobeItems.shirt.pattern}`;
@@ -397,13 +419,13 @@ export default function Character({
     const facing = facingRef.current;
     if (!head || !facing) return;
     if (!headBone) {
-      head.position.set(0, headAnchor.y, headAnchor.z);
+      head.position.set(hatAnchor.x || 0, hatAnchor.y, hatAnchor.z || 0);
       return;
     }
     headBone.getWorldPosition(headWorld);
     facing.worldToLocal(headWorld);
     // بون Head معمولاً در گردن است؛ کمی بالا می‌رویم تا کلاه روی جمجمه بنشیند
-    head.position.set(headWorld.x, headWorld.y + 0.18, headWorld.z + headAnchor.z);
+    head.position.set(headWorld.x, headWorld.y + 0.18, headWorld.z + (hatAnchor.z || 0));
   });
 
   // ---- ذرات خرده‌ی خوردن: یک InstancedMesh کوچک، صفر تخصیص در هر فریم ----
@@ -469,11 +491,19 @@ export default function Character({
             <primitive object={clone} />
           </group>
           {/* کلاه + عینک روی لنگر سر (بون Head یا آفست اندازه‌گیری‌شده) */}
-          <group ref={headGroupRef} position={[0, headAnchor.y, headAnchor.z]} scale={headAnchor.scale}>
+          <group
+            ref={headGroupRef}
+            position={[hatAnchor.x || 0, hatAnchor.y, hatAnchor.z || 0]}
+            scale={hatAnchor.scale || 1}
+          >
             <Hat value={wardrobeItems.hat} />
-            <Glasses value={wardrobeItems.face} y={-0.14} />
+            <Glasses value={wardrobeItems.face} y={glassesLocalY} z={glassesLocalZ} />
           </group>
-          <Accessory value={wardrobeItems.accessory} />
+          <Accessory
+            value={wardrobeItems.accessory}
+            anchor={backpackAnchor}
+            fallback={config.fallbackAnchors?.backpack}
+          />
           {/* پروپ‌های در دست: گیتار / سیخ مارشمالو */}
           <HeldProps action={action} marshmallowStage={marshmallowStage} anchor={propAnchor} />
           {/* خرده‌های خوردن (فقط هنگام خوردن دیده می‌شود) */}
@@ -490,4 +520,4 @@ export default function Character({
 }
 
 // پیش‌بارگذاری همه‌ی کاراکترها
-Object.keys(CHARACTERS).forEach((file) => useGLTF.preload(characterUrl(file)));
+CHARACTER_IDS.forEach((id) => useGLTF.preload(characterUrl(id)));

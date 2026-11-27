@@ -1,7 +1,7 @@
 import { Suspense, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import Character from '../components/Character';
-import { CHARACTERS, DEFAULT_CHARACTER } from '../models/characterConfig';
+import { CHARACTER_IDS, DEFAULT_CHARACTER } from '../models/characterConfig';
 import {
   CHARACTER_LABELS,
   loadPreferredCharacter,
@@ -12,18 +12,16 @@ import { GameIcon } from './icons';
 
 // آیکون هر کاراکتر برای کارت انتخاب
 const CHARACTER_ICONS = {
-  'Cactoro.glb': 'cactus',
-  'Citizen.glb': 'person',
-  'CoolBannanaGuy.glb': 'banana',
-  'CubeGuyCharacter.glb': 'cube',
-  'CuteCharacter.glb': 'chick',
-  'CuteRedDino.glb': 'dino',
-  'DORAEMON.glb': 'cat',
-  'miku.glb': 'mic',
-  'MushroomCharacter.glb': 'mushroom',
+  cute_axolotl: 'fish',
+  cute_cat_in_cute_banana: 'banana',
+  cute_demon: 'flame',
+  cute_gugugaga: 'chick',
+  cute_purple_pony: 'star',
+  cute_robot: 'cube',
+  cute_skull_character: 'person',
 };
 
-const FILES = Object.keys(CHARACTERS);
+const FILES = CHARACTER_IDS;
 
 // گروه چرخان برای پیش‌نمایش زنده — چرخش بیرون از React
 function Turntable({ children }) {
@@ -64,7 +62,7 @@ export function CharacterPreview({ model, wardrobe = null, className = '' }) {
 export default function CharacterSelector({ open = true, onConfirm }) {
   const [selected, setSelected] = useState(() => {
     const saved = loadPreferredCharacter();
-    return CHARACTERS[saved] ? saved : DEFAULT_CHARACTER;
+    return CHARACTER_IDS.includes(saved) ? saved : DEFAULT_CHARACTER;
   });
 
   const label = useMemo(() => CHARACTER_LABELS[selected] || selected, [selected]);

@@ -1,7 +1,6 @@
 import { useMemo, useRef, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Stars, Sparkles } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
+import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import Ground, { AmbientSetup } from './Ground';
 import Campfire from './Campfire';
@@ -28,21 +27,60 @@ import HiddenCollectibles from './HiddenCollectibles';
 import StreamedWorld from '../world/StreamedWorld';
 import { FISHING_SPOTS } from '../fishingSpots';
 import { useQualityPreset } from '../stores/useSettingsStore';
-import { usePlayerStore } from '../stores/usePlayerStore';
+import { FIREFLY_SPLIT, BUTTERFLY_SPLIT } from '../fxBudget';
 
-// کرم شب‌تاب
+// کرم شب‌تاب: ذرات درخشان با سقف جهانی ۱۰ (نه per-chunk).
+// از InstancedMesh سبک استفاده می‌شود تا هزینه‌ی هر ذره مستقل از draw call باشد.
+// سهم این سیستم از سقف جهانی = FIREFLY_SPLIT.ambient (۶)؛ بقیه در Bugs.jsx.
+const FIREFLY_MAX = FIREFLY_SPLIT.ambient;
+
 function Fireflies({ count }) {
+  const total = Math.min(FIREFLY_MAX, Math.max(0, count));
+  const meshRef = useRef(null);
+
+  const seeds = useMemo(
+    () =>
+      Array.from({ length: total }, (_, i) => {
+        const a = (i / Math.max(1, total)) * Math.PI * 2;
+        return {
+          x: Math.cos(a) * (6 + (i % 4) * 3.5),
+          z: Math.sin(a) * (6 + (i % 3) * 4),
+          y: 1.2 + (i % 5) * 0.5,
+          phase: i * 1.37,
+          speed: 0.25 + (i % 3) * 0.12,
+        };
+      }),
+    [total]
+  );
+
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  useFrame(({ clock }) => {
+    const mesh = meshRef.current;
+    if (!mesh || !seeds.length) return;
+    const t = clock.elapsedTime;
+    for (let i = 0; i < seeds.length; i += 1) {
+      const s = seeds[i];
+      dummy.position.set(
+        s.x + Math.sin(t * s.speed + s.phase) * 1.6,
+        s.y + Math.sin(t * s.speed * 1.7 + s.phase) * 0.55,
+        s.z + Math.cos(t * s.speed * 0.9 + s.phase) * 1.6
+      );
+      const pulse = 0.7 + Math.sin(t * 2.4 + s.phase) * 0.3;
+      dummy.scale.setScalar(pulse);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+
+  if (!total) return null;
+
   return (
-    <Sparkles
-      count={count}
-      scale={[30, 5, 30]}
-      position={[0, 1.6, 0]}
-      size={3.6}
-      speed={0.22}
-      opacity={0.55}
-      color="#ffe07a"
-      noise={1.4}
-    />
+    <instancedMesh ref={meshRef} args={[undefined, undefined, total]} frustumCulled={false}>
+      <sphereGeometry args={[0.055, 6, 5]} />
+      <meshBasicMaterial color="#ffe07a" transparent opacity={0.85} depthWrite={false} toneMapped={false} />
+    </instancedMesh>
   );
 }
 
@@ -214,9 +252,10 @@ function LowPolyClouds({ animate = true }) {
 
 export default function CozyScene() {
   const preset = useQualityPreset();
-  // کمپ شلوغ (۳+ نفر) کرم‌شب‌تاب بیشتری روشن می‌کند
-  const crowded = usePlayerStore((s) => s.peerCount >= 3);
-  const fireflyCount = Math.round(preset.fireflies * (crowded ? 1.5 : 1));
+  // سقف جهانی: مجموع کرم‌شب‌تاب‌ها ۱۰ و پروانه‌ها ۱۲ — مستقل از کیفیت و
+  // تعداد بازیکن. سهم این صحنه از هر سقف در fxBudget تقسیم شده است.
+  const fireflyCount = Math.min(FIREFLY_SPLIT.ambient, preset.fireflies);
+  const butterflyCount = Math.min(BUTTERFLY_SPLIT.ambient, preset.butterflies);
 
   return (
     <>
@@ -280,20 +319,10 @@ export default function CozyScene() {
         <HiddenCollectibles />
       </Suspense>
       <Fireflies count={fireflyCount} />
-      <Butterflies count={preset.butterflies} />
+      <Butterflies count={butterflyCount} />
       <PickupFX />
 
       <AmbientAudio />
-
-      {/* پست‌پروسسینگ فقط وقتی کیفیت اجازه بدهد */}
-      {preset.bloom || preset.vignette ? (
-        <EffectComposer multisampling={0}>
-          {preset.bloom && (
-            <Bloom intensity={0.55} luminanceThreshold={0.62} luminanceSmoothing={0.28} mipmapBlur />
-          )}
-          {preset.vignette && <Vignette eskil={false} offset={0.32} darkness={0.72} />}
-        </EffectComposer>
-      ) : null}
     </>
   );
 }

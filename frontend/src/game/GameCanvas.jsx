@@ -45,7 +45,7 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
   return (
     <KeyboardControls map={KEY_MAP}>
       <Canvas
-        shadows={preset.shadows}
+        shadows={false}
         dpr={[1, preset.dpr]}
         camera={{ position: [0, 2.2, 4], fov: 62, near: 0.1, far: 400 }}
         gl={{
@@ -58,8 +58,8 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
         }}
         onCreated={({ gl }) => {
           gl.setClearColor('#070d1c');
-          // سایه‌ی نرم (PCFSoft) — همیشه، مستقل از preset
-          gl.shadowMap.type = THREE.PCFSoftShadowMap;
+          // ⚠️ سایه کاملاً خاموش (پاس کارایی ۵.۱) — هیچ نور سایه‌اندازی رندر نمی‌شود
+          gl.shadowMap.enabled = false;
         }}
       >
         {/* AudioListener باید قبل از افکت‌های صدای محیطی ساخته شود */}
