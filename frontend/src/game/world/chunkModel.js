@@ -14,12 +14,12 @@ const mergedCache = new Map();
 // کلون می‌کنیم، کمی روشن‌تر و کاملاً مات می‌کنیم تا در نور ماه خوانا باشند.
 function tuneFloraMaterial(source) {
   const mat = source.clone();
-  if (mat.color) mat.color.multiplyScalar(1.45);
+  if (mat.color) mat.color.multiplyScalar(1.2);
   mat.metalness = 0;
   mat.roughness = Math.max(0.8, mat.roughness ?? 1);
   if (mat.emissive) {
-    mat.emissive.set('#101a0c');
-    mat.emissiveIntensity = 0.35;
+    mat.emissive.set('#0c1408');
+    mat.emissiveIntensity = 0.2;
   }
   mat.needsUpdate = true;
   return mat;

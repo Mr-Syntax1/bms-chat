@@ -31,17 +31,17 @@ function brightenMaterial(source, kind) {
   const mat = source.clone();
   if (mat.color) {
     if (kind === 'leaf') {
-      mat.color.multiplyScalar(2.35);
-      mat.color.offsetHSL(0, 0.05, 0.12);
+      mat.color.multiplyScalar(1.45);
+      mat.color.offsetHSL(0, 0.03, 0.05);
     } else {
-      mat.color.multiplyScalar(1.7);
+      mat.color.multiplyScalar(1.25);
     }
   }
   mat.metalness = 0.02;
   mat.roughness = Math.max(0.72, mat.roughness ?? 1);
   if (mat.emissive) {
-    mat.emissive.set(kind === 'leaf' ? '#16240c' : '#1a1206');
-    mat.emissiveIntensity = kind === 'leaf' ? 0.55 : 0.3;
+    mat.emissive.set(kind === 'leaf' ? '#0e1807' : '#120d04');
+    mat.emissiveIntensity = kind === 'leaf' ? 0.3 : 0.2;
   }
   mat.needsUpdate = true;
   return mat;

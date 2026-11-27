@@ -47,17 +47,17 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
       <Canvas
         shadows={false}
         dpr={[1, preset.dpr]}
-        camera={{ position: [0, 2.2, 4], fov: 62, near: 0.1, far: 400 }}
+        camera={{ position: [0, 2.2, 4], fov: 62, near: 0.1, far: 900 }}
         gl={{
           antialias: preset.dpr >= 1.25,
           powerPreference: 'high-performance',
           alpha: false,
           stencil: false,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.28,
+          toneMappingExposure: 1.12,
         }}
         onCreated={({ gl }) => {
-          gl.setClearColor('#0c1226');
+          gl.setClearColor('#080e1f');
           // ⚠️ سایه کاملاً خاموش (پاس کارایی ۵.۱) — هیچ نور سایه‌اندازی رندر نمی‌شود
           gl.shadowMap.enabled = false;
         }}

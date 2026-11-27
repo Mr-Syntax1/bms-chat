@@ -444,6 +444,7 @@ export const PRELOAD_GROUPS = {
     'undergrowth.bush',
     'undergrowth.flowers',
     'undergrowth.mushrooms',
+    'undergrowth.grass',
     'rocks.rocks2',
   ],
   // بعد از ورود / نزدیک شدن به منطقه
