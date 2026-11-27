@@ -16,7 +16,7 @@ export function setActiveTrees(trees) {
   grid = new Map();
   // فقط درختانی که در ناحیه‌ی قابل حرکت بازیکن‌اند لازم‌اند
   for (const t of activeTrees) {
-    if (t.x > 40 || t.x < -100) continue;
+    if (t.x > 96 || t.x < -190) continue;
     const cx = Math.floor(t.x / CELL);
     const cz = Math.floor(t.z / CELL);
     const k = key(cx, cz);

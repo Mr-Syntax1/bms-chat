@@ -4,7 +4,6 @@ import { Stars, Sparkles } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import Ground, { AmbientSetup } from './Ground';
-import Forest, { BackdropForest } from './Forest';
 import Campfire from './Campfire';
 import Van from './Van';
 import Decorations from './Decorations';
@@ -12,13 +11,12 @@ import Beach from './Beach';
 import CampDecor from './CampDecor';
 import QuestItems from './QuestItems';
 import AmbientAudio from './AmbientAudio';
-import GrassField from './GrassField';
 import Butterflies from './Butterflies';
 import Waterfall from './Waterfall';
 import Paths from './Paths';
 import PondLife from './PondLife';
-import Weather from './Weather';
 import CanopyFX from './CanopyFX';
+import PickupFX from './PickupFX';
 import CookingStation from './CookingStation';
 import FishingSpot from './FishingBobber';
 import Wildlife from './Wildlife';
@@ -27,13 +25,10 @@ import ForageItems from './ForageItems';
 import DecorationsScene from './DecorationsScene';
 import NpcScene from './NpcScene';
 import HiddenCollectibles from './HiddenCollectibles';
+import StreamedWorld from '../world/StreamedWorld';
 import { FISHING_SPOTS } from '../fishingSpots';
-import { useQualityPreset, useSettingsStore } from '../stores/useSettingsStore';
+import { useQualityPreset } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
-import { updateEnvState, skyColorsFor, weatherFogFor } from '../envState';
-
-// مدت یک چرخه‌ی کامل روز/شب (ثانیه) — ۰ = بدون حرکت (کیفیت کم)
-const DAY_LENGTH = 420;
 
 // کرم شب‌تاب
 function Fireflies({ count }) {
@@ -51,16 +46,16 @@ function Fireflies({ count }) {
   );
 }
 
-// آسمان: گرادیان عمودی که با چرخه‌ی روز/شب تغییر می‌کند
-function DayNightSky({ animate }) {
+// آسمان شب ثابت: گرادیان عمودی بنفش/آبی تیره با ستاره و ماه
+function NightSky() {
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
         side: THREE.BackSide,
         depthWrite: false,
         uniforms: {
-          topColor: { value: new THREE.Color('#171426') },
-          bottomColor: { value: new THREE.Color('#22334d') },
+          topColor: { value: new THREE.Color('#080a20') },
+          bottomColor: { value: new THREE.Color('#1b1437') },
           offset: { value: 12 },
           exponent: { value: 0.7 },
         },
@@ -86,18 +81,6 @@ function DayNightSky({ animate }) {
       }),
     []
   );
-
-  // هر ۲۰ فریم یک‌بار رنگ‌ها را تازه می‌کند (به‌جای هر فریم)
-  const tick = useRef(0);
-  useFrame(({ clock }) => {
-    if (!animate) return;
-    tick.current += 1;
-    if (tick.current % 20 !== 0) return;
-    const phase = updateEnvState(clock.elapsedTime / DAY_LENGTH).phase;
-    const { top, bottom } = skyColorsFor(phase);
-    material.uniforms.topColor.value.setRGB(top[0], top[1], top[2]);
-    material.uniforms.bottomColor.value.setRGB(bottom[0], bottom[1], bottom[2]);
-  });
 
   return (
     <mesh material={material}>
@@ -147,16 +130,14 @@ function Starfield({ count = 2000, animate = true }) {
         transparent
         opacity={0.82}
         depthWrite={false}
-        fog={false}
       />
     </points>
   );
 }
 
-// ماه: کره‌ی درخشان با هاله‌ی نرم + نور نقطه‌ای برای روشن کردن آسمان اطراف
+// ماه: کره‌ی درخشان با هاله‌ی نرم (نور واقعی از DirectionalLight می‌آید)
 function Moon() {
   const haloRef = useRef(null);
-  const coreRef = useRef(null);
 
   // هاله نبض بسیار آرام دارد تا ماه «زنده» به نظر برسد
   useFrame(({ clock }) => {
@@ -166,7 +147,6 @@ function Moon() {
       haloRef.current.scale.setScalar(s);
       haloRef.current.material.opacity = 0.12 + Math.sin(t * 0.6) * 0.02;
     }
-    void coreRef;
   });
 
   return (
@@ -179,14 +159,12 @@ function Moon() {
           emissiveIntensity={1.5}
           roughness={0.92}
           metalness={0}
-          fog={false}
         />
       </mesh>
       <mesh ref={haloRef}>
         <sphereGeometry args={[12.6, 24, 24]} />
-        <meshBasicMaterial color="#cfd9f5" transparent opacity={0.13} depthWrite={false} fog={false} />
+        <meshBasicMaterial color="#cfd9f5" transparent opacity={0.13} depthWrite={false} />
       </mesh>
-      <pointLight color="#c8d8ff" intensity={70} distance={300} decay={1.5} />
     </group>
   );
 }
@@ -236,39 +214,15 @@ function LowPolyClouds({ animate = true }) {
 
 export default function CozyScene() {
   const preset = useQualityPreset();
-  const weather = useSettingsStore((s) => s.weather);
   // کمپ شلوغ (۳+ نفر) کرم‌شب‌تاب بیشتری روشن می‌کند
   const crowded = usePlayerStore((s) => s.peerCount >= 3);
   const fireflyCount = Math.round(preset.fireflies * (crowded ? 1.5 : 1));
-  const fogRef = useRef(null);
-  const bgRef = useRef(null);
-
-  // مه و رنگ پس‌زمینه با چرخه‌ی روز/شب هماهنگ می‌شوند (هر ۲۰ فریم)
-  const tick = useRef(0);
-  useFrame(({ clock }) => {
-    // حتی با انیمیشن خاموش، باران باید مه را تغییر دهد
-    if (!preset.envAnimation && weather !== 'rain') return;
-    tick.current += 1;
-    if (tick.current % 20 !== 0) return;
-    const env = updateEnvState(clock.elapsedTime / DAY_LENGTH);
-    const rainMod = weatherFogFor(weather);
-    if (fogRef.current) {
-      fogRef.current.near = env.fogNear * (rainMod?.nearMul ?? 1);
-      fogRef.current.far = env.fogFar * (rainMod?.farMul ?? 1);
-    }
-    if (bgRef.current) {
-      const { bottom } = skyColorsFor(env.phase);
-      bgRef.current.setRGB(bottom[0] * 0.32, bottom[1] * 0.34, bottom[2] * 0.4);
-    }
-  });
 
   return (
     <>
-      <color ref={bgRef} attach="background" args={['#070d1c']} />
-      {/* مه نازک آبی تیره برای حس cozy */}
-      <fog ref={fogRef} attach="fog" args={['#101c30', 30, 150]} />
+      <color attach="background" args={['#070d1c']} />
 
-      <DayNightSky animate={preset.envAnimation} />
+      <NightSky />
       <Stars radius={120} depth={60} count={preset.particles > 0.5 ? 2200 : 1100} factor={3.6} saturation={0} fade speed={preset.envAnimation ? 0.4 : 0} />
       <Starfield count={preset.particles > 0.5 ? 2000 : 900} animate={preset.envAnimation} />
       <Moon />
@@ -277,14 +231,12 @@ export default function CozyScene() {
       <AmbientSetup />
 
       <Ground />
-      <Forest />
-      <BackdropForest />
+      <StreamedWorld />
       <Waterfall />
       <Paths />
       <PondLife />
       <Decorations />
       <CampDecor />
-      <GrassField />
       <Beach />
       <Campfire />
       <Van />
@@ -327,9 +279,9 @@ export default function CozyScene() {
       <Suspense fallback={null}>
         <HiddenCollectibles />
       </Suspense>
-      <Weather />
       <Fireflies count={fireflyCount} />
       <Butterflies count={preset.butterflies} />
+      <PickupFX />
 
       <AmbientAudio />
 

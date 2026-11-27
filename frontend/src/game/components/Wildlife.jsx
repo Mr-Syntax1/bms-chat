@@ -175,7 +175,7 @@ function Hearts({ visible }) {
 }
 
 // یک حیوان — رندر مدل + حرکت با ref
-function Animal({ spawn, spec, geometryInfo }) {
+function Animal({ spawn, spec, geometryInfo, aiRadius }) {
   const groupRef = useRef(null);
   const innerRef = useRef(null);
   const stateRef = useRef(spawn);
@@ -199,6 +199,11 @@ function Animal({ spawn, spec, geometryInfo }) {
 
       const { local } = usePlayerStore.getState();
       const distToPlayer = Math.hypot(local.x - s.x, local.z - s.z);
+
+      // خارج از شعاع AI → کاملاً پنهان و بی‌حرکت (صرفه‌جویی در رندر/AI)
+      const culled = aiRadius > 0 && distToPlayer > aiRadius;
+      group.visible = !culled;
+      if (culled) return;
 
       // نوازش خرگوش: ایستادن نزدیک برای ۳ ثانیه
       if (spec.pet) {
@@ -287,7 +292,7 @@ function Animal({ spawn, spec, geometryInfo }) {
 }
 
 // مدل هر گونه یک بار لود می‌شود؛ همه‌ی نمونه‌ها از همان قطعات استفاده می‌کنند
-function SpeciesGroup({ type, spawns, tier }) {
+function SpeciesGroup({ type, spawns, tier, aiRadius }) {
   const spec = SPECIES[type];
   const url = modelUrl(spec.model);
   const info = useModelParts(url);
@@ -295,7 +300,7 @@ function SpeciesGroup({ type, spawns, tier }) {
   return (
     <>
       {spawns.map((s) => (
-        <Animal key={`${tier}-${s.id}`} spawn={s} spec={spec} geometryInfo={info} />
+        <Animal key={`${tier}-${s.id}`} spawn={s} spec={spec} geometryInfo={info} aiRadius={aiRadius} />
       ))}
     </>
   );
@@ -305,6 +310,7 @@ export default function Wildlife() {
   const preset = useQualityPreset();
   const tier = preset.treeDensity > 700 ? 'high' : preset.treeDensity > 500 ? 'medium' : 'low';
   const spawns = useMemo(() => buildSpawns(tier), [tier]);
+  const aiRadius = preset.aiRadius ?? 60;
 
   const byType = useMemo(() => {
     const map = { rabbit: [], deer: [], duck: [], owl: [], porcupine: [] };
@@ -317,7 +323,9 @@ export default function Wildlife() {
   return (
     <group>
       {Object.entries(byType).map(([type, list]) =>
-        list.length ? <SpeciesGroup key={type} type={type} spawns={list} tier={tier} /> : null
+        list.length ? (
+          <SpeciesGroup key={type} type={type} spawns={list} tier={tier} aiRadius={aiRadius} />
+        ) : null
       )}
     </group>
   );

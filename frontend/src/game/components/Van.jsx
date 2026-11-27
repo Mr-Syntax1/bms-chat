@@ -69,11 +69,11 @@ export default function Van() {
           {headlights && (
             <spotLight
               ref={i === 0 ? headlightLeft : headlightRight}
-              color="#ffe9b0"
-              intensity={30}
-              distance={28}
-              angle={0.6}
-              penumbra={0.75}
+              color="#ffe4b0"
+              intensity={12}
+              distance={22}
+              angle={0.55}
+              penumbra={0.9}
               position={[0.25, 0, 0]}
               target={i === 0 ? targets.left : targets.right}
             />

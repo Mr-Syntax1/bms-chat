@@ -245,7 +245,7 @@ function TreasureChest() {
       </group>
       {opened && (
         <>
-          <pointLight position={[0, 1.6, 0]} color="#ffd24d" intensity={70} distance={26} decay={1.5} />
+          <pointLight position={[0, 1.6, 0]} color="#ffd24d" intensity={22} distance={18} decay={1.6} />
           <Sparkles color="#ffd24d" count={70} scale={[2.4, 2.8, 2.4]} position={[0, 1.4, 0]} size={3.4} speed={0.7} />
         </>
       )}
@@ -294,7 +294,6 @@ function Collectible({ index, spot }) {
       <group ref={ref} rotation={[0, spot.rotation, 0]}>
         <Fitted url={variant.url} height={variant.height} />
       </group>
-      <pointLight color="#9fe8e0" intensity={1.6} distance={2.6} decay={2} position={[0, 0.3, 0]} />
       {near && <InteractHint label="برداشتن" y={1.2} />}
     </group>
   );

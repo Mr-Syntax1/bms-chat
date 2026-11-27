@@ -6,11 +6,7 @@ const QUALITY_OPTIONS = [
   { value: 'low', label: 'کم' },
   { value: 'medium', label: 'متوسط' },
   { value: 'high', label: 'زیاد' },
-];
-
-const WEATHER_OPTIONS = [
-  { value: 'clear', label: 'صاف' },
-  { value: 'rain', label: 'بارانی' },
+  { value: 'ultra', label: 'فوق' },
 ];
 
 /**
@@ -21,11 +17,9 @@ export default function SettingsPanel({ onClose }) {
   const quality = useSettingsStore((s) => s.quality);
   const audio = useSettingsStore((s) => s.audio);
   const controls = useSettingsStore((s) => s.controls);
-  const weather = useSettingsStore((s) => s.weather);
   const setQuality = useSettingsStore((s) => s.setQuality);
   const setAudio = useSettingsStore((s) => s.setAudio);
   const setControls = useSettingsStore((s) => s.setControls);
-  const setWeather = useSettingsStore((s) => s.setWeather);
 
   // بستن با ESC
   useEffect(() => {
@@ -79,6 +73,8 @@ export default function SettingsPanel({ onClose }) {
             <span>بلوم: {preset.bloom ? 'روشن' : 'خاموش'}</span>
             <span>درختان: {preset.treeDensity}</span>
             <span>کرم شب‌تاب: {preset.fireflies}</span>
+            <span>شعاع چانک: {preset.chunkRadius}</span>
+            <span>پروازها: {preset.butterflies}</span>
           </div>
 
           <Toggle
@@ -90,15 +86,6 @@ export default function SettingsPanel({ onClose }) {
             <GhostButton className="!px-3 !py-1 !text-[10px]" onClick={() => setQuality(suggestQuality())}>
               پیشنهاد برای این دستگاه
             </GhostButton>
-          </div>
-        </section>
-
-        {/* ---- آب‌وهوا ---- */}
-        <section className="mb-5">
-          <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[#ffc66d]/80">آب‌وهوا</h3>
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-[#f5ebdd]/70">وضعیت هوا</span>
-            <SegmentedControl options={WEATHER_OPTIONS} value={weather} onChange={setWeather} />
           </div>
         </section>
 

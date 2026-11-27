@@ -30,7 +30,7 @@ export const VAN = { x: -11.5, z: -7.2, rotation: 0.62 };
 export const SEAT_COUNT = 6;
 
 // مرز حرکت بازیکن — ورود به آب مجاز است (شنا)، ولی از نقشه بیرون نمی‌رود
-export const BOUNDS = { minX: -95, maxX: 88, minZ: -95, maxZ: 95 };
+export const BOUNDS = { minX: -188, maxX: 188, minZ: -188, maxZ: 188 };
 
 // اسکله، فانوس دریایی، قایق‌ها و صندوق گنج
 export const DOCK = { x: 74, z: 0, length: 16, width: 3.4 };
@@ -135,21 +135,30 @@ export const SEAT_SPOTS = [
 // درختان غول فقط نزدیک آبشار و پشت کمپ رشد می‌کنند. شعاع برخورد از عرض تنه
 // می‌آید، نه ارتفاع، تا درخت بلند دیوار نامرئی نسازد.
 // ---------------------------------------------------------------------------
-const TREE_MAX = 800;
+const TREE_MAX = 2600;
 
-// احتمال پذیرش بر اساس x: در عمق جنگل (x<-50) تقریباً همه، نزدیک ساحل (x>10) کم
-function densityWeight(x) {
-  if (x >= 26) return 0;
-  const t = (x + 95) / 121; // 0 → x=-95 (عمق جنگل)، 1 → x=26 (لبه)
-  return 0.18 + 0.82 * (1 - t) ** 1.35;
+// biome ها: جنگل انبوه (شمال/غرب)، چمن‌زار (شرق)، بیشه‌ی قارچ (جنوب)
+function densityWeight(x, z) {
+  if (x >= 96) return 0; // ساحل/دریا
+  const r = Math.hypot(x, z);
+  if (r < CAMP_RADIUS + 5) return 0;
+  const fromCamp = Math.min(1, (r - CAMP_RADIUS) / 60);
+  const west = Math.max(0, -x) / 188;
+  const north = Math.max(0, -z) / 188;
+  const east = Math.max(0, x) / 188;
+  const south = Math.max(0, z) / 188;
+  let w = 0.22 + 0.55 * fromCamp + 0.35 * west + 0.3 * north;
+  w -= east * 0.5;
+  w += south * 0.12;
+  return Math.max(0, Math.min(1, w));
 }
 
 // آیا این نقطه در منطقه‌ی مجاز درختان غول است؟
 function isGiantZone(x, z) {
-  // پشت کمپ (شمال/شمال‌غرب) یا نزدیک آبشار
-  const behindCamp = z < -18 && z > -50 && x > -60 && x < -8;
-  const nearWaterfall = Math.hypot(x - WATERFALL.x, z - (WATERFALL.baseZ + 6)) < 26;
-  return behindCamp || nearWaterfall;
+  const behindCamp = z < -30 && z > -130 && x > -120 && x < -8;
+  const nearWaterfall = Math.hypot(x - WATERFALL.x, z - (WATERFALL.baseZ + 6)) < 40;
+  const deepWest = x < -120;
+  return behindCamp || nearWaterfall || deepWest;
 }
 
 // انتخاب طبقه‌ی ارتفاعی — وزن‌ها به‌گونه‌ای که جنگل «کهن» به نظر برسد
@@ -193,18 +202,53 @@ export function buildTrees(limit = TREE_MAX) {
   const rand = mulberry32(20261121);
   const list = [];
 
+  // گرید فضایی برای تست فاصله‌ی O(1) (۲۶۰۰ درخت با some خطی بسیار کند می‌شد)
+  const CELL = 10;
+  const grid = new Map();
+  const gkey = (cx, cz) => `${cx},${cz}`;
+  const fits = (x, z, spacing) => {
+    const cx = Math.floor(x / CELL);
+    const cz = Math.floor(z / CELL);
+    const reach = Math.ceil(spacing / CELL);
+    for (let ix = -reach; ix <= reach; ix += 1) {
+      for (let iz = -reach; iz <= reach; iz += 1) {
+        const bucket = grid.get(gkey(cx + ix, cz + iz));
+        if (!bucket) continue;
+        for (let i = 0; i < bucket.length; i += 1) {
+          const t = bucket[i];
+          const dx = t.x - x;
+          const dz = t.z - z;
+          if (dx * dx + dz * dz < spacing * spacing) return false;
+        }
+      }
+    }
+    return true;
+  };
+  const insert = (tree) => {
+    const k = gkey(Math.floor(tree.x / CELL), Math.floor(tree.z / CELL));
+    let bucket = grid.get(k);
+    if (!bucket) {
+      bucket = [];
+      grid.set(k, bucket);
+    }
+    bucket.push(tree);
+  };
+
   // ۱) درختان غول نشانه‌گذاری‌شده (همیشه حاضر)
   for (const giant of LANDMARK_GIANTS) {
     if (!isPlantable(giant.x, giant.z, 0.62)) continue;
-    list.push(makeTree(rand, giant.x, giant.z, 'giant', giant.height));
+    const tree = makeTree(rand, giant.x, giant.z, 'giant', giant.height);
+    list.push(tree);
+    insert(tree);
   }
 
-  // ۲) بقیه‌ی جنگل
+  // ۲) بقیه‌ی جنگل — کل وسعت ۴۰۰×۴۰۰ (منهای ساحل/دریا)
+  const HALF = 188;
   let guard = 0;
-  while (list.length < limit && guard < limit * 45) {
+  while (list.length < limit && guard < limit * 30) {
     guard += 1;
-    const x = -95 + rand() * 121; // -95 .. 26
-    const z = -95 + rand() * 190;
+    const x = -HALF + rand() * (HALF + 96); // -188 .. 96
+    const z = -HALF + rand() * (HALF * 2);
 
     if (Math.hypot(x, z) < CAMP_RADIUS + 4) continue; // کمپ باز بماند
     if (Math.hypot(x - VAN.x, z - VAN.z) < 6.5) continue;
@@ -218,17 +262,19 @@ export function buildTrees(limit = TREE_MAX) {
     // روی آب و شیب تند درخت نمی‌کاریم
     if (!isPlantable(x, z, 0.5)) continue;
 
-    // تراکم گرادیانی: در لبه‌ها بعضی نقاط رد می‌شوند
-    if (rand() > densityWeight(x)) continue;
+    // تراکم گرادیانی (biome-aware): در لبه‌ها بعضی نقاط رد می‌شوند
+    if (rand() > densityWeight(x, z)) continue;
 
     const tierInfo = pickTier(rand, isGiantZone(x, z));
     const targetHeight = tierInfo.min + rand() * (tierInfo.max - tierInfo.min);
 
     // فاصله‌ی حداقلی متناسب با اندازه‌ی درخت (غول‌ها فضای بیشتری می‌خواهند)
-    const spacing = tierInfo.tier === 'giant' ? 9 : tierInfo.tier === 'canopy' ? 4.6 : 3.4;
-    if (list.some((t) => Math.hypot(t.x - x, t.z - z) < spacing)) continue;
+    const spacing = tierInfo.tier === 'giant' ? 9 : tierInfo.tier === 'canopy' ? 4.2 : 3.0;
+    if (!fits(x, z, spacing)) continue;
 
-    list.push(makeTree(rand, x, z, tierInfo.tier, targetHeight));
+    const tree = makeTree(rand, x, z, tierInfo.tier, targetHeight);
+    list.push(tree);
+    insert(tree);
   }
   return list;
 }

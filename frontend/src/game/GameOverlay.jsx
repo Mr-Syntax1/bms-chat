@@ -17,6 +17,7 @@ import Toasts from './ui/Toasts';
 import InteractionPrompt from './ui/InteractionPrompt';
 import GameLoadingScreen from './ui/GameLoadingScreen';
 import FacingDebug from './ui/FacingDebug';
+import PerfDebug from './ui/PerfDebug';
 import EmoteWheel from './ui/EmoteWheel';
 import CharacterSelector from './ui/CharacterSelector';
 import Wardrobe from './ui/Wardrobe';
@@ -561,6 +562,7 @@ export default function GameOverlay({ roomId, user, onClose }) {
       <TouchPad />
       {entered && locked && <ControlsHint />}
       <FacingDebug />
+      <PerfDebug />
       {entered && <EmoteWheel roomId={roomId} user={user} />}
       {entered && <QuestTrackerArrows />}
       {entered && <ChatLogCorner />}

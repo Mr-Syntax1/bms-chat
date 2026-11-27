@@ -5,6 +5,8 @@ import { playPositionalOneShot } from '../audio';
 import { QUEST_SPOTS } from '../sceneLayout';
 import { getActiveQuestStep, describeQuestStep } from '../questSteps';
 import { WATER_SOUND } from '../sounds';
+import { kickPunch, kickShake } from '../juice';
+import { emitPickup } from '../pickupFX';
 
 // صدای جادویی مأموریت (زنگ دو-نتی رویه‌ای از audio.js)
 const MAGIC_SOUND = '/sounds/yum.mp3';
@@ -30,10 +32,16 @@ export function useQuestSystem() {
       parchment: (index, x, z) => () => {
         if (!addParchment(index)) return;
         playPositionalOneShot(MAGIC_SOUND, [x, 1, z], { volume: 0.35 });
+        emitPickup(x, 1.1, z, '#ffe6a8');
+        kickPunch(0.18);
+        kickShake(0.24);
       },
       lantern: (index, x, z) => () => {
         if (!lightLantern(index)) return;
         playPositionalOneShot(MAGIC_SOUND, [x, 1, z], { volume: 0.4 });
+        emitPickup(x, 1.4, z, '#ffcf7a');
+        kickPunch(0.16);
+        kickShake(0.2);
       },
       fishing: (x, z) => () => {
         const { quests } = usePlayerStore.getState();
@@ -49,13 +57,22 @@ export function useQuestSystem() {
         // صدای پاشیدن آب؛ اگر فایل نبود، audio.js نسخه‌ی رویه‌ای می‌سازد
         playPositionalOneShot(WATER_SOUND, [x + 2, 0.4, z], { volume: 0.7 });
         giveKey();
+        emitPickup(x, 1.0, z, '#9fd8ff');
+        kickShake(0.3);
       },
       chest: (x, z) => () => {
-        if (openChest()) playPositionalOneShot(MAGIC_SOUND, [x, 1, z], { volume: 0.5 });
+        if (!openChest()) return;
+        playPositionalOneShot(MAGIC_SOUND, [x, 1, z], { volume: 0.5 });
+        emitPickup(x, 1.2, z, '#ffd24d');
+        kickPunch(0.22);
+        kickShake(0.38);
       },
       shell: (index, x, z) => () => {
         if (!collectShell(index)) return;
         playPositionalOneShot(MAGIC_SOUND, [x, 0.3, z], { volume: 0.25 });
+        emitPickup(x, 0.6, z, '#ffd98a');
+        kickPunch(0.12);
+        kickShake(0.16);
       },
       sign: (index, text) => () => {
         readSign(index);

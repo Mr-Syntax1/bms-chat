@@ -9,7 +9,8 @@
 // برای بازیکن صدا زد.
 // ---------------------------------------------------------------------------
 
-export const MAP_SIZE = 200;
+// دنیای بزرگ‌تر (Phase 5): ۴ برابر مساحت قبلی — کمپ همان مرکز می‌ماند
+export const MAP_SIZE = 400;
 export const HALF_MAP = MAP_SIZE / 2;
 export const CAMP_RADIUS = 15;
 export const SAND_START_X = 32;
@@ -241,9 +242,10 @@ function rawGroundHeight(x, z) {
   // ۱) تپه‌های نرم؛ دامنه با فاصله از کمپ زیاد می‌شود
   let h = fbm(x, z) * (0.35 + 2.1 * smoothstep(CAMP_BLEND_RADIUS, CAMP_BLEND_RADIUS + 48, r));
 
-  // ۲) دیواره‌ی صخره‌ی شمالی
+  // ۲) دیواره‌ی صخره‌ی شمالی — با یک «گردنه‌ی» قابل عبور در شمال‌شرق کمپ
   const cliffT = smoothstep(CLIFF_START_Z, CLIFF_END_Z, z);
-  h += cliffT * cliffT * CLIFF_HEIGHT;
+  const passMask = 1 - 0.92 * (1 - smoothstep(6, 20, Math.abs(x - 34)));
+  h += cliffT * cliffT * CLIFF_HEIGHT * passMask;
 
   // ۳) ساحل و بستر دریا
   h -= smoothstep(SAND_START_X, 68, x) * 0.75;

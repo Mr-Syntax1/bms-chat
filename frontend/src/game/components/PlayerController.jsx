@@ -21,6 +21,8 @@ import { publishPlayerAction } from '../hooks/useGameSync';
 import { stepPlayerPhysics, resetPlayerPhysics, slopeSlide, getPlayerPhysics } from '../hooks/usePlayerMotion';
 import { getWalkSurfaceY, isInWater } from '../terrain';
 import { applyFovKick } from '../cameraTuning';
+import { applyJuice, kickShake, kickPunch } from '../juice';
+import { emitPickup } from '../pickupFX';
 import { fishing } from '../fishData';
 import { nearestBugDistance, tryCatchBug } from '../bugData';
 import { findNearestForage, tryPickForage } from '../forageData';
@@ -263,7 +265,12 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             }, 900);
             // چیدن در همان لحظه (شعاع کمی بزرگ‌تر از برد پرامپت)
             const picked = tryPickForage(x, z, 2.0);
-            if (picked) usePlayerStore.getState().addForageItem(picked);
+            if (picked) {
+              usePlayerStore.getState().addForageItem(picked);
+              kickPunch(0.16);
+              kickShake(0.22);
+              emitPickup(x, 1.1, z, picked.color || '#ffd98a');
+            }
             usePlayerStore.getState().setNearForage(null);
             break;
           }
@@ -286,6 +293,9 @@ export default function PlayerController({ roomId, user, look, active = true }) 
             if (caught) {
               playPositionalOneShot(BUG_CATCH_SOUND, [x, 1.2, z], { volume: 0.9 });
               usePlayerStore.getState().addBug(caught);
+              kickPunch(0.14);
+              kickShake(0.18);
+              emitPickup(x, 1.2, z, caught.color || '#b7ffd8');
               // کرم شب‌تاب در شب برای کوئست جادوگر شمرده می‌شود (Phase 4)
               if (caught.id === 'firefly' && isNight()) {
                 usePlayerStore.getState().addNightFirefly();
@@ -415,6 +425,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
       lookTarget.set(spot.x, seatY + 1.0, spot.z);
       smoothLook.current.lerp(lookTarget, 0.15);
       camera.lookAt(smoothLook.current);
+      applyJuice(camera, delta, performance.now() * 0.001);
 
       // فقط صندلی‌های دور آتش اجازه‌ی مارشمالو می‌دهند (نقاط استراحت نه)
       setNearFire(!spot.key || Math.hypot(spot.x, spot.z) < SEAT_RADIUS + 1.6);
@@ -649,6 +660,7 @@ export default function PlayerController({ roomId, user, look, active = true }) 
     );
     smoothLook.current.lerp(lookTarget, 0.35);
     camera.lookAt(smoothLook.current);
+    applyJuice(camera, delta, performance.now() * 0.001);
 
     // ---- Raycast تعامل ----
     raycastTimer.current += delta;

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { KeyboardControls, AdaptiveDpr, Preload, PerformanceMonitor } from '@react-three/drei';
 import * as THREE from 'three';
 import CozyScene from './components/CozyScene';
@@ -9,9 +9,16 @@ import AudioRoot from './components/AudioRoot';
 import { useGameSync } from './hooks/useGameSync';
 import { KEY_MAP } from './controls';
 import { useSettingsStore, useQualityPreset } from './stores/useSettingsStore';
+import { tickPerf } from './debugStats';
 
 // پایین‌آوردن خودکار کیفیت تنها پس از افت پایدار (نه یک فریم کند)
 let downgradeCooldown = 0;
+
+// شمارنده‌ی کارایی: هر فریم آمار سبک را در debugStats می‌ریزد (بدون رندر React)
+function PerfProbe() {
+  useFrame(({ gl }, delta) => tickPerf(gl, delta));
+  return null;
+}
 
 export default function GameCanvas({ roomId, user, look, active = true }) {
   // سینک Ably در بالاترین سطح کامپوننت بازی
@@ -27,11 +34,10 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
     if (fps > 42 || now < downgradeCooldown) return;
     const { quality, controls } = useSettingsStore.getState();
     if (!controls.autoQuality) return;
-    if (quality === 'high') {
-      setQuality('medium');
-      downgradeCooldown = now + 12000;
-    } else if (quality === 'medium') {
-      setQuality('low');
+    const ladder = { ultra: 'high', high: 'medium', medium: 'low' };
+    const next = ladder[quality];
+    if (next) {
+      setQuality(next);
       downgradeCooldown = now + 12000;
     }
   };
@@ -52,6 +58,8 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
         }}
         onCreated={({ gl }) => {
           gl.setClearColor('#070d1c');
+          // سایه‌ی نرم (PCFSoft) — همیشه، مستقل از preset
+          gl.shadowMap.type = THREE.PCFSoftShadowMap;
         }}
       >
         {/* AudioListener باید قبل از افکت‌های صدای محیطی ساخته شود */}
@@ -70,6 +78,8 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
           <RemotePlayers />
         </Suspense>
         <AdaptiveDpr pixelated />
+        {/* شمارنده‌ی کارایی برای پنل دیباگ (Ctrl+Shift+P) */}
+        <PerfProbe />
         {/* نظارت بر فریم‌تایم برای پیشنهاد کاهش کیفیت (هیسترزیس داخلی) */}
         <PerformanceMonitor iterations={8} ms={500} onDecline={handleDecline} />
       </Canvas>

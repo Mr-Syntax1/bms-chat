@@ -3,7 +3,6 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useQualityPreset } from '../stores/useSettingsStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
-import { envState } from '../envState';
 import { getGroundHeight } from '../terrain';
 
 // ---------------------------------------------------------------------------
@@ -29,13 +28,12 @@ function LightShafts() {
   useFrame(({ clock }) => {
     const group = groupRef.current;
     if (!group) return;
-    // شدت با روشنایی روز تنظیم می‌شود + سوسوی آرام
-    const daylight = envState.daylight;
+    // شب ثابت: ستون‌های مهتاب بسیار محو + سوسوی آرام
     const t = clock.elapsedTime;
     for (let i = 0; i < group.children.length; i += 1) {
       const mesh = group.children[i];
       const breath = 0.5 + 0.5 * Math.sin(t * 0.35 + i * 1.9);
-      mesh.material.opacity = (0.02 + daylight * 0.06) * (0.6 + breath * 0.6);
+      mesh.material.opacity = 0.035 * (0.6 + breath * 0.6);
     }
   });
 

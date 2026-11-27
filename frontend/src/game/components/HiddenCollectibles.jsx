@@ -7,6 +7,8 @@ import { getGroundHeight } from '../terrain';
 import { registerQuestItem } from '../questRegistry';
 import { playPositionalOneShot } from '../audio';
 import { QUEST_ACCEPT_SOUND } from '../sounds';
+import { kickPunch, kickShake } from '../juice';
+import { emitPickup } from '../pickupFX';
 
 // بلوط طلایی پنهان: درخشش ملایم + چرخش آرام + تعامل E
 function GoldenAcorn({ index, spot }) {
@@ -27,6 +29,9 @@ function GoldenAcorn({ index, spot }) {
       action: () => {
         if (!usePlayerStore.getState().collectGoldenAcorn(index)) return;
         playPositionalOneShot(QUEST_ACCEPT_SOUND, [spot.x, 1, spot.z], { volume: 0.7 });
+        emitPickup(spot.x, 0.9, spot.z, '#ffd24d');
+        kickPunch(0.18);
+        kickShake(0.26);
       },
     });
   }, [index, spot.x, spot.z]);

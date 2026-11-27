@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { BRIDGE, STEPPING_STONES, WATER_LEVEL, getGroundHeight } from '../terrain';
+import { BRIDGE, STEPPING_STONES, WATER_LEVEL, getGroundHeight, RIVER, isInWater } from '../terrain';
 import { modelUrl } from '../assetManifest';
 import { useModelParts } from '../models/useModelParts';
 import { useQualityPreset } from '../stores/useSettingsStore';
+import InstancedGLB from '../models/InstancedGLB';
 
 // ---------------------------------------------------------------------------
 // مسیرهای خاکی: decal نازک روی زمین در امتداد PATHS.
@@ -206,12 +207,71 @@ function SteppingStones() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// نی‌های کنار رودخانه — نمونه‌سازی‌شده در دو طرف کرانه (Phase 5)
+// ---------------------------------------------------------------------------
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function RiverCattails() {
+  const items = useMemo(() => {
+    const rand = mulberry32(606061);
+    const pts = RIVER.points;
+    const list = [];
+    const halfW = RIVER.width * 0.5;
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      const segLen = Math.hypot(b.x - a.x, b.z - a.z);
+      const steps = Math.max(1, Math.round(segLen / 2.6));
+      const tx = (b.x - a.x) / (segLen || 1);
+      const tz = (b.z - a.z) / (segLen || 1);
+      const nx = -tz;
+      const nz = tx;
+      for (let s = 0; s < steps; s += 1) {
+        if (rand() > 0.55) continue;
+        const t = s / steps;
+        const cx = a.x + (b.x - a.x) * t;
+        const cz = a.z + (b.z - a.z) * t;
+        const side = rand() > 0.5 ? 1 : -1;
+        const off = halfW + 0.4 + rand() * 1.1;
+        const x = cx + nx * off * side;
+        const z = cz + nz * off * side;
+        // فقط روی خشکِ کرانه، نه داخل آب
+        if (isInWater(x, z)) continue;
+        if (getGroundHeight(x, z) < WATER_LEVEL + 0.15) continue;
+        list.push({ x, z, scale: 0.8 + rand() * 0.5, rotation: rand() * Math.PI * 2 });
+      }
+    }
+    return list;
+  }, []);
+
+  if (!items.length) return null;
+
+  return (
+    <InstancedGLB
+      url={modelUrl('undergrowth.cattail')}
+      items={items}
+      targetHeight={1.5}
+      groundAlign
+    />
+  );
+}
+
 export default function Paths() {
   return (
     <group>
       <DirtPaths />
       <Bridge />
       <SteppingStones />
+      <RiverCattails />
     </group>
   );
 }

@@ -134,27 +134,19 @@ function Dock() {
   );
 }
 
-// فانوس دریایی با نور چشمک‌زن
+// فانوس دریایی با نور گرم و طبیعی (بدون پالس شدید سفینه‌ای)
 function Lighthouse() {
-  const lightRef = useRef(null);
   const baseY = getGroundHeight(LIGHTHOUSE.x, LIGHTHOUSE.z);
-
-  useFrame(({ clock }) => {
-    if (!lightRef.current) return;
-    const pulse = Math.pow(Math.max(0, Math.sin(clock.elapsedTime * 1.4)), 8);
-    lightRef.current.intensity = 6 + pulse * 90;
-  });
 
   return (
     <group position={[LIGHTHOUSE.x, baseY, LIGHTHOUSE.z]}>
       <LighthouseModel scale={1.2} />
       <pointLight
-        ref={lightRef}
         position={[0, 13, 0]}
-        color="#ffe9a8"
-        intensity={8}
-        distance={80}
-        decay={1.4}
+        color="#ffdf9e"
+        intensity={10}
+        distance={44}
+        decay={1.6}
       />
     </group>
   );

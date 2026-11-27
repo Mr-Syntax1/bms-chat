@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
@@ -11,15 +11,15 @@ import {
   getGroundHeight,
   groundColorAt,
 } from '../terrain';
-import { envState } from '../envState';
 import { useQualityPreset } from '../stores/useSettingsStore';
+import { usePlayerStore } from '../stores/usePlayerStore';
 
 // ---------------------------------------------------------------------------
 // زمین heightmap با vertex color
 // ---------------------------------------------------------------------------
 
-// تعداد تقسیم‌بندی بر اساس کیفیت — ۱.۵ / ۱.۳۹ / ۱.۰۴ واحد در هر یال
-const SEGMENTS = { low: 96, medium: 144, high: 192 };
+// تعداد تقسیم‌بندی بر اساس کیفیت — با نقشه‌ی ۴۰۰، ~۳.۱/۲.۸/۲.۱ واحد در هر یال
+const SEGMENTS = { low: 128, medium: 160, high: 192 };
 
 function buildTerrainGeometry(segments) {
   const geo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE, segments, segments);
@@ -90,19 +90,25 @@ const WATER_FRAGMENT = `
   uniform vec3 uDeep;
   uniform vec3 uFoam;
   uniform float uOpacity;
+  uniform float uFlow;
   varying float vShore;
   varying vec3 vWorld;
   void main() {
+    // جریان جهت‌دار (رودخانه): نوارهای در امتداد x+z که با زمان پایین می‌روند
+    float flow = 0.5 + 0.5 * sin((vWorld.x * 0.7 + vWorld.z) * 2.4 - uTime * 2.6 * uFlow);
     float ripple = 0.5 + 0.5 * sin(vWorld.x * 3.1 + uTime * 1.7 + vWorld.z * 2.3);
     float ripple2 = 0.5 + 0.5 * sin(vWorld.z * 4.7 - uTime * 1.2);
 
     vec3 color = mix(uShallow, uDeep, smoothstep(0.12, 0.85, vShore));
     color += (ripple * 0.06 + ripple2 * 0.04) * vec3(0.55, 0.75, 0.9);
+    color += flow * 0.05 * uFlow * vec3(0.6, 0.8, 0.95);
 
     // خط فوم نازک روی لبه‌ی ساحل
     float foam = smoothstep(0.14, 0.0, vShore);
     foam *= 0.55 + 0.45 * sin(vWorld.x * 5.0 + vWorld.z * 4.0 + uTime * 1.6);
-    color = mix(color, uFoam, foam * 0.8);
+    // فوم کشیده‌ی جریان در وسط رودخانه
+    foam += flow * smoothstep(0.4, 0.0, vShore) * 0.12 * uFlow;
+    color = mix(color, uFoam, clamp(foam, 0.0, 1.0) * 0.8);
 
     float alpha = mix(uOpacity * 0.55, uOpacity, smoothstep(0.0, 0.4, vShore));
     alpha = max(alpha, foam * 0.6);
@@ -119,7 +125,13 @@ const WATER_UNIFORMS = {
   uDeep: { value: new THREE.Color('#0a1c2b') },
   uFoam: { value: new THREE.Color('#9fb8c4') },
   uOpacity: { value: 0.9 },
+  uFlow: { value: 0 },
 };
+
+// uniform جدا برای هر پهنه — فقط رودخانه جریان جهت‌دار دارد
+const OCEAN_UNIFORMS = { ...WATER_UNIFORMS, uFlow: { value: 0 } };
+const POND_UNIFORMS = { ...WATER_UNIFORMS, uFlow: { value: 0 } };
+const RIVER_UNIFORMS = { ...WATER_UNIFORMS, uFlow: { value: 1 } };
 
 function WaterMaterial({ uniforms, materialRef }) {
   return (
@@ -337,19 +349,23 @@ function Waters({ animate }) {
   const river = useMemo(() => buildRiverGeometry(), []);
 
   useFrame(({ clock }) => {
-    WATER_UNIFORMS.uTime.value = animate ? clock.elapsedTime : 0;
+    const t = animate ? clock.elapsedTime : 0;
+    WATER_UNIFORMS.uTime.value = t;
+    OCEAN_UNIFORMS.uTime.value = t;
+    POND_UNIFORMS.uTime.value = t;
+    RIVER_UNIFORMS.uTime.value = t;
   });
 
   return (
     <group>
       <mesh geometry={ocean} renderOrder={1}>
-        <WaterMaterial uniforms={WATER_UNIFORMS} />
+        <WaterMaterial uniforms={OCEAN_UNIFORMS} />
       </mesh>
       <mesh geometry={pond} renderOrder={1}>
-        <WaterMaterial uniforms={WATER_UNIFORMS} />
+        <WaterMaterial uniforms={POND_UNIFORMS} />
       </mesh>
       <mesh geometry={river} renderOrder={1}>
-        <WaterMaterial uniforms={WATER_UNIFORMS} />
+        <WaterMaterial uniforms={RIVER_UNIFORMS} />
       </mesh>
     </group>
   );
@@ -367,59 +383,67 @@ export default function Ground() {
   );
 }
 
-// نورپردازی شب دنج — شدت‌ها با چرخه‌ی روز/شب هماهنگ می‌شوند
-export function AmbientSetup() {
-  const ambientRef = useRef(null);
-  const sunRef = useRef(null);
-  const moonRef = useRef(null);
+// نورپردازی شب دنج — شب ثابت: ماه سرد + هاله‌ی آسمان، بدون خورشید/چرخه
+// سایه‌ها: دوربین سایه با بازیکن حرکت می‌کند و فقط محدوده‌ی نزدیک را می‌پوشاند
+// (به‌جای ±۱۰۰ روی نقشه‌ی ۴۰۰ واحد که کیفیت سایه را نابود می‌کرد).
+function FollowMoonShadow({ preset }) {
+  const lightRef = useRef(null);
+  const targetRef = useRef(null);
   const tick = useRef(0);
+  const half = (preset.shadowDistance ?? 64) * 0.5;
+
+  useEffect(() => {
+    if (lightRef.current && targetRef.current) {
+      lightRef.current.target = targetRef.current;
+      lightRef.current.target.updateMatrixWorld();
+    }
+  }, []);
 
   useFrame(() => {
+    const light = lightRef.current;
+    if (!light) return;
+    // هر ۸ فریم یک‌بار — حرکت نور سایه باید ثابت بماند تا سایه نلرزد
     tick.current += 1;
-    if (tick.current % 15 !== 0) return;
-    const { daylight, warmth, ambientIntensity } = envState;
-    if (ambientRef.current) ambientRef.current.intensity = ambientIntensity;
-    if (sunRef.current) {
-      // نور روز: گرم در طلوع/غروب، سفید در ظهر
-      sunRef.current.intensity = 0.12 + daylight * 1.15;
-      sunRef.current.color.setRGB(
-        0.72 + warmth * 0.28,
-        0.79 - warmth * 0.08,
-        1 - warmth * 0.32
-      );
-      sunRef.current.position.set(26 + warmth * 20, 34 - daylight * 8, 18 - warmth * 24);
+    if (tick.current % 8 !== 0) return;
+    const { local } = usePlayerStore.getState();
+    light.position.set(local.x + 34, 62, local.z + 22);
+    if (targetRef.current) {
+      targetRef.current.position.set(local.x, 0, local.z);
+      targetRef.current.updateMatrixWorld();
     }
-    if (moonRef.current) moonRef.current.intensity = 0.75 * (1 - daylight);
   });
 
   return (
     <>
-      <ambientLight ref={ambientRef} intensity={0.3} color="#93a7d4" />
-      <hemisphereLight args={['#5d7fa8', '#1b2a20', 0.55]} />
-
       <directionalLight
-        ref={sunRef}
-        position={[26, 34, 18]}
-        intensity={0.75}
+        ref={lightRef}
+        position={[34, 62, 22]}
+        intensity={0.8}
         color="#b7caff"
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-100}
-        shadow-camera-right={100}
-        shadow-camera-top={100}
-        shadow-camera-bottom={-100}
+        castShadow={preset.shadows}
+        shadow-mapSize={[preset.shadowMapSize, preset.shadowMapSize]}
+        shadow-camera-left={-half}
+        shadow-camera-right={half}
+        shadow-camera-top={half}
+        shadow-camera-bottom={-half}
+        shadow-camera-near={1}
+        shadow-camera-far={170}
         shadow-bias={-0.0012}
         shadow-normalBias={0.03}
       />
+      <object3D ref={targetRef} />
+    </>
+  );
+}
 
-      <pointLight
-        ref={moonRef}
-        position={[-30, 16, -26]}
-        intensity={40}
-        distance={90}
-        color="#4d6fa8"
-        decay={1.8}
-      />
+export function AmbientSetup() {
+  const preset = useQualityPreset();
+
+  return (
+    <>
+      <ambientLight intensity={0.24} color="#93a7d4" />
+      <hemisphereLight args={['#5d7fa8', '#1b2a20', 0.55]} />
+      <FollowMoonShadow preset={preset} />
     </>
   );
 }
