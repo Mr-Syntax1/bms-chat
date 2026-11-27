@@ -73,8 +73,8 @@ export default function SettingsPanel({ onClose }) {
             <span>بلوم: خاموش (ثابت)</span>
             <span>درختان: {preset.treeDensity}</span>
             <span>کرم شب‌تاب: {preset.fireflies}</span>
-            <span>شعاع چانک: {preset.chunkRadius}</span>
             <span>پروانه: {preset.butterflies}</span>
+            <span>چمن: {preset.grassDensity}</span>
           </div>
 
           <Toggle

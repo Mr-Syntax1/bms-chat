@@ -1,13 +1,11 @@
 // ---------------------------------------------------------------------------
-// world/chunkGen.js — تولید قطعی محتوای هر چانک (Phase 5)
+// world/chunkGen.js — تولید قطعی محتوای فلور (Phase 5)
 //
 //  • همه‌ی کلاینت‌ها با seed یکسان، محتوای یکسان می‌بینند؛ فقط «کدام چانک
-//    رندر شود» به موقعیت هر بازیکن بستگی دارد.
-//  • هیچ alloc سنگینی در هر فریم انجام نمی‌شود: درختان یک‌بار با buildTrees
-//    ساخته و بر اساس مختصات در باکت‌های چانک ریخته می‌شوند.
-//  • گل/سنگ/قارچ رویه‌ای هر چانک با PRNG seed‌دار همان چانک تولید می‌شوند.
+//    فلور رندر شود» به موقعیت هر بازیکن بستگی دارد.
+//  • درختان استریم نمی‌شوند (StreamedWorld کل جنگل را یک‌بار می‌سازد)؛ این
+//    فایل فقط فلور ریز (چمن/گل/سنگ/قارچ) را تولید و کش می‌کند.
 // ---------------------------------------------------------------------------
-import { buildTrees } from '../sceneLayout';
 import {
   getGroundHeight,
   getGroundSlope,
@@ -48,39 +46,6 @@ function chunkSeed(cx, cz) {
   h = Math.imul(h ^ (h >>> 15), 0x27d4eb2d);
   h ^= h >>> 15;
   return h >>> 0;
-}
-
-// ---------------------------------------------------------------------------
-// باکت درختان: هر درخت یک‌بار به چانک خودش نسبت داده می‌شود
-// (چگالی از preset خوانده می‌شود؛ مقدار کامل به‌عنوان سقف تولید)
-// ---------------------------------------------------------------------------
-const treeBuckets = new Map();
-
-function bucketTrees(density) {
-  if (treeBuckets.size && treeBuckets.density === density) return;
-  treeBuckets.clear();
-  treeBuckets.density = density;
-  const trees = buildTrees(density);
-  for (let i = 0; i < trees.length; i += 1) {
-    const t = trees[i];
-    const cx = Math.floor(t.x / CHUNK_SIZE);
-    const cz = Math.floor(t.z / CHUNK_SIZE);
-    const key = chunkKey(cx, cz);
-    let bucket = treeBuckets.get(key);
-    if (!bucket) {
-      bucket = [];
-      treeBuckets.set(key, bucket);
-    }
-    bucket.push(t);
-  }
-}
-
-const EMPTY = [];
-
-/** درختان یک چانک (مشترک بین همه‌ی کلاینت‌ها، قطعی). */
-export function getChunkTrees(cx, cz, density = 2600) {
-  bucketTrees(density);
-  return treeBuckets.get(chunkKey(cx, cz)) || EMPTY;
 }
 
 // ---------------------------------------------------------------------------

@@ -54,10 +54,10 @@ export default function GameCanvas({ roomId, user, look, active = true }) {
           alpha: false,
           stencil: false,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.05,
+          toneMappingExposure: 1.28,
         }}
         onCreated={({ gl }) => {
-          gl.setClearColor('#070d1c');
+          gl.setClearColor('#0c1226');
           // ⚠️ سایه کاملاً خاموش (پاس کارایی ۵.۱) — هیچ نور سایه‌اندازی رندر نمی‌شود
           gl.shadowMap.enabled = false;
         }}

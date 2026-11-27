@@ -92,8 +92,8 @@ function NightSky() {
         side: THREE.BackSide,
         depthWrite: false,
         uniforms: {
-          topColor: { value: new THREE.Color('#080a20') },
-          bottomColor: { value: new THREE.Color('#1b1437') },
+          topColor: { value: new THREE.Color('#0d1430') },
+          bottomColor: { value: new THREE.Color('#2a2148') },
           offset: { value: 12 },
           exponent: { value: 0.7 },
         },
@@ -259,7 +259,7 @@ export default function CozyScene() {
 
   return (
     <>
-      <color attach="background" args={['#070d1c']} />
+      <color attach="background" args={['#0c1226']} />
 
       <NightSky />
       <Stars radius={120} depth={60} count={preset.particles > 0.5 ? 2200 : 1100} factor={3.6} saturation={0} fade speed={preset.envAnimation ? 0.4 : 0} />

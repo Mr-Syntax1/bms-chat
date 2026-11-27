@@ -24,6 +24,29 @@ export const TREE_MODEL_BYTES = 99604;
 const CELL = 0.3; // شعاع خوشه‌بندی تنه‌ها در فضای ورلد مدل
 const cache = new Map();
 
+// مواد مدل اصلی برای شب خیلی تیره‌اند (برگ تقریباً (۰.۰۹،۰.۱۸،۰.۰۱) با
+// metalness ۰.۴). اینجا کلون می‌کنیم و برای دیده‌شدن در نور ماه روشن‌تر و
+// مات‌ترشان می‌کنیم؛ emissive بسیار کم عمق تاج را از سیاهی نجات می‌دهد.
+function brightenMaterial(source, kind) {
+  const mat = source.clone();
+  if (mat.color) {
+    if (kind === 'leaf') {
+      mat.color.multiplyScalar(2.35);
+      mat.color.offsetHSL(0, 0.05, 0.12);
+    } else {
+      mat.color.multiplyScalar(1.7);
+    }
+  }
+  mat.metalness = 0.02;
+  mat.roughness = Math.max(0.72, mat.roughness ?? 1);
+  if (mat.emissive) {
+    mat.emissive.set(kind === 'leaf' ? '#16240c' : '#1a1206');
+    mat.emissiveIntensity = kind === 'leaf' ? 0.55 : 0.3;
+  }
+  mat.needsUpdate = true;
+  return mat;
+}
+
 function buildSingleTree(scene) {
   scene.updateWorldMatrix(true, true);
 
@@ -36,6 +59,11 @@ function buildSingleTree(scene) {
     meshes.push({ geometry, material: child.material });
   });
   if (!meshes.length) return null;
+
+  // مش اول چوب است، بقیه برگ — مواد روشن‌شده برای دیده‌شدن در شب
+  meshes.forEach((entry, i) => {
+    entry.material = brightenMaterial(entry.material, i === 0 ? 'wood' : 'leaf');
+  });
 
   // ۱) مراکز تنه‌ها از رأس‌های مش چوبی (اولین مش فایل)
   const trunkPos = meshes[0].geometry.attributes.position;

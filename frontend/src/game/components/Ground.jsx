@@ -388,16 +388,25 @@ export default function Ground() {
 //    ردیابی دوربین سایه و shadow camera حذف شدند چون سایه رندر نمی‌شود.
 function MoonLight() {
   return (
-    <directionalLight position={[34, 62, 22]} intensity={0.85} color="#b7caff" castShadow={false} />
+    <directionalLight position={[34, 62, 22]} intensity={1.35} color="#cddcff" castShadow={false} />
+  );
+}
+
+// نور پرکننده‌ی ملایم از سمت مقابل ماه تا تنه/تاج درختان در سایه‌ی خودشان
+// کاملاً سیاه نشوند (بدون سایه، هزینه‌ی ناچیز).
+function FillLight() {
+  return (
+    <directionalLight position={[-40, 30, -24]} intensity={0.45} color="#9fb6e0" castShadow={false} />
   );
 }
 
 export function AmbientSetup() {
   return (
     <>
-      <ambientLight intensity={0.26} color="#93a7d4" />
-      <hemisphereLight args={['#5d7fa8', '#1b2a20', 0.55]} />
+      <ambientLight intensity={0.62} color="#a9bde2" />
+      <hemisphereLight args={['#88a6cf', '#31432f', 1.05]} />
       <MoonLight />
+      <FillLight />
     </>
   );
 }

@@ -10,6 +10,21 @@ import { getGroundHeight, getGroundSlope } from '../terrain';
 
 const mergedCache = new Map();
 
+// مواد GLBهای فلور در شب تیره دیده می‌شوند (metalness بالا بدون env map).
+// کلون می‌کنیم، کمی روشن‌تر و کاملاً مات می‌کنیم تا در نور ماه خوانا باشند.
+function tuneFloraMaterial(source) {
+  const mat = source.clone();
+  if (mat.color) mat.color.multiplyScalar(1.45);
+  mat.metalness = 0;
+  mat.roughness = Math.max(0.8, mat.roughness ?? 1);
+  if (mat.emissive) {
+    mat.emissive.set('#101a0c');
+    mat.emissiveIntensity = 0.35;
+  }
+  mat.needsUpdate = true;
+  return mat;
+}
+
 function mergeScene(scene) {
   scene.updateWorldMatrix(true, true);
   const byMaterial = new Map();
@@ -22,7 +37,12 @@ function mergeScene(scene) {
     tmp.copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld);
     box.union(tmp);
     const key = child.material?.uuid ?? 'default';
-    if (!byMaterial.has(key)) byMaterial.set(key, { material: child.material, geos: [] });
+    if (!byMaterial.has(key)) {
+      byMaterial.set(key, {
+        material: child.material ? tuneFloraMaterial(child.material) : child.material,
+        geos: [],
+      });
+    }
     byMaterial.get(key).geos.push(child.geometry.clone().applyMatrix4(child.matrixWorld));
   });
 

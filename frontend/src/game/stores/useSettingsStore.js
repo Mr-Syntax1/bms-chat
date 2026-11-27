@@ -33,7 +33,6 @@ export const QUALITY_PRESETS = {
     butterflies: 6,
     fireflies: 6,
     envAnimation: false,
-    chunkRadius: 5,
     aiRadius: 40,
   },
   medium: {
@@ -51,7 +50,6 @@ export const QUALITY_PRESETS = {
     butterflies: 10,
     fireflies: 8,
     envAnimation: true,
-    chunkRadius: 5,
     aiRadius: 60,
   },
   high: {
@@ -69,7 +67,6 @@ export const QUALITY_PRESETS = {
     butterflies: MAX_BUTTERFLIES,
     fireflies: MAX_FIREFLIES,
     envAnimation: true,
-    chunkRadius: 6,
     aiRadius: 80,
   },
   ultra: {
@@ -87,7 +84,6 @@ export const QUALITY_PRESETS = {
     butterflies: MAX_BUTTERFLIES,
     fireflies: MAX_FIREFLIES,
     envAnimation: true,
-    chunkRadius: 6,
     aiRadius: 100,
   },
 };

@@ -1,15 +1,9 @@
 // ---------------------------------------------------------------------------
-// world/Chunk.jsx — رندر محتوای چانک‌ها (Phase 5 + پاس کارایی ۵.۱)
+// world/Chunk.jsx — رندر جنگل و فلور (Phase 5)
 //
-//  • محتوا از چانک‌های فعال می‌آید (استریمینگ)، ولی برای کم‌کردن draw call
-//    همه‌ی چانک‌های فعال در یک مجموعه InstancedMesh تجمیع می‌شوند و با تغییر
-//    مجموعه‌ی چانک‌ها بازسازی می‌شوند (به‌جای یک مش به‌ازای هر چانک).
-//  • تک‌مدل درخت: همه‌ی LODها از PineTrees.glb می‌آیند.
-//      LOD0: ۰..۴۰   — کامل، با تینت برگ
-//      LOD1: ۴۰..۸۰  — همان مدل، بدون تینت
-//      LOD2: ۸۰..۱۲۰ — همان مدل، مقیاس ماتریس ساده‌تر
-//    همه‌ی لایه‌ها همیشه رندر می‌شوند تا با جابه‌جایی بازیکن «درخت ناپدید»
-//    نشود؛ فقط تینت/سایه عوض می‌شود.
+//  • کل جنگل در یک مجموعه InstancedMesh تجمیع می‌شود (یک‌بار، بدون استریمینگ)
+//    تا هیچ درختی با جابه‌جایی بازیکن ناپدید نشود.
+//  • تک‌مدل درخت: همه‌ی درخت‌ها از PineTrees.glb می‌آیند.
 //  • سایه‌ها سراسر بازی خاموش‌اند (shadowMap.enabled=false).
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useRef } from 'react';
@@ -52,8 +46,8 @@ function TreeParts({ model, items, castShadow, leafTint = true }) {
     if (!leafTint || !items.length) return null;
     const tint = new THREE.Color();
     return items.map((tree) => {
-      const darken = tree.tier === 'canopy' ? -0.04 : tree.tier === 'giant' ? -0.06 : 0.02;
-      tint.setHSL(0.28 + tree.tint * 0.07, 0.12 + tree.tint * 0.16, 0.66 + tree.tint * 0.16 + darken);
+      const darken = tree.tier === 'canopy' ? -0.03 : tree.tier === 'giant' ? -0.045 : 0.015;
+      tint.setHSL(0.28 + tree.tint * 0.07, 0.2 + tree.tint * 0.18, 0.74 + tree.tint * 0.14 + darken);
       return tint.clone();
     });
   }, [items, leafTint]);
@@ -120,8 +114,10 @@ export function ChunkTrees({ groups, castShadow = false }) {
 
   return (
     <group name="chunk-trees">
-      <TreeParts model={pine} items={split.lod0} castShadow={castShadow} />
-      <TreeParts model={pine} items={split.lod1} castShadow={false} />
+      {split.lod0.length > 0 && (
+        <TreeParts model={pine} items={split.lod0} castShadow={castShadow} />
+      )}
+      {split.lod1.length > 0 && <TreeParts model={pine} items={split.lod1} castShadow={false} />}
     </group>
   );
 }
