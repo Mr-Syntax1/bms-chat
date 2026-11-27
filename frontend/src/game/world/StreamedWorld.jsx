@@ -20,7 +20,8 @@ const CHECK_INTERVAL = 0.5; // ثانیه
 
 export default function StreamedWorld() {
   const preset = useQualityPreset();
-  const radius = Math.max(3, Math.round(preset.chunkRadius ?? 3));
+  // حداقل ۵ چانک (۱۶۰ واحد) — شعاع کمتر باعث می‌شد لبه‌ی جنگل دیده شود.
+  const radius = Math.max(5, Math.round(preset.chunkRadius ?? 5));
 
   const [set, setSet] = useState(null);
   const timer = useRef(0);

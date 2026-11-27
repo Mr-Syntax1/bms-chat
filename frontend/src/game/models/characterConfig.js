@@ -22,7 +22,7 @@ export const TARGET_HEIGHT = 1.75;
 // کلید منطقی کاراکتر → نام فایل GLB
 export const CHARACTER_FILES = {
   cute_axolotl: 'cute_axolotl.glb',
-  cute_cat_in_cute_banana: 'cute_cat_in_cute_banana.glb',
+  cute_alien_character: 'cute_alien_character.glb',
   cute_demon: 'cute_demon.glb',
   cute_gugugaga: 'cute_gugugaga.glb',
   cute_purple_pony: 'cute_purple_pony.glb',
@@ -33,7 +33,7 @@ export const CHARACTER_FILES = {
 // کلید منطقی کاراکتر → کلید manifest
 const MANIFEST_KEY = {
   cute_axolotl: 'characters.axolotl',
-  cute_cat_in_cute_banana: 'characters.catBanana',
+  cute_alien_character: 'characters.alien',
   cute_demon: 'characters.demon',
   cute_gugugaga: 'characters.gugugaga',
   cute_purple_pony: 'characters.pony',
@@ -78,38 +78,33 @@ export const CHARACTER_CONFIG = {
     shirt: { minT: 0.3, maxT: 0.82 },
   },
 
-  // ---------------------------------------------------------- cat in banana
-  // ریگ‌دار با یک کلیپ ۳.۳ ثانیه‌ای (idle/breath). جلو روی +Z.
-  // minY مثبت است (۳.۷۵) → groundOffset منفی تا پاها پایین بیایند.
-  cute_cat_in_cute_banana: {
-    file: 'cute_cat_in_cute_banana.glb',
-    height: 2.149,
-    minY: 3.752,
-    groundOffset: -3.055,
+  // ---------------------------------------------------------------- alien
+  // مجسمه‌ی بدون ریگ؛ جلو روی +Z (حفره‌ی چشم در +Z). minY منفی → پاها با
+  // groundOffset بالا می‌آیند.
+  cute_alien_character: {
+    file: 'cute_alien_character.glb',
+    height: 1.526,
+    minY: -0.93,
+    groundOffset: 1.066,
     forwardAxis: 'z',
     forwardRotation: 0,
     forwardConfidence: 'high',
-    skinned: true,
-    bones: { head: null, spine: 'spine_19', neck: null, hips: 'pelvisL_9', leftArm: null, rightArm: null },
-    animations: {
-      idle: 'metarigAction.001',
-      walk: 'metarigAction.001',
-      run: 'metarigAction.001',
-      mode: 'clips',
-    },
+    skinned: false,
+    bones: { head: null, spine: null, neck: null, hips: null, leftArm: null, rightArm: null },
+    animations: { idle: null, walk: null, run: null, mode: 'procedural' },
     clipPrefix: '',
     clipOverrides: {},
     anchors: {
-      hat: { bone: null, x: 0.262, y: 1.73, z: 0.116, scale: 1.195 },
-      glasses: { bone: null, x: 0.175, y: 1.287, z: 0.148, scale: 1.096 },
-      backpack: { bone: 'spine_19', x: 0, y: 0.903, z: -0.387, scale: 1.297 },
-      prop: { x: 0.35, y: 0.903, z: 0, scale: 1.06 },
+      hat: { bone: null, x: 0.013, y: 1.73, z: -0.067, scale: 1.261 },
+      glasses: { bone: null, x: 0, y: 1.285, z: 0.278, scale: 1.156 },
+      backpack: { bone: null, x: 0, y: 0.964, z: -0.34, scale: 1.4 },
+      prop: { x: 0.387, y: 0.964, z: 0.265, scale: 1.2 },
     },
     fallbackAnchors: {
-      hat: { x: 0.262, y: 1.73, z: 0.116, scale: 1.195 },
-      glasses: { x: 0.175, y: 1.287, z: 0.148, scale: 1.096 },
-      backpack: { x: 0, y: 0.903, z: -0.387, scale: 1.297 },
-      prop: { x: 0.35, y: 0.903, z: 0, scale: 1.06 },
+      hat: { x: 0.013, y: 1.73, z: -0.067, scale: 1.261 },
+      glasses: { x: 0, y: 1.285, z: 0.278, scale: 1.156 },
+      backpack: { x: 0, y: 0.964, z: -0.34, scale: 1.4 },
+      prop: { x: 0.387, y: 0.964, z: 0.265, scale: 1.2 },
     },
     shirt: { minT: 0.3, maxT: 0.82 },
   },

@@ -75,14 +75,21 @@ function useNpcModel(modelKey, height) {
     box.getSize(size);
     box.getCenter(center);
     const s = height / (size.y || 1);
-    return { object: copy, scale: s, offset: [-center.x * s, -box.min.y * s, -center.z * s] };
+    return {
+      object: copy,
+      scale: s,
+      offset: [-center.x * s, -box.min.y * s, -center.z * s],
+      // لنگر کلاه از bbox واقعی (نه عدد ثابت): بالای سر در فضای گروه داخلی
+      hatY: (box.max.y - box.min.y) * s - 0.05,
+      headRadius: Math.max(size.x, size.z) * 0.5 * s,
+    };
   }, [scene, height]);
   return { url, ...data };
 }
 
-function NpcNamePlate({ name, accent, marker, bark }) {
+function NpcNamePlate({ name, accent, marker, bark, y = 2.2 }) {
   return (
-    <Html center position={[0, 2.2, 0]} distanceFactor={14} zIndexRange={[20, 0]}>
+    <Html center position={[0, y, 0]} distanceFactor={14} zIndexRange={[20, 0]}>
       <div className="pointer-events-none flex select-none flex-col items-center gap-1">
         {bark && <NpcBarkBubble text={bark.text} accent={accent} until={bark.until} />}
         <div className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[#171426]/75 px-2.5 py-1 text-[11px] text-[#f5ebdd] backdrop-blur-md">
@@ -122,7 +129,7 @@ function openNpcDialogue(npcId) {
 export default function NPC({ data }) {
   const groupRef = useRef(null);
   const innerRef = useRef(null);
-  const { object, scale, offset } = useNpcModel(data.modelKey, data.height);
+  const { object, scale, offset, hatY } = useNpcModel(data.modelKey, data.height);
   const { x: homeX, z: homeZ } = data;
 
   // وضعیت AI بیرون React (ref) — هر فریم فقط خوانده می‌شود
@@ -248,7 +255,13 @@ export default function NPC({ data }) {
           <primitive object={object} />
         </group>
       </group>
-      <NpcNamePlate name={data.name} accent={data.accent} marker={marker} bark={bark} />
+      <NpcNamePlate
+        name={data.name}
+        accent={data.accent}
+        marker={marker}
+        bark={bark}
+        y={hatY + 0.45}
+      />
     </group>
   );
 }

@@ -574,7 +574,7 @@ callsRouter.post('/group/leave', requireAuth, groupRateLimit, async (req, res) =
 // ---------------------------------------------------------------------------
 const GAME_CHARACTERS = [
   'cute_axolotl',
-  'cute_cat_in_cute_banana',
+  'cute_alien_character',
   'cute_demon',
   'cute_gugugaga',
   'cute_purple_pony',

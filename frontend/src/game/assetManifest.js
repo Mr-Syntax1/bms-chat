@@ -60,7 +60,7 @@ export const MODELS = {
   // ۷ مدل جدید «cute» — بدون نسخه‌ی opt (فایل‌ها از قبل سبک/بهینه‌اند).
   characters: {
     axolotl: m('characters/cute_axolotl.glb', { heavy: true }),
-    catBanana: m('characters/cute_cat_in_cute_banana.glb', { heavy: true }),
+    alien: m('characters/cute_alien_character.glb', { heavy: true }),
     demon: m('characters/cute_demon.glb', { heavy: true }),
     gugugaga: m('characters/cute_gugugaga.glb', { heavy: true }),
     pony: m('characters/cute_purple_pony.glb', { heavy: true }),

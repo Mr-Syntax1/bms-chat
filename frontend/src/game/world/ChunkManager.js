@@ -15,10 +15,11 @@ import { getChunkTrees, getChunkFlora, worldToChunk, chunkKey } from './chunkGen
 const EMPTY_GROUPS = { near: [], far: [], far2: [] };
 const EMPTY_FLORA = { grass: [], flowers: [], rocks: [], mushrooms: [] };
 
-// مرزهای LOD درختان (واحد) — طبق مشخصات کارایی: ۴۰ / ۸۰ / ۱۲۰
+// مرزهای LOD درختان (واحد) — LOD میانی تا سقف unload ادامه می‌یابد تا درخت
+// دور ناگهان ناپدید نشود (لایه‌ی سوم/بیلبورد غیرفعال است).
 export const TREE_LOD_NEAR = 40;
-export const TREE_LOD_MID = 80;
-export const TREE_LOD_FAR = 120;
+export const TREE_LOD_MID = 200;
+export const TREE_LOD_FAR = 200;
 
 // فلور (چمن/گل/سنگ/قارچ) فقط تا این فاصله رندر می‌شود. شعاع چانک عمداً
 // بزرگ‌تر است تا درخت‌ها ناپدید نشوند، ولی فلورِ ریزِ دور هزینه‌ی بی‌فایده است.
@@ -26,7 +27,7 @@ export const FLORA_RADIUS = 90;
 
 // فاصله‌ی حذف چانک — خیلی بزرگ‌تر از شعاع رندر تا با جابه‌جایی بازیکن
 // درخت‌ها ناگهان ناپدید نشوند (hysteresis).
-export const CHUNK_UNLOAD_DISTANCE = 160;
+export const CHUNK_UNLOAD_DISTANCE = 200;
 
 export const chunkState = {
   signature: '',

@@ -67,6 +67,10 @@ export default function Character({
 }) {
   const config = getCharacterConfig(model);
   const url = characterUrl(model);
+  // مقیاس و آفست عمودی بر اساس ارتفاع واقعی مدل (قبل از useFrame تعریف می‌شود)
+  const scale = TARGET_HEIGHT / config.height;
+  // groundOffset از بازرسی هر مدل می‌آید تا پاها دقیقاً روی y=0 بنشینند
+  const lift = Number.isFinite(config.groundOffset) ? config.groundOffset : -(config.minY || 0) * scale;
   // آیا مدل کلیپ واقعی دارد؟ (idle/walk/run از config می‌آیند، بقیه از CLIP_SUFFIX)
   const animMode = config.animations?.mode || 'procedural';
   const hasClips = animMode === 'clips' || animMode === 'hybrid';
@@ -135,7 +139,7 @@ export default function Character({
   });
 
   // انیمیشن رویه‌ای برای مدل‌های بدون ریگ + افکت‌های مشترک (squash، پرش شادی، پلک)
-  const baseY = useRef(0);
+  const baseY = useRef(null);
   const phase = useRef(0);
   const lookYaw = useRef(0);
   const hop = useRef(0);
@@ -184,8 +188,11 @@ export default function Character({
     }
     if (hop.current > 0) hop.current = Math.max(0, hop.current - 0.02);
 
-    // نشستن: پایین آمدن نرم
-    const targetY = isSeated ? (currentRest === 'sleep' ? -0.1 : -0.35) : 0;
+    // نشستن: پایین آمدن نرم — groundOffset (lift) باید در پایه بماند، وگرنه
+    // مدل‌هایی با minY منفی در زمین فرو می‌روند (این خط قبلاً lift را پاک می‌کرد).
+    const restOffset = isSeated ? (currentRest === 'sleep' ? -0.1 : -0.35) : 0;
+    const targetY = lift + restOffset;
+    if (baseY.current === null) baseY.current = targetY;
     baseY.current += (targetY - baseY.current) * 0.18;
     inner.position.y = baseY.current;
 
@@ -364,9 +371,6 @@ export default function Character({
   }, [clone, castShadow]);
 
   // مقیاس و آفست عمودی بر اساس ارتفاع واقعی مدل
-  const scale = TARGET_HEIGHT / config.height;
-  // groundOffset از بازرسی هر مدل می‌آید تا پاها دقیقاً روی y=0 بنشینند
-  const lift = Number.isFinite(config.groundOffset) ? config.groundOffset : -(config.minY || 0) * scale;
   // لنگر پروپ مخصوص همین مدل (نسبت سر/بدن هر کاراکتر فرق دارد)
   const propAnchor = getPropAnchor(model);
   const wardrobeAnchors = getWardrobeAnchors(model);
@@ -419,7 +423,9 @@ export default function Character({
     const facing = facingRef.current;
     if (!head || !facing) return;
     if (!headBone) {
-      head.position.set(hatAnchor.x || 0, hatAnchor.y, hatAnchor.z || 0);
+      // لنگرها در فضای «پا روی y=0» اندازه‌گیری شده‌اند؛ گروه داخلی به اندازه‌ی
+      // lift بالا آمده، پس آفست لنگر باید lift کم شود.
+      head.position.set(hatAnchor.x || 0, hatAnchor.y - lift, hatAnchor.z || 0);
       return;
     }
     headBone.getWorldPosition(headWorld);
@@ -493,26 +499,30 @@ export default function Character({
           {/* کلاه + عینک روی لنگر سر (بون Head یا آفست اندازه‌گیری‌شده) */}
           <group
             ref={headGroupRef}
-            position={[hatAnchor.x || 0, hatAnchor.y, hatAnchor.z || 0]}
+            position={[hatAnchor.x || 0, hatAnchor.y - lift, hatAnchor.z || 0]}
             scale={hatAnchor.scale || 1}
           >
             <Hat value={wardrobeItems.hat} />
             <Glasses value={wardrobeItems.face} y={glassesLocalY} z={glassesLocalZ} />
           </group>
-          <Accessory
-            value={wardrobeItems.accessory}
-            anchor={backpackAnchor}
-            fallback={config.fallbackAnchors?.backpack}
-          />
-          {/* پروپ‌های در دست: گیتار / سیخ مارشمالو */}
-          <HeldProps action={action} marshmallowStage={marshmallowStage} anchor={propAnchor} />
-          {/* خرده‌های خوردن (فقط هنگام خوردن دیده می‌شود) */}
-          <instancedMesh
-            ref={crumbsRef}
-            args={[crumbGeo, crumbMat, CRUMB_COUNT]}
-            visible={false}
-            frustumCulled={false}
-          />
+          {/* لنگرهای کمد/پروپ در فضای «پا روی y=0» اندازه‌گیری شده‌اند؛ گروه
+              داخلی به اندازه‌ی lift بالا آمده، پس یک گروه جبرانی لازم است. */}
+          <group position={[0, -lift, 0]}>
+            <Accessory
+              value={wardrobeItems.accessory}
+              anchor={backpackAnchor}
+              fallback={config.fallbackAnchors?.backpack}
+            />
+            {/* پروپ‌های در دست: گیتار / سیخ مارشمالو */}
+            <HeldProps action={action} marshmallowStage={marshmallowStage} anchor={propAnchor} />
+            {/* خرده‌های خوردن — در همین فضای «پا روی y=0» تا ارتفاع دهان بماند */}
+            <instancedMesh
+              ref={crumbsRef}
+              args={[crumbGeo, crumbMat, CRUMB_COUNT]}
+              visible={false}
+              frustumCulled={false}
+            />
+          </group>
         </group>
       </group>
     </group>

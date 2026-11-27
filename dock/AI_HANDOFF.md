@@ -157,11 +157,19 @@
 | Phase 5/2 — کاهش کرم‌شب‌تاب: fireflies پریست‌ها ۲۴/۴۲/۶۰ (~۵۰٪ کمتر) | `stores/useSettingsStore.js` | eslint + build |
 | 🐞 تکمیل پاس ۵.۱ — سقف واقعی ۵۰ ذره (گرده ۷۰→۶، StarBurst ۶۰→۴، توزیع دقیق سهم‌ها) | `fxBudget.js`, `components/CanopyFX.jsx`, `components/QuestItems.jsx` | eslint + build |
 | 🐞 تکمیل پاس ۵.۱ — اعمال واقعی `CHUNK_UNLOAD_DISTANCE=160` در ساخت چانک | `world/ChunkManager.js` | eslint + build |
+| 🔧 کاراکترها: باگ «فرو رفتن در زمین» — حلقه‌ی `useFrame` مقدار `inner.position.y` را هر فریم بازنویسی می‌کرد و `lift` (groundOffset) را پاک می‌کرد. حالا `lift` در پایه‌ی `baseY` می‌ماند (`baseY.current = lift` اولیه) | `components/Character.jsx` | eslint + build |
+| 🔧 کاراکترها: لنگر کلاه/عینک/کوله/پروپ در فضای «پا روی y=0» اندازه‌گیری شده بود ولی گروه داخلی `lift` بالا آمده؛ حالا یک گروه جبرانی `-lift` همه‌ی لنگرها را هم‌تراز می‌کند (کلاه شناور/عینک افتاده رفع شد) | `components/Character.jsx` | eslint + build |
+| 🔧 درختان: مقیاس یکنواخت (`scale.setScalar`) + `widthMul` ±۱۵٪ تصادفی به‌جای مقیاس عرض مستقل از ارتفاع — «میله‌ی نازک عمودی» رفع شد | `sceneLayout.js`, `world/Chunk.jsx` | eslint + build |
+| 🔧 درختان: لایه‌ی LOD سوم/بیلبورد غیرفعال (به‌صورت خط نازک دیده می‌شد)؛ درختان دور در همان لایه‌ی میانی رندر می‌شوند | `world/Chunk.jsx`, `world/ChunkManager.js` | eslint + build |
+| 🔧 درختان: شعاع چانک حداقل ۵ (۱۶۰ واحد) و `CHUNK_UNLOAD_DISTANCE=200` | `world/StreamedWorld.jsx`, `world/ChunkManager.js` | eslint + build |
+| 🔧 NPC: لنگر نام/کلاه از bbox واقعی مدل (`hatY`, `headRadius`) به‌جای ارتفاع ثابت ۲.۲ — کلاه گنوم دیگر شناور نیست | `components/NPC.jsx` | eslint + build |
+| ➕ کاراکتر جدید `cute_alien_character` (minY -0.93 → groundOffset 1.066، جلو +Z) جایگزین `cute_cat_in_cute_banana` در manifest/config/selector/بک‌اند | `assetManifest.js`, `models/characterConfig.js`, `ui/CharacterSelector.jsx`, `models/wardrobeConfig.js`, `backend/src/routes/calls.js` | eslint + build + node --check |
+| 🗑 `cute_cat_in_cute_banana` از همه‌جا حذف شد (GLB هم از دیسک پاک شد) | — | — |
 
 دستورهای تأیید: `npx eslint src/game` (exit 0) و `npm run build` (exit 0).
 
 ## 3) IN PROGRESS 🔄
-چیزی در جریان نیست. **Character System Overhaul (۷ کاراکتر cute) کامل شد** — اسکریپت بازرسی + گزارش JSON + config اختصاصی + Character/wardrobe/anchor/movement + manifest + selector + سقف اتاق ۷ همه انجام و تأیید شدند (eslint/build/node --check).
+چیزی در جریان نیست. **Character System Overhaul** کامل است — ۷ کاراکتر cute (اکسولوتل/فضایی/دیو/گوگوگاگا/پونی/ربات/اسکلت) با `characterReport.json` بازتولیدشده روی همه‌ی فایل‌های دیسک (count=7؛ پس از حذف banana و افزودن alien تعداد فایل‌ها ۷ ماند)، config اختصاصی، لنگرهای هم‌تراز و مقیاس درخت یکنواخت. باگ فرو رفتن در زمین، کلاه شناور/عینک افتاده، درخت‌های میله‌ای و کلاه گنوم رفع شدند (eslint 0 error / build موفق).
 
 ## 4) NOT DONE ⬜ (به‌ترتیب)
 - (هیچ مورد باز مانده‌ای برای Phase 5 نیست.)

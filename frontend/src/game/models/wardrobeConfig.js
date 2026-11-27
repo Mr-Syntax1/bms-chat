@@ -10,7 +10,7 @@ export const wardrobeKeyFor = (userId) => `wardrobe-${userId}`;
 // نام نمایشی کاراکترها برای انتخابگر پیش‌بازی و کمد (کلید = شناسه‌ی کاراکتر)
 export const CHARACTER_LABELS = {
   cute_axolotl: 'آکسولوتل',
-  cute_cat_in_cute_banana: 'گربه‌ی موزی',
+  cute_alien_character: 'فضایی کوچولو',
   cute_demon: 'دیو کوچولو',
   cute_gugugaga: 'گوگوگاگا',
   cute_purple_pony: 'پونی بنفش',

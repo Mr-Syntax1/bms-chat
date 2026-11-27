@@ -1,9 +1,473 @@
 {
-  "generatedAt": "2026-11-27T14:28:57.664Z",
+  "generatedAt": "2026-11-27T16:49:29.141Z",
   "root": "public/game-models/characters",
   "targetHeight": 1.75,
   "count": 7,
   "characters": {
+    "cute_alien_character": {
+      "file": "characters/cute_alien_character.glb",
+      "name": "cute_alien_character",
+      "bytes": 1239464,
+      "kb": 1210.4,
+      "skinned": false,
+      "bones": {
+        "all": [],
+        "named": {}
+      },
+      "bonePositions": {},
+      "animations": [],
+      "textures": [],
+      "maxTextureSize": 0,
+      "triangles": 37772,
+      "meshes": 15,
+      "materials": 5,
+      "meshList": [
+        {
+          "name": "Object_4",
+          "material": "Material.001",
+          "color": "#31f09f",
+          "center": [
+            0,
+            -0.284,
+            0
+          ],
+          "size": [
+            0.624,
+            1.29,
+            0.564
+          ],
+          "vertices": 4024
+        },
+        {
+          "name": "Object_6",
+          "material": "Material.003",
+          "color": "#000000",
+          "center": [
+            0,
+            -0.045,
+            0.249
+          ],
+          "size": [
+            0.205,
+            0.08,
+            0.058
+          ],
+          "vertices": 1208
+        },
+        {
+          "name": "Object_8",
+          "material": "Material.001",
+          "color": "#31f09f",
+          "center": [
+            0.004,
+            0.405,
+            -0.031
+          ],
+          "size": [
+            0.07,
+            0.18,
+            0.093
+          ],
+          "vertices": 312
+        },
+        {
+          "name": "Object_10",
+          "material": "Material.002",
+          "color": "#867eff",
+          "center": [
+            0,
+            -0.413,
+            0
+          ],
+          "size": [
+            0.714,
+            0.246,
+            0.649
+          ],
+          "vertices": 3568
+        },
+        {
+          "name": "Object_12",
+          "material": "Material.004",
+          "color": "#e1b2fa",
+          "center": [
+            0,
+            -0.302,
+            0
+          ],
+          "size": [
+            0.745,
+            0.075,
+            0.682
+          ],
+          "vertices": 2636
+        },
+        {
+          "name": "Object_14",
+          "material": "Material.004",
+          "color": "#e1b2fa",
+          "center": [
+            0,
+            -0.38,
+            0.318
+          ],
+          "size": [
+            0.049,
+            0.049,
+            0.023
+          ],
+          "vertices": 596
+        },
+        {
+          "name": "Object_16",
+          "material": "Material.004",
+          "color": "#e1b2fa",
+          "center": [
+            0,
+            -0.464,
+            0.318
+          ],
+          "size": [
+            0.049,
+            0.049,
+            0.023
+          ],
+          "vertices": 596
+        },
+        {
+          "name": "Object_18",
+          "material": "Material.002",
+          "color": "#867eff",
+          "center": [
+            0,
+            -0.542,
+            0
+          ],
+          "size": [
+            0.694,
+            0.058,
+            0.631
+          ],
+          "vertices": 2721
+        },
+        {
+          "name": "Object_20",
+          "material": "Material.004",
+          "color": "#e1b2fa",
+          "center": [
+            0,
+            -0.652,
+            0
+          ],
+          "size": [
+            0.633,
+            0.271,
+            0.564
+          ],
+          "vertices": 2361
+        },
+        {
+          "name": "Object_22",
+          "material": "Material.004",
+          "color": "#e1b2fa",
+          "center": [
+            0,
+            -0.797,
+            -0.023
+          ],
+          "size": [
+            0.524,
+            0.039,
+            0.242
+          ],
+          "vertices": 657
+        },
+        {
+          "name": "Object_24",
+          "material": "Material.001",
+          "color": "#31f09f",
+          "center": [
+            0,
+            -0.479,
+            0.016
+          ],
+          "size": [
+            1.191,
+            0.18,
+            0.132
+          ],
+          "vertices": 1196
+        },
+        {
+          "name": "Object_26",
+          "material": "Material.005",
+          "color": "#c55151",
+          "center": [
+            0,
+            -0.095,
+            0.275
+          ],
+          "size": [
+            0.06,
+            0.034,
+            0.003
+          ],
+          "vertices": 153
+        },
+        {
+          "name": "Object_28",
+          "material": "Material.002",
+          "color": "#867eff",
+          "center": [
+            0,
+            -0.435,
+            0
+          ],
+          "size": [
+            0.974,
+            0.198,
+            0.174
+          ],
+          "vertices": 2510
+        },
+        {
+          "name": "Object_30",
+          "material": "Material.002",
+          "color": "#867eff",
+          "center": [
+            0,
+            -0.467,
+            0
+          ],
+          "size": [
+            1.04,
+            0.157,
+            0.164
+          ],
+          "vertices": 896
+        },
+        {
+          "name": "Object_32",
+          "material": "Material.001",
+          "color": "#31f09f",
+          "center": [
+            0.011,
+            0.511,
+            -0.058
+          ],
+          "size": [
+            0.172,
+            0.172,
+            0.172
+          ],
+          "vertices": 596
+        }
+      ],
+      "bbox": {
+        "min": [
+          -0.596,
+          -0.93,
+          -0.341
+        ],
+        "max": [
+          0.596,
+          0.597,
+          0.341
+        ],
+        "center": [
+          0,
+          -0.167,
+          0
+        ],
+        "height": 1.526,
+        "width": 1.191,
+        "depth": 0.682,
+        "minY": -0.93,
+        "maxY": 0.597,
+        "centerX": 0,
+        "centerZ": 0
+      },
+      "forward": {
+        "axis": "z",
+        "rotation": 0,
+        "confidence": "high",
+        "votes": {
+          "z": 1.5,
+          "-z": 0,
+          "x": 0,
+          "-x": 0
+        },
+        "evidence": [
+          "normal concavity (263.6) → z"
+        ],
+        "signals": {
+          "face": null,
+          "handedness": null,
+          "protrusion": {
+            "headZ": 0,
+            "headX": 0,
+            "feetZ": -0.013,
+            "feetX": 0
+          },
+          "concavity": {
+            "xp": 2.781,
+            "xn": 0.303,
+            "zp": 263.623,
+            "zn": 17.176
+          },
+          "density": {
+            "xp": 758,
+            "xn": 678,
+            "zp": 1374,
+            "zn": 1190
+          }
+        },
+        "note": "چند سیگنال مستقل هم‌سو هستند"
+      },
+      "visual": {
+        "scale": 1.147,
+        "width": 1.366,
+        "depth": 0.782,
+        "headCenter": [
+          0,
+          1.305,
+          -0.006
+        ],
+        "headWidth": 0.555,
+        "headDepth": 0.516,
+        "headRadius": 0.278,
+        "headTopY": 1.75,
+        "eyeY": 1.305,
+        "torsoY": 0.964,
+        "groundOffset": 1.066,
+        "modelOriginVisual": [
+          0,
+          0
+        ],
+        "bands": {
+          "crown": {
+            "n": 318,
+            "x5": -0.07125157481518214,
+            "x50": 0.01289907158813974,
+            "x95": 0.09704974737317197,
+            "y5": 1.6514113397902426,
+            "y50": 1.721124048779576,
+            "y95": 1.7481056436066733,
+            "z5": -0.15066645109780422,
+            "z50": -0.06651580469448233,
+            "z95": 0.017634859337865752
+          },
+          "face": {
+            "n": 1137,
+            "x5": -0.27752042254841613,
+            "x50": 0,
+            "x95": 0.27752042254841613,
+            "y5": 1.1039936460724153,
+            "y50": 1.3808334201376606,
+            "y95": 1.4751306673504987,
+            "z5": -0.25778024872126337,
+            "z50": -0.006474173527131618,
+            "z95": 0.257780167665548
+          },
+          "eye": {
+            "n": 698,
+            "x5": -0.276372619581703,
+            "x50": 0,
+            "x95": 0.276372619581703,
+            "y5": 1.176740991878466,
+            "y50": 1.350279279100791,
+            "y95": 1.4325594221021765,
+            "z5": -0.25778024872126337,
+            "z50": -1.2928808765914538e-9,
+            "z95": 0.257780167665548
+          },
+          "torso": {
+            "n": 2948,
+            "x5": -0.3513779808031479,
+            "x50": 0,
+            "x95": 0.35290939775946495,
+            "y5": 0.7363760803690428,
+            "y50": 0.9640382695231596,
+            "y95": 1.0565162473339154,
+            "z5": -0.31974975888965695,
+            "z50": 0.2654977903876858,
+            "z95": 0.31825123114527293
+          }
+        }
+      },
+      "anchors": {
+        "hat": {
+          "bone": null,
+          "x": 0.013,
+          "y": 1.73,
+          "z": -0.067,
+          "scale": 1.261
+        },
+        "glasses": {
+          "bone": null,
+          "x": 0,
+          "y": 1.285,
+          "z": 0.278,
+          "scale": 1.156
+        },
+        "backpack": {
+          "bone": null,
+          "x": 0,
+          "y": 0.964,
+          "z": -0.34,
+          "scale": 1.4
+        },
+        "prop": {
+          "x": 0.387,
+          "y": 0.964,
+          "z": 0.265,
+          "scale": 1.2
+        },
+        "shirt": {
+          "minT": 0.3,
+          "maxT": 0.82,
+          "tint": true
+        }
+      },
+      "fallbackAnchors": {
+        "hat": {
+          "x": 0.013,
+          "y": 1.73,
+          "z": -0.067,
+          "scale": 1.261
+        },
+        "glasses": {
+          "x": 0,
+          "y": 1.285,
+          "z": 0.278,
+          "scale": 1.156
+        },
+        "backpack": {
+          "x": 0,
+          "y": 0.964,
+          "z": -0.34,
+          "scale": 1.4
+        },
+        "prop": {
+          "x": 0.387,
+          "y": 0.964,
+          "z": 0.265,
+          "scale": 1.2
+        }
+      },
+      "animationMap": {
+        "idle": null,
+        "walk": null,
+        "run": null,
+        "jump": null,
+        "wave": null,
+        "dance": null,
+        "sit": null,
+        "sleep": null,
+        "mode": "procedural",
+        "all": []
+      }
+    },
     "cute_axolotl": {
       "file": "characters/cute_axolotl.glb",
       "name": "cute_axolotl",
@@ -371,483 +835,6 @@
         "sleep": null,
         "mode": "procedural",
         "all": []
-      }
-    },
-    "cute_cat_in_cute_banana": {
-      "file": "characters/cute_cat_in_cute_banana.glb",
-      "name": "cute_cat_in_cute_banana",
-      "bytes": 1439356,
-      "kb": 1405.6,
-      "skinned": true,
-      "bones": {
-        "all": [
-          "GLTF_created_0_rootJoint",
-          "spine_19",
-          "spine001_8",
-          "spine002_7",
-          "spine005_6",
-          "spine004_5",
-          "pelvisL_9",
-          "thighL_11",
-          "shinL_10",
-          "thighR_13",
-          "shinR_12",
-          "pelvisR_14",
-          "upper_armL_16",
-          "forearmL_15",
-          "upper_armR_18",
-          "forearmR_17"
-        ],
-        "named": {
-          "spine": "spine_19",
-          "hips": "pelvisL_9"
-        }
-      },
-      "bonePositions": {
-        "spine": [
-          0.227,
-          4.145,
-          -0.052
-        ],
-        "hips": [
-          0.228,
-          4.145,
-          -0.055
-        ]
-      },
-      "animations": [
-        {
-          "name": "metarigAction.001",
-          "duration": 3.33,
-          "channels": 39,
-          "samplers": 39
-        }
-      ],
-      "textures": [
-        {
-          "name": "image/png",
-          "mime": "image/png",
-          "width": 1024,
-          "height": 1024,
-          "bytes": 117293
-        },
-        {
-          "name": "image/png",
-          "mime": "image/png",
-          "width": 1024,
-          "height": 1024,
-          "bytes": 80344
-        },
-        {
-          "name": "image/png",
-          "mime": "image/png",
-          "width": 1024,
-          "height": 1024,
-          "bytes": 54350
-        },
-        {
-          "name": "image/png",
-          "mime": "image/png",
-          "width": 1024,
-          "height": 1024,
-          "bytes": 160637
-        }
-      ],
-      "maxTextureSize": 1024,
-      "triangles": 19224,
-      "meshes": 10,
-      "materials": 7,
-      "meshList": [
-        {
-          "name": "Object_7",
-          "material": "Material.002",
-          "color": "#ffffff",
-          "center": [
-            0.243,
-            4.797,
-            -0.074
-          ],
-          "size": [
-            0.86,
-            1.745,
-            1.147
-          ],
-          "vertices": 2224
-        },
-        {
-          "name": "Object_8",
-          "material": "Material.006",
-          "color": "#c17b60",
-          "center": [
-            0.243,
-            4.797,
-            -0.074
-          ],
-          "size": [
-            0.892,
-            1.777,
-            1.178
-          ],
-          "vertices": 2224
-        },
-        {
-          "name": "Object_10",
-          "material": "Material.003",
-          "color": "#a67f5a",
-          "center": [
-            0.217,
-            5.713,
-            0.027
-          ],
-          "size": [
-            0.217,
-            0.351,
-            0.242
-          ],
-          "vertices": 24
-        },
-        {
-          "name": "Object_11",
-          "material": "Material.006",
-          "color": "#c17b60",
-          "center": [
-            0.216,
-            5.713,
-            0.027
-          ],
-          "size": [
-            0.24,
-            0.377,
-            0.267
-          ],
-          "vertices": 24
-        },
-        {
-          "name": "Object_13",
-          "material": "Material.005",
-          "color": "#ffffff",
-          "center": [
-            0.254,
-            4.344,
-            -0.106
-          ],
-          "size": [
-            1.203,
-            0.389,
-            0.32
-          ],
-          "vertices": 394
-        },
-        {
-          "name": "Object_14",
-          "material": "Material.006",
-          "color": "#c17b60",
-          "center": [
-            0.254,
-            4.344,
-            -0.106
-          ],
-          "size": [
-            1.234,
-            0.421,
-            0.351
-          ],
-          "vertices": 394
-        },
-        {
-          "name": "Object_16",
-          "material": "Material.004",
-          "color": "#ffffff",
-          "center": [
-            0.241,
-            3.982,
-            -0.037
-          ],
-          "size": [
-            0.837,
-            0.392,
-            0.299
-          ],
-          "vertices": 482
-        },
-        {
-          "name": "Object_17",
-          "material": "Material.006",
-          "color": "#c17b60",
-          "center": [
-            0.241,
-            3.982,
-            -0.037
-          ],
-          "size": [
-            0.871,
-            0.46,
-            0.334
-          ],
-          "vertices": 482
-        },
-        {
-          "name": "Object_19",
-          "material": "Material.001",
-          "color": "#ffffff",
-          "center": [
-            0.241,
-            4.843,
-            -0.004
-          ],
-          "size": [
-            0.653,
-            0.589,
-            0.607
-          ],
-          "vertices": 3161
-        },
-        {
-          "name": "Object_20",
-          "material": "Material.007",
-          "color": "#ffc8af",
-          "center": [
-            0.241,
-            4.843,
-            -0.004
-          ],
-          "size": [
-            0.676,
-            0.612,
-            0.631
-          ],
-          "vertices": 3161
-        }
-      ],
-      "bbox": {
-        "min": [
-          -0.363,
-          3.752,
-          -0.663
-        ],
-        "max": [
-          0.871,
-          5.901,
-          0.515
-        ],
-        "center": [
-          0.254,
-          4.827,
-          -0.074
-        ],
-        "height": 2.149,
-        "width": 1.234,
-        "depth": 1.178,
-        "minY": 3.752,
-        "maxY": 5.901,
-        "centerX": 0.254,
-        "centerZ": -0.074
-      },
-      "forward": {
-        "axis": "z",
-        "rotation": 0,
-        "confidence": "high",
-        "votes": {
-          "z": 5.5,
-          "-z": 1,
-          "x": 0,
-          "-x": 0
-        },
-        "evidence": [
-          "rig L/R (-0.005,0.579) → z",
-          "head triangle density (z) → z",
-          "head protrusion → -z"
-        ],
-        "signals": {
-          "face": null,
-          "handedness": {
-            "leftBones": 5,
-            "rightBones": 5,
-            "leftAvg": [
-              0.53,
-              4.232,
-              -0.066
-            ],
-            "rightAvg": [
-              -0.048,
-              4.227,
-              -0.071
-            ],
-            "rightVector": [
-              -0.579,
-              -0.005
-            ],
-            "forwardVector": [
-              -0.005,
-              0.579
-            ],
-            "axis": "z"
-          },
-          "protrusion": {
-            "headZ": -0.178,
-            "headX": -0.034,
-            "feetZ": 0.368,
-            "feetX": -0.026
-          },
-          "concavity": {
-            "xp": 0,
-            "xn": 0,
-            "zp": 0,
-            "zn": 0
-          },
-          "density": {
-            "xp": 1136,
-            "xn": 1422,
-            "zp": 1902,
-            "zn": 1014
-          }
-        },
-        "note": "چند سیگنال مستقل هم‌سو هستند"
-      },
-      "visual": {
-        "scale": 0.814,
-        "width": 1.005,
-        "depth": 0.96,
-        "headCenter": [
-          0.196,
-          1.307,
-          -0.005
-        ],
-        "headWidth": 0.507,
-        "headDepth": 0.526,
-        "headRadius": 0.263,
-        "headTopY": 1.75,
-        "eyeY": 1.307,
-        "torsoY": 0.903,
-        "groundOffset": -3.055,
-        "modelOriginVisual": [
-          -0.207,
-          0.06
-        ],
-        "bands": {
-          "crown": {
-            "n": 24,
-            "x5": 0.07826073541722765,
-            "x50": 0.26187293282254526,
-            "x95": 0.27154362157318446,
-            "y5": 1.6929189196269852,
-            "y50": 1.7249780604687805,
-            "y95": 1.75,
-            "z5": -0.06323343353473847,
-            "z50": 0.11595075889866763,
-            "z95": 0.1306594671759764
-          },
-          "face": {
-            "n": 2660,
-            "x5": -0.06472437194851055,
-            "x50": 0.19556790889804584,
-            "x95": 0.4421478668315988,
-            "y5": 1.0950058770357545,
-            "y50": 1.1280076118205205,
-            "y95": 1.486027877255963,
-            "z5": -0.4075553882970203,
-            "z50": -0.005293776794606675,
-            "z95": 0.11806140324275537
-          },
-          "eye": {
-            "n": 641,
-            "x5": -0.12517493996079387,
-            "x50": 0.17516855638884327,
-            "x95": 0.517517953739732,
-            "y5": 1.1922827928447008,
-            "y50": 1.3089146706366654,
-            "y95": 1.4225704220366702,
-            "z5": -0.44838789584889155,
-            "z50": -0.038976684026214764,
-            "z95": 0.1280202868778879
-          },
-          "torso": {
-            "n": 3552,
-            "x5": -0.0688055754015103,
-            "x50": 0.19426887348136102,
-            "x95": 0.4613112736064643,
-            "y5": 0.7486434948806899,
-            "y50": 0.9031553972241468,
-            "y95": 1.070691985525533,
-            "z5": -0.3671756109139112,
-            "z50": -0.03699492798324073,
-            "z95": 0.2157388756548467
-          }
-        }
-      },
-      "anchors": {
-        "hat": {
-          "bone": null,
-          "x": 0.262,
-          "y": 1.73,
-          "z": 0.116,
-          "scale": 1.195
-        },
-        "glasses": {
-          "bone": null,
-          "x": 0.175,
-          "y": 1.287,
-          "z": 0.148,
-          "scale": 1.096
-        },
-        "backpack": {
-          "bone": "spine_19",
-          "x": 0,
-          "y": 0.903,
-          "z": -0.387,
-          "scale": 1.297
-        },
-        "prop": {
-          "x": 0.292,
-          "y": 0.903,
-          "z": -0.037,
-          "scale": 1.058
-        },
-        "shirt": {
-          "minT": 0.3,
-          "maxT": 0.82,
-          "tint": true
-        }
-      },
-      "fallbackAnchors": {
-        "hat": {
-          "x": 0.262,
-          "y": 1.73,
-          "z": 0.116,
-          "scale": 1.195
-        },
-        "glasses": {
-          "x": 0.175,
-          "y": 1.287,
-          "z": 0.148,
-          "scale": 1.096
-        },
-        "backpack": {
-          "x": 0,
-          "y": 0.903,
-          "z": -0.387,
-          "scale": 1.297
-        },
-        "prop": {
-          "x": 0.292,
-          "y": 0.903,
-          "z": -0.037,
-          "scale": 1.058
-        }
-      },
-      "animationMap": {
-        "idle": "metarigAction.001",
-        "walk": "metarigAction.001",
-        "run": "metarigAction.001",
-        "jump": null,
-        "wave": null,
-        "dance": null,
-        "sit": null,
-        "sleep": null,
-        "mode": "clips",
-        "all": [
-          "metarigAction.001"
-        ]
       }
     },
     "cute_demon": {

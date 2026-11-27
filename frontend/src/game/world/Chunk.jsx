@@ -37,11 +37,12 @@ function TreeParts({ model, items, castShadow, leafTint = true }) {
     if (!items.length) return [];
     const dummy = new THREE.Object3D();
     return items.map((tree) => {
-      const sy = tree.targetHeight / height;
-      const s = tree.xzScale;
-      dummy.position.set(tree.x - centerX * s, tree.y + baseY * sy, tree.z - centerZ * s);
+      // مقیاس یکنواخت: ارتفاع از targetHeight و عرض با widthMul (±۱۵٪).
+      // قبلاً x/z مقیاس مستقل داشتند و درخت‌های بلند «میله‌ی نازک» می‌شدند.
+      const s = (tree.targetHeight / height) * (tree.widthMul ?? tree.xzScale ?? 1);
+      dummy.position.set(tree.x - centerX * s, tree.y + baseY * s, tree.z - centerZ * s);
       dummy.rotation.set(tree.tilt * 0.6, tree.rotation, tree.tilt * 0.4);
-      dummy.scale.set(s, sy, s);
+      dummy.scale.setScalar(s);
       dummy.updateMatrix();
       return dummy.matrix.clone();
     });
@@ -106,11 +107,13 @@ function TreeParts({ model, items, castShadow, leafTint = true }) {
 export function ChunkTrees({ groups, castShadow = false }) {
   const pine = usePineModel(modelUrl('trees.pine'));
 
+  // LOD بیلبورد/لایه‌ی سوم غیرفعال شد — در فاصله‌ی دور به «خط نازک» تبدیل
+  // می‌شد. همه‌ی درخت‌های دور در همان لایه‌ی میانی رندر می‌شوند.
   const split = useMemo(
     () => ({
       lod0: groups.near || [],
       lod1: groups.far || [],
-      lod2: groups.far2 || [],
+      lod2: [],
     }),
     [groups]
   );
@@ -119,7 +122,6 @@ export function ChunkTrees({ groups, castShadow = false }) {
     <group name="chunk-trees">
       <TreeParts model={pine} items={split.lod0} castShadow={castShadow} />
       <TreeParts model={pine} items={split.lod1} castShadow={false} />
-      <TreeParts model={pine} items={split.lod2} castShadow={false} />
     </group>
   );
 }

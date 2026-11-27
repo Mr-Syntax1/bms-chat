@@ -13,7 +13,7 @@ import { GameIcon } from './icons';
 // آیکون هر کاراکتر برای کارت انتخاب
 const CHARACTER_ICONS = {
   cute_axolotl: 'fish',
-  cute_cat_in_cute_banana: 'banana',
+  cute_alien_character: 'star',
   cute_demon: 'flame',
   cute_gugugaga: 'chick',
   cute_purple_pony: 'star',

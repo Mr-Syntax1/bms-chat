@@ -29,11 +29,11 @@
 
 | مورد | وضعیت | توضیح |
 | --- | --- | --- |
-| ۹ فایل کاراکتر در `public/game-models/characters/` | ✅ | همه موجود و در `characterConfig.js` با ارتفاع/minY/prefix کلیپ |
+| ۷ فایل کاراکتر در `public/game-models/characters/` | ✅ | همه موجود و در `characterConfig.js` با ارتفاع/minY/groundOffset/prefix کلیپ |
 | اختصاص تصادفی و یکتا | ✅ | `POST /api/calls/game/claim-character` — انتخاب از کاراکترهای آزاد |
 | آزادسازی هنگام خروج | ✅ | `release-character` + `useClaimCharacter` با تأخیر ۱s برای StrictMode |
 | retry بعد از خطا | ❌ → ✅ | قبلاً Promise رد‌شده برای همیشه کش می‌شد و دیگر تلاشی نمی‌شد؛ حالا از `inflight` حذف می‌شود |
-| ظرفیت ۹ نفر | ✅ | `GAME_CAPACITY = 9`، ۴۰۹ در حالت پر |
+| ظرفیت ۷ نفر | ✅ | `GAME_CAPACITY = GAME_CHARACTERS.length` (۷) |
 
 ## ۴. صدای ویس (LiveKit)
 

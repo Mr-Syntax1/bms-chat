@@ -137,6 +137,11 @@ export const SEAT_SPOTS = [
 // ---------------------------------------------------------------------------
 const TREE_MAX = 2600;
 
+// ابعاد واقعی یک درخت تک در PineTrees.glb (پس از استخراج در pineParts.js).
+// ارتفاع ۰.۷۷۶ و عرض چوب ۰.۰۶۱ در فضای مدل — مقیاس‌ها از همین‌جا می‌آیند.
+export const TREE_MODEL_HEIGHT = 0.776;
+export const TREE_TRUNK_RADIUS = 0.03;
+
 // biome ها: جنگل انبوه (شمال/غرب)، چمن‌زار (شرق)، بیشه‌ی قارچ (جنوب)
 function densityWeight(x, z) {
   if (x >= 96) return 0; // ساحل/دریا
@@ -182,16 +187,23 @@ const LANDMARK_GIANTS = [
 ];
 
 function makeTree(rand, x, z, tierInfo, targetHeight) {
-  const xzScale = 0.62 * (targetHeight / 8.2) ** 0.45 * (0.86 + rand() * 0.28);
+  // درخت‌ها باید یکنواخت مقیاس شوند؛ قبلاً عرض با فرمول مستقل از ارتفاع
+  // محاسبه می‌شد و درخت‌های بلند به «میله‌ی نازک عمودی» تبدیل می‌شدند.
+  // widthMul ضریب عرض نسبت به ارتفاع است (±۱۵٪ تصادفی) و در Chunk.jsx در
+  // sy ضرب می‌شود تا نسبت طبیعی مدل حفظ شود.
+  const widthMul = 0.85 + rand() * 0.3;
+  const vertical = targetHeight / TREE_MODEL_HEIGHT;
   return {
     x,
     z,
     targetHeight,
     tier: tierInfo,
-    xzScale,
-    collision: 0.16 + xzScale * 0.17,
+    widthMul,
+    // سازگاری: xzScale دیگر مقیاس مطلق نیست، ضریب عرض است
+    xzScale: widthMul,
+    collision: TREE_TRUNK_RADIUS * vertical + 0.06,
     // سازگاری با کدهای قدیمی که scale می‌خوانند
-    scale: xzScale,
+    scale: widthMul,
     rotation: rand() * Math.PI * 2,
     tint: rand(),
     variant: rand() > 0.72 ? 2 : rand() > 0.4 ? 1 : 0,
@@ -268,8 +280,8 @@ export function buildTrees(limit = TREE_MAX) {
     const tierInfo = pickTier(rand, isGiantZone(x, z));
     const targetHeight = tierInfo.min + rand() * (tierInfo.max - tierInfo.min);
 
-    // فاصله‌ی حداقلی متناسب با اندازه‌ی درخت (غول‌ها فضای بیشتری می‌خواهند)
-    const spacing = tierInfo.tier === 'giant' ? 9 : tierInfo.tier === 'canopy' ? 4.2 : 3.0;
+    // فاصله‌ی حداقلی متناسب با ارتفاع (تاج پهن‌تر = فاصله‌ی کمی بیشتر)
+    const spacing = Math.min(13, Math.max(2.2, targetHeight * 0.34));
     if (!fits(x, z, spacing)) continue;
 
     const tree = makeTree(rand, x, z, tierInfo.tier, targetHeight);
