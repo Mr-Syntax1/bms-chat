@@ -92,7 +92,7 @@ function NpcNamePlate({ name, accent, marker, bark, y = 2.2 }) {
     <Html center position={[0, y, 0]} distanceFactor={14} zIndexRange={[20, 0]}>
       <div className="pointer-events-none flex select-none flex-col items-center gap-1">
         {bark && <NpcBarkBubble text={bark.text} accent={accent} until={bark.until} />}
-        <div className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[#171426]/75 px-2.5 py-1 text-[11px] text-[#f5ebdd] backdrop-blur-md">
+        <div className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[#171426] px-2.5 py-1 text-[11px] text-[#f5ebdd]">
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
           <span>{name}</span>
         </div>

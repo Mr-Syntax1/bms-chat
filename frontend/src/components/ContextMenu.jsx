@@ -11,18 +11,20 @@ export default function ContextMenu({
 }) {
   const menuRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
+  const isOpen = x !== null && y !== null && Boolean(items?.length);
 
   // 👈 فقط برای انیمیشن ورود (بدون setState در useEffect)
   useEffect(() => {
-    if (x !== null && y !== null && items?.length > 0) {
+    if (isOpen) {
       // یک فریم صبر می‌کنیم تا مرورگر المان را رندر کند، بعد انیمیشن را فعال می‌کنیم
       const timer = setTimeout(() => setIsVisible(true), 10);
       return () => clearTimeout(timer);
     }
-  }, [x, y, items]);
+  }, [isOpen, x, y, items]);
 
-  // بستن با کلیک بیرون یا دکمه Escape
+  // بستن با کلیک بیرون یا دکمه Escape — فقط زمانی که منو باز است
   useEffect(() => {
+    if (!isOpen) return undefined;
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         onClose?.();
@@ -38,10 +40,10 @@ export default function ContextMenu({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose]);
+  }, [isOpen, onClose]);
 
   // اگر آیتمی وجود نداشت، منو را رندر نکن
-  if (!items?.length || x === null || y === null) return null;
+  if (!isOpen) return null;
 
   const menuWidth = 180;
   const menuHeight = items.length * 36 + 8;
@@ -55,7 +57,7 @@ export default function ContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className={`fixed z-[100] pointer-events-auto ${className}`}
+      className={`context-menu-fixed fixed z-[100] pointer-events-auto ${className}`}
       style={{ left: posX, top: posY }}
       role="menu"
       aria-orientation="vertical"
@@ -63,9 +65,11 @@ export default function ContextMenu({
       <div 
         className={`
           bg-surface-800/95 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl p-1 min-w-[180px]
+          context-menu-animating
           transition-all duration-200 ease-out origin-top
           ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2'}
         `}
+        onAnimationEnd={(e) => e.currentTarget.classList.remove('context-menu-animating')}
       >
         {items.map((item, index) => (
           <button

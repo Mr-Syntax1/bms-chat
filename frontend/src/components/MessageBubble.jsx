@@ -1,6 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { memo, useState, useRef, useCallback, useEffect } from 'react';
 import Avatar from './Avatar';
-import ContextMenu from './ContextMenu';
 import { useNavigate } from 'react-router-dom';
 import VoiceMessage from './VoiceMessage';
 
@@ -115,31 +114,7 @@ function DoubleCheckIcon() {
   );
 }
 
-function DeleteIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
-  );
-}
-
-function DeleteForEveryoneIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-    </svg>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-    </svg>
-  );
-}
-
-export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage, onEditMessage }) {
+function MessageBubble({ msg, isMine, showHeader, onEditMessage, onOpenContextMenu, editSignal }) {
   const navigate = useNavigate();
   const isSystem = msg.type === 'system';
   const isFile = msg.type === 'file';
@@ -150,8 +125,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
   // تعیین وضعیت نهایی برای نمایش آیکون
   const displayStatus = msg.status || (isRead ? 'read' : 'sent');
 
-  const [contextMenu, setContextMenu] = useState({ x: null, y: null });
-  const [menuItems, setMenuItems] = useState([]);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.text || '');
   const bubbleRef = useRef(null);
@@ -175,16 +148,14 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     };
   }, [lightboxSrc]);
 
-  const closeContextMenu = useCallback(() => {
-    setContextMenu({ x: null, y: null });
-  }, []);
-
-  const handleEdit = useCallback(() => {
-    setEditing(true);
-    setEditText(msg.text || '');
-    closeContextMenu();
-    setTimeout(() => editInputRef.current?.focus(), 0);
-  }, [msg.text, closeContextMenu]);
+  const [prevEditSignal, setPrevEditSignal] = useState(editSignal);
+  if (editSignal !== prevEditSignal) {
+    setPrevEditSignal(editSignal);
+    if (editSignal) {
+      setEditing(true);
+      setEditText(msg.text || '');
+    }
+  }
 
   const handleSaveEdit = useCallback(async () => {
     if (!editText.trim()) return;
@@ -197,53 +168,20 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     setEditing(false);
   }, [msg.text]);
 
-  const buildMenuItems = useCallback(() => {
-    const items = [
-      {
-        label: 'حذف برای من',
-        icon: <DeleteIcon />,
-        danger: true,
-        onClick: () => onDeleteMessage?.(msg.id, false),
-      },
-    ];
-
-    if (isMine) {
-      if (!isFile) {
-        items.unshift({
-          label: 'ویرایش',
-          icon: <EditIcon />,
-          onClick: handleEdit,
-        });
-      }
-      items.push({
-        label: 'حذف برای همه',
-        icon: <DeleteForEveryoneIcon />,
-        danger: true,
-        onClick: () => onDeleteMessage?.(msg.id, true),
-      });
-    }
-
-    return items;
-  }, [isMine, isFile, msg.id, onDeleteMessage, handleEdit]);
-
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
     if (isSystem) return;
 
     const rect = bubbleRef.current?.getBoundingClientRect();
     const menuWidth = 180;
-
     let x = e.clientX;
     let y = e.clientY;
-
     if (rect) {
       x = isMine ? rect.right - menuWidth : rect.left;
       y = rect.bottom + 2;
     }
-
-    setContextMenu({ x, y });
-    setMenuItems(buildMenuItems());
-  }, [isSystem, isMine, buildMenuItems]);
+    onOpenContextMenu?.(msg.id, x, y);
+  }, [isSystem, isMine, msg.id, onOpenContextMenu]);
 
   const handleImageClick = ({ src, alt }) => {
     setLightboxSrc(src);
@@ -365,13 +303,6 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
         </div>
       </div>
 
-      <ContextMenu
-        x={contextMenu.x}
-        y={contextMenu.y}
-        items={menuItems}
-        onClose={closeContextMenu}
-      />
-
       {lightboxSrc && (
         <div
           className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
@@ -399,3 +330,5 @@ export default function MessageBubble({ msg, isMine, showHeader, onDeleteMessage
     </div>
   );
 }
+
+export default memo(MessageBubble);

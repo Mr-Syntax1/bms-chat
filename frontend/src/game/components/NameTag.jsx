@@ -34,7 +34,7 @@ export default function NameTag({ name, id, color, groupRef }) {
     <Html center position={[0, 2.15, 0]} distanceFactor={14} zIndexRange={[20, 0]}>
       <div
         ref={divRef}
-        className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[#171426]/70 px-2.5 py-1 text-[11px] text-[#f5ebdd] backdrop-blur-md"
+        className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-[#171426] px-2.5 py-1 text-[11px] text-[#f5ebdd]"
       >
         <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
         <VoiceBubble id={id} />

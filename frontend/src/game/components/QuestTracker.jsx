@@ -80,14 +80,7 @@ export default function QuestTracker() {
   }, []);
 
   useEffect(() => {
-    let raf = 0;
-    let last = 0;
-
-    const tick = (now) => {
-      raf = requestAnimationFrame(tick);
-      if (now - last < UPDATE_INTERVAL) return;
-      last = now;
-
+    const tick = () => {
       const { local } = usePlayerStore.getState();
       for (const entry of tracked) {
         const root = nodesRef.current.get(entry.npcId);
@@ -108,8 +101,9 @@ export default function QuestTracker() {
       }
     };
 
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    tick();
+    const interval = setInterval(tick, UPDATE_INTERVAL);
+    return () => clearInterval(interval);
   }, [tracked]);
 
   if (tracked.length === 0) return null;

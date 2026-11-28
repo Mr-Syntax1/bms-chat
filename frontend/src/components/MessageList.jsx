@@ -1,16 +1,21 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import MessageBubble from './MessageBubble';
+import { BUBBLE_MENU_ICONS } from '../lib/bubbleMenuIcons.jsx';
+import ContextMenu from './ContextMenu';
+import { animateWillChange, clearWillChange } from '../lib/willChange';
 
-// تبدیل تاریخ میلادی به شمسی
+// تبدیل تاریخ میلادی به شمسی — formatter یکبار در سطح ماژول ساخته میشود
+const PERSIAN_DATE_FORMATTER = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+});
+
 function toPersianDate(date) {
-  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  }).format(date);
+  return PERSIAN_DATE_FORMATTER.format(date);
 }
 
-// تابع برای فرمت‌دهی جداکننده تاریخ (مشابه تلگرام)
+// فرمتدهی جداکننده تاریخ (مشابه تلگرام)
 function formatDateSeparator(date) {
   if (!date) return '';
   const d = new Date(date);
@@ -58,10 +63,49 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
-  // استیت‌های کادر شناور تاریخ
+  // استیتهای کادر شناور تاریخ
   const [floatingDate, setFloatingDate] = useState('');
   const [isFloatingVisible, setIsFloatingVisible] = useState(false);
   const scrollTimeoutRef = useRef(null);
+  const dateObserverRef = useRef(null);
+  const dateRefsRef = useRef(new Map());
+
+  // منوی context سراسری — فقط یک نمونه برای تمام پیامها
+  const [contextMenu, setContextMenu] = useState(null);
+  const [editSignalId, setEditSignalId] = useState(null);
+
+  const openContextMenu = useCallback((messageId, x, y) => {
+    setContextMenu({ messageId, x, y });
+  }, []);
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  const menuItems = useMemo(() => {
+    if (!contextMenu) return [];
+    const id = contextMenu.messageId;
+    const msg = messages.find((m) => (m.id || m._id) === id);
+    const mine = Boolean(msg && msg.sender === currentUsername && msg.type !== 'system');
+    const items = [
+      { label: 'حذف برای من', icon: BUBBLE_MENU_ICONS.delete, danger: true, onClick: () => onDeleteMessage?.(id, false) },
+    ];
+    if (mine) {
+      if (msg.type !== 'file') {
+        items.unshift({
+          label: 'ویرایش',
+          icon: BUBBLE_MENU_ICONS.edit,
+          onClick: () => {
+            setEditSignalId((prev) => ({ id, n: (prev?.n ?? 0) + 1 }));
+          },
+        });
+      }
+      items.push({
+        label: 'حذف برای همه',
+        icon: BUBBLE_MENU_ICONS.deleteEveryone,
+        danger: true,
+        onClick: () => onDeleteMessage?.(id, true),
+      });
+    }
+    return items;
+  }, [contextMenu, messages, currentUsername, onDeleteMessage]);
 
   const scrollToBottom = useCallback((smooth = true) => {
     if (containerRef.current) {
@@ -72,6 +116,39 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
     }
   }, []);
 
+  // IntersectionObserver for the floating date badge (no layout thrash) (no layout thrash)
+  const setupDateObserver = useCallback(() => {
+    if (dateObserverRef.current) return;
+    const root = containerRef.current;
+    if (!root || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length) {
+          const label = dateRefsRef.current.get(visible[0].target) || '';
+          if (label) {
+            setFloatingDate(label);
+            setIsFloatingVisible(true);
+            if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+            scrollTimeoutRef.current = setTimeout(() => setIsFloatingVisible(false), 1000);
+          }
+        }
+      },
+      { root, rootMargin: '0px 0px -95% 0px', threshold: 0 }
+    );
+    dateObserverRef.current = observer;
+    dateRefsRef.current.forEach((_, el) => observer.observe(el));
+  }, []);
+
+  const registerDateRef = useCallback((el, label) => {
+    if (!el) return;
+    dateRefsRef.current.set(el, label);
+    dateObserverRef.current?.observe(el);
+  }, []);
+
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -79,41 +156,17 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
     setIsAtBottom(atBottom);
     setShowScrollButton(!atBottom);
-
-    // کادر شناور تاریخ
     if (atBottom) {
       setIsFloatingVisible(false);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    } else {
-      // پیدا کردن تاریخ پیامی که در حال نمایش است
-      const containerTop = el.getBoundingClientRect().top;
-      const bubbles = el.querySelectorAll('[data-message-date]');
-      let currentDate = '';
-
-      for (const bubble of bubbles) {
-        const rect = bubble.getBoundingClientRect();
-        if (rect.bottom > containerTop + 20) { // 20 پیکسل تلورانس
-          currentDate = bubble.getAttribute('data-message-date');
-          break;
-        }
-      }
-
-      if (currentDate) {
-        setFloatingDate(currentDate);
-        setIsFloatingVisible(true);
-      }
-
-      // محو شدن بعد از توقف اسکرول
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => {
-        setIsFloatingVisible(false);
-      }, 1000);
     }
   }, []);
 
   useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      dateObserverRef.current?.disconnect();
+      dateObserverRef.current = null;
     };
   }, []);
 
@@ -129,7 +182,7 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
     scrollToBottom(false);
   }, [scrollToBottom]);
 
-  // گروه‌بندی پیام‌ها بر اساس تاریخ و اضافه کردن جداکننده‌ها
+  // گروهبندی پیامها بر اساس تاریخ و اضافه کردن جداکنندهها — فرمت تاریخ یکبار در هر پیام
   const messagesWithSeparators = useMemo(() => {
     if (!messages.length) return [];
 
@@ -138,31 +191,47 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
     messages.forEach((msg, i) => {
       const prev = messages[i - 1];
       const showSeparator = shouldShowDateSeparator(msg, prev);
+      const dateLabel = msg.createdAt ? formatDateSeparator(msg.createdAt) : 'امروز';
 
       if (showSeparator) {
-        const dateLabel = msg.createdAt ? formatDateSeparator(msg.createdAt) : 'امروز';
         result.push({
           type: 'date-separator',
           id: `separator-${i}`,
-          label: dateLabel
+          label: dateLabel,
         });
       }
 
       result.push({
         type: 'message',
         ...msg,
-        showHeader: !prev || prev.sender !== msg.sender
+        dateLabel,
+        showHeader: !prev || prev.sender !== msg.sender,
       });
     });
 
     return result;
   }, [messages]);
 
+  // observe date markers after rows render
+  useEffect(() => {
+    dateObserverRef.current?.disconnect();
+    dateObserverRef.current = null;
+    dateRefsRef.current.clear();
+    setupDateObserver();
+    return () => {
+      dateObserverRef.current?.disconnect();
+      dateObserverRef.current = null;
+    };
+  }, [messagesWithSeparators, setupDateObserver]);
+
   return (
     <div className="relative flex-1 min-h-0 flex flex-col">
 
       {/* کادر شناور تاریخ (مشابه تلگرام) */}
-      <div className={`absolute top-3 left-1/2 ml-1 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none ${isFloatingVisible
+      <div
+        onTransitionStart={animateWillChange}
+        onTransitionEnd={clearWillChange}
+        className={`date-floating-badge absolute top-3 left-1/2 ml-1 -translate-x-1/2 z-20 transition-all duration-300 pointer-events-none ${isFloatingVisible
         ? 'opacity-100 -translate-y-0'
         : 'opacity-0 -translate-y-2'}`}>
 
@@ -186,7 +255,7 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-surface-50 mb-1">هنوز پیامی نیست</h3>
-            <p className="text-surface-400 text-sm">اولین کسی باشید که پیام می‌فرستد!</p>
+            <p className="text-surface-400 text-sm">اولین کسی باشید که پیام میفرستد!</p>
             <div className="mt-6 flex items-center gap-2 text-xs text-surface-500">
               <span className="px-3 py-1.5 rounded-full bg-surface-800/50 border border-white/5">Enter برای ارسال</span>
             </div>
@@ -198,11 +267,12 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
             return <DateSeparator key={item.id} label={item.label} />;
           }
 
-          // اضافه کردن data-message-date به هر پیام برای تشخیص در اسکرول
           return (
             <div
               key={item.id}
-              data-message-date={item.createdAt ? formatDateSeparator(item.createdAt) : 'امروز'}
+              className="message-row"
+              data-message-date={item.dateLabel}
+              ref={(el) => registerDateRef(el, item.dateLabel)}
             >
               <MessageBubble
                 msg={item}
@@ -211,6 +281,8 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
                 showHeader={item.showHeader}
                 onDeleteMessage={onDeleteMessage}
                 onEditMessage={onEditMessage}
+                onOpenContextMenu={openContextMenu}
+                editSignal={editSignalId?.id === item.id ? editSignalId.n : 0}
               />
             </div>
           );
@@ -225,7 +297,9 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
             scrollToBottom();
             setShowScrollButton(false);
           }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 btn-primary rounded-full p-3 shadow-xl animate-bounce-soft cursor-pointer"
+          className="go-to-latest-btn absolute bottom-6 left-1/2 -translate-x-1/2 z-10 btn-primary rounded-full p-3 shadow-xl animate-bounce-soft cursor-pointer"
+          onAnimationStart={animateWillChange}
+          onAnimationEnd={clearWillChange}
           aria-label="اسکرول به پایین"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -233,6 +307,14 @@ export default function MessageList({ messages, currentUsername, onDeleteMessage
           </svg>
         </button>
       )}
+
+      {/* منوی context سراسری — فقط زمانی که باز است document listenerها ثبت میشوند */}
+      <ContextMenu
+        x={contextMenu?.x ?? null}
+        y={contextMenu?.y ?? null}
+        items={menuItems}
+        onClose={closeContextMenu}
+      />
     </div>
   );
 }

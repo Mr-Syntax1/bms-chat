@@ -37,8 +37,10 @@ export function Pollen({ count }) {
   }, [count]);
 
   const base = useMemo(() => positions.slice(), [positions]);
+  const frameRef = useRef(0);
 
   useFrame(({ clock }) => {
+    if (++frameRef.current % 3 !== 0) return;
     const points = ref.current;
     if (!points) return;
     const t = clock.elapsedTime;
@@ -76,6 +78,7 @@ export function Pollen({ count }) {
 // برگ‌های در حال ریزش: صفحه‌های کوچک که آرام می‌چرخند و می‌افتند
 function FallingLeaves({ count }) {
   const meshRef = useRef(null);
+  const frameRef = useRef(0);
 
   const data = useMemo(() => {
     const list = [];
@@ -120,6 +123,7 @@ function FallingLeaves({ count }) {
   }, [data]);
 
   useFrame(({ clock }) => {
+    if (++frameRef.current % 3 !== 0) return;
     const mesh = meshRef.current;
     if (!mesh) return;
     const t = clock.elapsedTime;

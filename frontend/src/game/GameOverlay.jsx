@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { usePlayerStore } from './stores/usePlayerStore';
-import { SPAWN } from './sceneLayout';
+import { SPAWN, DOCK } from './sceneLayout';
+import { NPC_LIST } from './npcData';
 import { usePointerLook } from './hooks/usePointerLook';
 import { useQuestSystem } from './hooks/useQuestSystem';
 import { useClaimCharacter } from './hooks/useClaimCharacter';
@@ -218,17 +219,34 @@ export default function GameOverlay({ roomId, user, onClose }) {
     if (preloadStarted.current) return;
     preloadStarted.current = true;
     preloadAllModels();
-    // مدل‌های پخت/غذا و حیات وحش بعد از ورود (idle) warm می‌شوند
-    const id = setTimeout(() => {
-      preloadGroup('cooking');
-      preloadGroup('food');
-      preloadGroup('animals');
-      preloadGroup('forage');
-      preloadGroup('decor');
-      preloadGroup('npc');
-    }, 1200);
-    return () => clearTimeout(id);
   }, []);
+
+  // بارگذاری تنبل گروهها هنگام نزدیک شدن به منطقه (جایگزین warm-up 1200ms)
+  useEffect(() => {
+    if (!entered) return undefined;
+    const loaded = new Set();
+    const near = (x, z, radius, px, pz) => Math.hypot(px - x, pz - z) <= radius;
+    const zones = [
+      ...NPC_LIST.map((npc) => ({ groups: ['npc'], x: npc.x, z: npc.z, radius: 22 })),
+      { groups: ['cooking', 'food', 'decor'], x: SPAWN.x, z: SPAWN.z, radius: 24 },
+      { groups: ['forage', 'animals'], x: SPAWN.x - 20, z: SPAWN.z - 20, radius: 34 },
+      { groups: ['animals'], x: DOCK.x, z: DOCK.z, radius: 26 },
+    ];
+    const check = () => {
+      const { x, z } = usePlayerStore.getState().local;
+      for (const zone of zones) {
+        if (!near(zone.x, zone.z, zone.radius, x, z)) continue;
+        for (const group of zone.groups) {
+          if (loaded.has(group)) continue;
+          loaded.add(group);
+          preloadGroup(group);
+        }
+      }
+    };
+    check();
+    const id = setInterval(check, 2000);
+    return () => clearInterval(id);
+  }, [entered]);
 
   // شناسه‌ی کاربر برای تطبیق activeSpeakers با بازیکن محلی
   useEffect(() => {

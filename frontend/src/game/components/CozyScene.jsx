@@ -1,6 +1,5 @@
 import { useMemo, useRef, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import Ground, { AmbientSetup } from './Ground';
 import Campfire from './Campfire';
@@ -262,7 +261,6 @@ export default function CozyScene() {
       <color attach="background" args={['#080e1f']} />
 
       <NightSky />
-      <Stars radius={120} depth={60} count={preset.particles > 0.5 ? 2200 : 1100} factor={3.6} saturation={0} fade speed={preset.envAnimation ? 0.4 : 0} />
       <Starfield count={preset.particles > 0.5 ? 2000 : 900} animate={preset.envAnimation} />
       <Moon />
       <LowPolyClouds animate={preset.envAnimation} />

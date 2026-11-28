@@ -1,5 +1,6 @@
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { GameIcon } from './icons';
+import { animateWillChange, clearWillChange } from '../../lib/willChange';
 
 const STYLES = {
   success: {
@@ -45,6 +46,8 @@ export default function Toasts() {
             key={toast.id}
             type="button"
             onClick={() => dismiss(toast.id)}
+            onAnimationStart={animateWillChange}
+            onAnimationEnd={clearWillChange}
             className={`toast-rise pointer-events-auto flex max-w-[88vw] items-center gap-2 rounded-2xl border ${style.border} ${style.bg} px-3.5 py-2 text-[11.5px] font-semibold ${style.text} shadow-[0_12px_30px_-12px_rgba(0,0,0,0.9)] backdrop-blur-xl`}
           >
             <span

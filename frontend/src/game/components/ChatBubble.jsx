@@ -13,7 +13,6 @@ export default function ChatBubble({ id }) {
   const lastRef = useRef(null);
 
   useEffect(() => {
-    let raf = 0;
     let hideTimer = 0;
     const tick = () => {
       const entry = chatBubbleMap.get(id);
@@ -30,11 +29,11 @@ export default function ChatBubble({ id }) {
           }, BUBBLE_MS);
         }
       }
-      raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+    tick();
+    const interval = setInterval(tick, 200);
     return () => {
-      cancelAnimationFrame(raf);
+      clearInterval(interval);
       clearTimeout(hideTimer);
     };
   }, [id]);
@@ -43,9 +42,9 @@ export default function ChatBubble({ id }) {
 
   return (
     <Html center position={[0, 2.6, 0]} distanceFactor={12} zIndexRange={[25, 0]}>
-      <div className="relative max-w-[180px] rounded-2xl border border-white/15 bg-[#171426]/85 px-3 py-1.5 text-[11px] leading-snug text-[#f5ebdd] shadow-lg backdrop-blur-md transition-opacity duration-200">
+      <div className="relative max-w-[180px] rounded-2xl border border-white/15 bg-[#171426] px-3 py-1.5 text-[11px] leading-snug text-[#f5ebdd] shadow-lg transition-opacity duration-200">
         {text}
-        <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-white/15 bg-[#171426]/85" />
+        <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-white/15 bg-[#171426]" />
       </div>
     </Html>
   );

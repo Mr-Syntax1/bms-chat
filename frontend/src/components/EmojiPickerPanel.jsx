@@ -1,9 +1,10 @@
 // EmojiPickerPanel.jsx
 import EmojiPicker from 'emoji-picker-react';
+import { animateWillChange, clearWillChange } from '../lib/willChange';
 
 export default function EmojiPickerPanel({ onEmojiSelect }) {
   return (
-    <div className="w-full sm:w-[360px]">
+    <div className="w-full sm:w-[360px]" onAnimationStart={animateWillChange} onAnimationEnd={clearWillChange}>
       <EmojiPicker
         onEmojiClick={(emojiObject) => onEmojiSelect(emojiObject.emoji)}
         theme="dark"

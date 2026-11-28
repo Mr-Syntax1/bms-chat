@@ -1564,6 +1564,22 @@ body {
   animation: scale-in 0.3s ease-out both;
 }
 
+/* Phase 3: chat scroll performance — offscreen rows skip layout/paint */
+.message-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 80px;
+}
+
+/* Surgical will-change: only during active animations, cleaned up on animationend */
+.date-floating-badge.is-animating,
+.go-to-latest-btn:active,
+.context-menu-animating .context-menu-fixed,
+.context-menu-animating > div,
+.toast-rise.is-animating,
+.sileo-toast.is-animating {
+  will-change: transform, opacity;
+}
+
 @keyframes speak-pulse {
 
   0%,

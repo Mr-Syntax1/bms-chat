@@ -39,7 +39,7 @@ export default function NpcBarkBubble({ text, accent, until }) {
   }, [until, clearNpcBark]);
 
   return (
-    <div className="pointer-events-none mb-1 max-w-[190px] select-none rounded-xl border border-white/12 bg-[#171426]/88 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-[#f5ebdd]/90 shadow-lg backdrop-blur-md cozy-pop-in">
+    <div className="pointer-events-none mb-1 max-w-[190px] select-none rounded-xl border border-white/12 bg-[#171426] px-2.5 py-1.5 text-[10.5px] leading-relaxed text-[#f5ebdd]/90 shadow-lg cozy-pop-in">
       <span className="mb-0.5 block h-0.5 w-4 rounded-full" style={{ backgroundColor: accent }} />
       {typed}
       {typed.length < (text || '').length && (

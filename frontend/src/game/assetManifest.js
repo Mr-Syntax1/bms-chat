@@ -56,16 +56,16 @@ const missing = (fallback, note) => m(null, { fallback, note });
 // MODELS
 // ===========================================================================
 export const MODELS = {
-  // ---- کاراکترهای بازیکن (characterConfig.js از همین‌ها می‌خواند) ----
-  // ۷ مدل جدید «cute» — بدون نسخه‌ی opt (فایل‌ها از قبل سبک/بهینه‌اند).
+  // ---- کاراکترهای بازیکن (characterConfig.js از همین‌ها میخواند) ----
+  // ۷ مدل «cute» — نسخه‌های Draco + تکسچر resize شده (12.4MB → 1.1MB).
   characters: {
-    axolotl: m('characters/cute_axolotl.glb', { heavy: true }),
-    alien: m('characters/cute_alien_character.glb', { heavy: true }),
-    demon: m('characters/cute_demon.glb', { heavy: true }),
-    gugugaga: m('characters/cute_gugugaga.glb', { heavy: true }),
-    pony: m('characters/cute_purple_pony.glb', { heavy: true }),
-    robot: m('characters/cute_robot.glb'),
-    skull: m('characters/cute_skull_character.glb', { heavy: true }),
+    axolotl: m('characters/cute_axolotl.glb', { opt: true }),
+    alien: m('characters/cute_alien_character.glb', { opt: true }),
+    demon: m('characters/cute_demon.glb', { opt: true }),
+    gugugaga: m('characters/cute_gugugaga.glb', { opt: true }),
+    pony: m('characters/cute_purple_pony.glb', { opt: true }),
+    robot: m('characters/cute_robot.glb', { opt: true }),
+    skull: m('characters/cute_skull_character.glb', { opt: true }),
   },
 
   // ---- NPCها (Phase 4؛ فعلاً preload نمی‌شوند) ----
@@ -192,7 +192,7 @@ export const MODELS = {
   // ---- تفریح ساحل ----
   beach: {
     ball: m('beachball.glb'),
-    umbrella: m('Umbrella.glb'),
+    umbrella: m('Umbrella.glb', { opt: true }),
     umbrellaAndChairs: m('Umbrellaandchairs.glb', { opt: true }),
     lighthouse: m('beach/LighthousebyPoly.glb'),
     port: m('beach/port/Port.glb', { opt: true }),

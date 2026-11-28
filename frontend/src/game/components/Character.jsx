@@ -115,7 +115,7 @@ export default function Character({
   };
 
   // سوییچ کلیپ برای مدل‌های ریگ‌دار/کلیپ‌دار
-  useFrame(() => {
+  const updateClips = () => {
     if (!hasClips || !actions) return;
     const isMoving = Boolean(resolve(moving));
     const isRunning = Boolean(resolve(running));
@@ -136,7 +136,7 @@ export default function Character({
     next.fadeIn(0.22).play();
     if (prev && prev !== next) prev.fadeOut(0.22);
     currentRef.current = next;
-  });
+  };
 
   // انیمیشن رویه‌ای برای مدل‌های بدون ریگ + افکت‌های مشترک (squash، پرش شادی، پلک)
   const baseY = useRef(null);
@@ -153,7 +153,7 @@ export default function Character({
     blinkAt.current = performance.now() + 1500 + Math.random() * 2500;
   }, []);
 
-  useFrame(({ clock }) => {
+  const updateBody = ({ clock }) => {
     const inner = innerRef.current;
     if (!inner) return;
 
@@ -346,7 +346,7 @@ export default function Character({
     inner.position.y = baseY.current + bob + hop.current * 0.4;
     inner.rotation.x = tiltX;
     inner.rotation.z = rollZ;
-  });
+  };
 
   // توقف انیمیشن‌ها هنگام unmount
   useEffect(() => {
@@ -377,11 +377,10 @@ export default function Character({
   // wardrobe می‌تواند شیء ثابت یا getter باشد؛ کلید JSON از رندر تکراری جلوگیری می‌کند.
   // اگر کمد ارسال نشده باشد (بازیکن قدیمی)، هیچ آیتم/تینتی اعمال نمی‌شود.
   const wardrobeRaw = resolve(wardrobe);
-  const wardrobeKey = wardrobeRaw ? JSON.stringify(normalizeWardrobe(wardrobeRaw)) : '';
   const wardrobeItems = useMemo(
     () => (wardrobeRaw ? normalizeWardrobe(wardrobeRaw) : NO_WARDROBE),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [wardrobeKey]
+    [wardrobeRaw?.hat, wardrobeRaw?.face, wardrobeRaw?.accessory, wardrobeRaw?.shirt?.color, wardrobeRaw?.shirt?.pattern]
   );
 
   // لنگرهای کمد هر کاراکتر (bone + offset + scale) — از characterReport.json
@@ -418,7 +417,7 @@ export default function Character({
   }, [clone, config, shirtKey, wardrobeItems.shirt]);
   // دنبال کردن موقعیت جهانی بون سر هر فریم (بدون re-render)
   const headWorld = useMemo(() => new THREE.Vector3(), []);
-  useFrame(() => {
+  const updateHead = () => {
     const head = headGroupRef.current;
     const facing = facingRef.current;
     if (!head || !facing) return;
@@ -432,7 +431,7 @@ export default function Character({
     facing.worldToLocal(headWorld);
     // بون Head معمولاً در گردن است؛ کمی بالا می‌رویم تا کلاه روی جمجمه بنشیند
     head.position.set(headWorld.x, headWorld.y + 0.18, headWorld.z + (hatAnchor.z || 0));
-  });
+  };
 
   // ---- ذرات خرده‌ی خوردن: یک InstancedMesh کوچک، صفر تخصیص در هر فریم ----
   const crumbsRef = useRef(null);
@@ -443,7 +442,7 @@ export default function Character({
     []
   );
   const crumbDummy = useMemo(() => new THREE.Object3D(), []);
-  useFrame(({ clock }) => {
+  const updateCrumbs = ({ clock }) => {
     const mesh = crumbsRef.current;
     if (!mesh) return;
     // خرده‌ها فقط برای کاراکتر محلی (eatWorld سراسری است)
@@ -486,6 +485,14 @@ export default function Character({
       mesh.setMatrixAt(i, crumbDummy.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
+  };
+
+  // یک useFrame واحد برای تمام بهروزرسانیهای هر فریم (قبلاً ۴ هوک جداگانه)
+  useFrame((state) => {
+    updateClips();
+    updateBody(state);
+    updateHead();
+    updateCrumbs(state);
   });
 
   return (

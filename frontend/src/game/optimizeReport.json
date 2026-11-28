@@ -1,47 +1,19 @@
 {
-  "generatedAt": "2026-11-22T23:41:17.780Z",
+  "generatedAt": "2026-11-28T11:33:12.693Z",
   "results": [
     {
-      "rel": "characters/Citizen.glb",
-      "before": 250132,
-      "after": 86452,
-      "saved": 163680,
-      "ratio": 0.3456255097308621
+      "rel": "Umbrella.glb",
+      "before": 10924,
+      "after": 2904,
+      "saved": 8020,
+      "ratio": 0.26583668985719516
     },
     {
-      "rel": "characters/CubeGuyCharacter.glb",
-      "before": 342324,
-      "after": 142980,
-      "saved": 199344,
-      "ratio": 0.41767448382234373
-    },
-    {
-      "rel": "characters/CuteCharacter.glb",
-      "before": 44644,
-      "after": 11108,
-      "saved": 33536,
-      "ratio": 0.24881283039154198
-    },
-    {
-      "rel": "characters/CuteRedDino.glb",
-      "before": 525404,
-      "after": 61764,
-      "saved": 463640,
-      "ratio": 0.1175552527198118
-    },
-    {
-      "rel": "characters/DORAEMON.glb",
-      "before": 245612,
-      "after": 36836,
-      "saved": 208776,
-      "ratio": 0.14997638551862286
-    },
-    {
-      "rel": "characters/miku.glb",
-      "before": 363776,
-      "after": 62444,
-      "saved": 301332,
-      "ratio": 0.17165508444757213
+      "rel": "Umbrellaandchairs.glb",
+      "before": 1086152,
+      "after": 96316,
+      "saved": 989836,
+      "ratio": 0.08867635469068785
     }
   ]
 }

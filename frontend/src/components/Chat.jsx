@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useTransition } from 'react';
+import { useState, useEffect, useCallback, useRef, useTransition, lazy, Suspense } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
@@ -13,8 +13,8 @@ import { useGroupWebRTC } from '../hooks/useGroupWebRTC';
 import CallModal from './CallModal';
 import GroupCallModal from './GroupCallModal';
 import GroupCallBanner from './GroupCallBanner';
-import GameOverlay from '../game/GameOverlay';
-import CampsiteBrowser from '../game/ui/CampsiteBrowser';
+const GameOverlay = lazy(() => import('../game/GameOverlay'));
+const CampsiteBrowser = lazy(() => import('../game/ui/CampsiteBrowser'));
 
 export default function Chat({ chat, user, onLogout }) {
   const {
@@ -127,17 +127,25 @@ export default function Chat({ chat, user, onLogout }) {
     [navigate]
   );
 
+  const lastMarkedReadRef = useRef(null);
   useEffect(() => {
-    if (currentRoom && messages.length > 0 && user?.id) {
-      const unseenIds = messages
-        .filter(m => m.senderId !== user.id && !m.readBy?.includes(user.id))
-        .map(m => m.id || m._id)
-        .filter(id => id);
+    if (!currentRoom || messages.length === 0 || !user?.id) return undefined;
+    const unseenIds = messages
+      .filter(m => m.senderId !== user.id && !m.readBy?.includes(user.id))
+      .map(m => m.id || m._id)
+      .filter(id => id);
+    if (unseenIds.length === 0) return undefined;
 
-      if (unseenIds.length > 0) {
-        markMessagesAsRead(currentRoom, unseenIds);
-      }
-    }
+    const lastId = unseenIds[unseenIds.length - 1];
+    const key = `${currentRoom}:${lastId}`;
+    if (lastMarkedReadRef.current === key) return undefined;
+
+    const timer = setTimeout(() => {
+      if (lastMarkedReadRef.current === key) return;
+      lastMarkedReadRef.current = key;
+      markMessagesAsRead(currentRoom, unseenIds);
+    }, 500);
+    return () => clearTimeout(timer);
   }, [messages, currentRoom, user?.id, markMessagesAsRead]);
 
   useEffect(() => {
@@ -330,21 +338,23 @@ export default function Chat({ chat, user, onLogout }) {
       />
 
       {/* کمپ آتش (بازی سه‌بعدی چندنفره) */}
-      {gameRoomId && gameRoomId === currentRoom && (
-        <GameOverlay
-          roomId={gameRoomId}
-          user={user}
-          onClose={handleCloseGame}
-        />
-      )}
+      <Suspense fallback={<div className="hidden">Loading...</div>}>
+        {gameRoomId && gameRoomId === currentRoom && (
+          <GameOverlay
+            roomId={gameRoomId}
+            user={user}
+            onClose={handleCloseGame}
+          />
+          )}
 
-      {/* مرور کمپ‌های فعال */}
-      <CampsiteBrowser
-        open={campsitesOpen}
-        onClose={() => setCampsitesOpen(false)}
-        onJoin={handleJoinCampsite}
-        currentRoomId={currentRoom}
-      />
+          {/* مرور کمپ‌های فعال */}
+          <CampsiteBrowser
+            open={campsitesOpen}
+            onClose={() => setCampsitesOpen(false)}
+            onJoin={handleJoinCampsite}
+            currentRoomId={currentRoom}
+          />
+        </Suspense>
 
       {/* سایدبار موبایل */}
       {sidebar && (

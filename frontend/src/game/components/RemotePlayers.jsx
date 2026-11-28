@@ -36,7 +36,7 @@ function RemoteAvatar({ id }) {
   useFrame(({ camera }, rawDelta) => {
     const entry = remoteMap.get(id);
     const group = groupRef.current;
-    if (!entry || !group) return;
+    if (!entry || !group || !group.visible) return;
 
     // LOD: بازیکنان دورتر از ۷۰ واحد هیچ محاسبه‌ای نمی‌گیرند (نه لرپ، نه
     // سرچ و نه آپدیت اسکلت). با ۲+ نفر این بخش بزرگ‌ترین هزینه‌ی فریم بود.
